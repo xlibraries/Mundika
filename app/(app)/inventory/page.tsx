@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { enqueueSync } from "@/lib/sync/queue";
 import type { InventoryRow, ItemRow } from "@/lib/types/domain";
 import { useUserId } from "@/hooks/use-user-id";
+import { PageHeader } from "@/components/layout/page-header";
+import { Input } from "@/components/ui/input";
 
 export default function InventoryPage() {
   const { userId, loading } = useUserId();
@@ -32,26 +34,26 @@ export default function InventoryPage() {
   }
 
   if (loading || !userId) {
-    return <p className="text-sm text-zinc-500">Loading…</p>;
+    return <div className="h-40 animate-pulse rounded-xl bg-white/[0.04]" />;
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-lg font-semibold">Inventory</h1>
-      <p className="text-sm text-zinc-500">
-        Shop and godown quantities. Billing deducts shop first, then godown.
-      </p>
+    <div className="space-y-8">
+      <PageHeader
+        title="Inventory"
+        description="Shop and godown quantities. Billing consumes shop stock first, then godown."
+      />
 
-      <div className="overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800">
-        <table className="w-full min-w-[480px] text-left text-sm">
-          <thead className="border-b border-zinc-200 bg-zinc-50 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-            <tr>
-              <th className="px-3 py-2">Item</th>
-              <th className="px-3 py-2">Shop</th>
-              <th className="px-3 py-2">Godown</th>
+      <div className="overflow-x-auto overflow-hidden rounded-xl border border-white/[0.06]">
+        <table className="w-full min-w-[520px] text-left text-sm">
+          <thead>
+            <tr className="border-b border-white/[0.06] text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+              <th className="px-4 py-3">Item</th>
+              <th className="px-4 py-3 text-right">Shop</th>
+              <th className="px-4 py-3 text-right">Godown</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-white/[0.04]">
             {items.map((it) => {
               const shop = inv.find(
                 (r) => r.item_id === it.id && r.location === "shop"
@@ -60,12 +62,14 @@ export default function InventoryPage() {
                 (r) => r.item_id === it.id && r.location === "godown"
               );
               return (
-                <tr key={it.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="px-3 py-2">{it.name}</td>
-                  <td className="px-3 py-2">
+                <tr key={it.id} className="hover:bg-white/[0.02]">
+                  <td className="px-4 py-2.5 font-medium text-zinc-200">
+                    {it.name}
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
                     {shop ? (
-                      <input
-                        className="w-24 rounded border border-zinc-300 px-2 py-1 tabular-nums dark:border-zinc-700"
+                      <Input
+                        className="ml-auto w-24 py-1.5 text-right font-mono text-sm tabular-nums"
                         type="number"
                         value={shop.qty}
                         onChange={(e) =>
@@ -76,10 +80,10 @@ export default function InventoryPage() {
                       "—"
                     )}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-4 py-2.5 text-right">
                     {godown ? (
-                      <input
-                        className="w-24 rounded border border-zinc-300 px-2 py-1 tabular-nums dark:border-zinc-700"
+                      <Input
+                        className="ml-auto w-24 py-1.5 text-right font-mono text-sm tabular-nums"
                         type="number"
                         value={godown.qty}
                         onChange={(e) =>
@@ -95,6 +99,11 @@ export default function InventoryPage() {
             })}
           </tbody>
         </table>
+        {items.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-zinc-500">
+            Add items first.
+          </p>
+        ) : null}
       </div>
     </div>
   );
