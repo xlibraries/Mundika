@@ -61,8 +61,14 @@ export async function createBill(
     updated_at: now,
   };
 
-  const billItems: BillItemRow[] = lines.map((l) => {
+  const { byRowId: invPlan, lineAllocations } = await planBillDeductions(
+    userId,
+    lines.map((l) => ({ item_id: l.item_id, qty: l.qty }))
+  );
+
+  const billItems: BillItemRow[] = lines.map((l, i) => {
     const id = crypto.randomUUID();
+    const a = lineAllocations[i];
     return {
       id,
       user_id: userId,
@@ -71,6 +77,8 @@ export async function createBill(
       qty: l.qty,
       rate: l.rate,
       line_total: l.line_total,
+      qty_from_shop: a.qty_from_shop,
+      qty_from_godown: a.qty_from_godown,
       created_at: now,
       updated_at: now,
     };
@@ -92,11 +100,6 @@ export async function createBill(
     created_at: now,
     updated_at: now,
   };
-
-  const invPlan = await planBillDeductions(
-    userId,
-    lines.map((l) => ({ item_id: l.item_id, qty: l.qty }))
-  );
 
   await db.transaction(
     "rw",

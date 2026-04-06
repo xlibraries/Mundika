@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { db } from "@/lib/db";
 import { createBill } from "@/modules/billing/actions";
-import type { BillType, ItemRow, PartyRow } from "@/lib/types/domain";
+import { deleteBill } from "@/modules/billing/delete";
+import type { BillRow, BillType, ItemRow, PartyRow } from "@/lib/types/domain";
 import { useUserId } from "@/hooks/use-user-id";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -27,21 +28,35 @@ export default function BillingPage() {
   ]);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [bills, setBills] = useState<BillRow[]>([]);
 
   const firstLineRef = useRef<HTMLSelectElement>(null);
 
+  const loadBills = useCallback(async () => {
+    if (!userId) return;
+    const list = await db.bills.where("user_id").equals(userId).toArray();
+    list.sort((a, b) =>
+      a.bill_date < b.bill_date ? 1 : a.bill_date > b.bill_date ? -1 : 0
+    );
+    setBills(list);
+  }, [userId]);
+
   useEffect(() => {
     if (!userId) return;
-    void Promise.all([
-      db.parties.where("user_id").equals(userId).toArray(),
-      db.items.where("user_id").equals(userId).toArray(),
-    ]).then(([p, i]) => {
-      p.sort((a, b) => a.name.localeCompare(b.name));
-      i.sort((a, b) => a.name.localeCompare(b.name));
-      setParties(p);
-      setItems(i);
-    });
-  }, [userId]);
+    const t = window.setTimeout(() => {
+      void Promise.all([
+        db.parties.where("user_id").equals(userId).toArray(),
+        db.items.where("user_id").equals(userId).toArray(),
+      ]).then(([p, i]) => {
+        p.sort((a, b) => a.name.localeCompare(b.name));
+        i.sort((a, b) => a.name.localeCompare(b.name));
+        setParties(p);
+        setItems(i);
+      });
+      void loadBills();
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [userId, loadBills]);
 
   function addLine() {
     setLines((l) => [...l, { item_id: "", qty: "1", rate: "" }]);
@@ -92,8 +107,29 @@ export default function BillingPage() {
       setMsg(`Bill saved · ${bill.id.slice(0, 8)} · ₹ ${bill.total.toFixed(2)}`);
       setLines([{ item_id: "", qty: "1", rate: "" }]);
       setVehicle("");
+      await loadBills();
     } catch (er) {
       setErr(er instanceof Error ? er.message : "Could not save bill");
+    }
+  }
+
+  async function onDeleteBill(billId: string) {
+    if (!userId) return;
+    if (
+      !window.confirm(
+        "Delete this bill? Stock goes back to shop/godown (same split as when sold), and the sale is removed from the ledger."
+      )
+    ) {
+      return;
+    }
+    setErr(null);
+    setMsg(null);
+    try {
+      await deleteBill(userId, billId);
+      await loadBills();
+      setMsg("Bill deleted.");
+    } catch (er) {
+      setErr(er instanceof Error ? er.message : "Could not delete bill");
     }
   }
 
@@ -250,6 +286,59 @@ export default function BillingPage() {
           Save bill
         </Button>
       </form>
+
+      <section className="space-y-3 border-t border-white/[0.06] pt-8">
+        <h2 className="text-sm font-medium text-zinc-400">Saved bills</h2>
+        <p className="text-xs text-zinc-500">
+          Delete a bill to undo the sale and free items for deletion from the
+          inventory sheet.
+        </p>
+        <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
+          <table className="w-full min-w-[560px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-white/[0.06] text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                <th className="px-3 py-2">Date</th>
+                <th className="px-3 py-2">Party</th>
+                <th className="px-3 py-2">Type</th>
+                <th className="px-3 py-2 text-right">Total</th>
+                <th className="w-24 px-3 py-2 text-center"> </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.04]">
+              {bills.map((b) => (
+                <tr key={b.id} className="hover:bg-white/[0.02]">
+                  <td className="px-3 py-2 font-mono text-xs text-zinc-400">
+                    {b.bill_date}
+                  </td>
+                  <td className="max-w-[200px] truncate px-3 py-2 text-zinc-200">
+                    {b.party_name_snapshot}
+                  </td>
+                  <td className="px-3 py-2 capitalize text-zinc-400">
+                    {b.bill_type}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono tabular-nums text-zinc-200">
+                    ₹ {b.total.toFixed(2)}
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <button
+                      type="button"
+                      className="text-xs text-zinc-500 hover:text-red-400"
+                      onClick={() => void onDeleteBill(b.id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {bills.length === 0 ? (
+            <p className="px-3 py-8 text-center text-sm text-zinc-500">
+              No bills yet.
+            </p>
+          ) : null}
+        </div>
+      </section>
     </div>
   );
 }

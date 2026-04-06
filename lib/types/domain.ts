@@ -58,6 +58,10 @@ export interface BillItemRow {
   qty: number;
   rate: number;
   line_total: number;
+  /** Qty taken from shop for this line (for delete / restore). */
+  qty_from_shop?: number;
+  /** Qty taken from godown for this line. */
+  qty_from_godown?: number;
   created_at: string;
   updated_at: string;
 }
