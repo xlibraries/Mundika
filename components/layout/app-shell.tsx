@@ -1,20 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/cn";
 import { icons } from "@/components/layout/nav-icons";
+import { useWorkspacePrefs } from "@/store/workspace-preferences";
 
-const nav = [
-  { href: "/dashboard", label: "Dashboard", icon: icons.dashboard },
-  { href: "/parties", label: "Parties", icon: icons.parties },
-  { href: "/items", label: "Items", icon: icons.items },
-  { href: "/inventory", label: "Inventory", icon: icons.inventory },
+type NavKey = "parties" | "inventory" | "ledger" | "items";
+
+const NAV_ITEMS: Array<{
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  navKey?: NavKey;
+}> = [
+  { href: "/dashboard", label: "Workspace", icon: icons.dashboard },
   { href: "/billing", label: "Billing", icon: icons.billing },
-  { href: "/ledger", label: "Ledger", icon: icons.ledger },
-] as const;
+  { href: "/parties", label: "Parties", icon: icons.parties, navKey: "parties" },
+  {
+    href: "/inventory",
+    label: "Inventory",
+    icon: icons.inventory,
+    navKey: "inventory",
+  },
+  { href: "/ledger", label: "Ledger", icon: icons.ledger, navKey: "ledger" },
+  { href: "/items", label: "Items", icon: icons.items, navKey: "items" },
+];
 
 function NavLinks({
   onNavigate,
@@ -24,10 +37,34 @@ function NavLinks({
   className?: string;
 }) {
   const pathname = usePathname();
+  const showNavParties = useWorkspacePrefs((s) => s.showNavParties ?? true);
+  const showNavInventory = useWorkspacePrefs(
+    (s) => s.showNavInventory ?? true
+  );
+  const showNavLedger = useWorkspacePrefs((s) => s.showNavLedger ?? true);
+  const showNavItems = useWorkspacePrefs((s) => s.showNavItems ?? false);
+
+  const visible = useMemo(() => {
+    return NAV_ITEMS.filter((n) => {
+      if (!n.navKey) return true;
+      switch (n.navKey) {
+        case "parties":
+          return showNavParties;
+        case "inventory":
+          return showNavInventory;
+        case "ledger":
+          return showNavLedger;
+        case "items":
+          return showNavItems;
+        default:
+          return true;
+      }
+    });
+  }, [showNavInventory, showNavItems, showNavLedger, showNavParties]);
 
   return (
     <nav className={cn("flex flex-col gap-0.5", className)}>
-      {nav.map((n) => {
+      {visible.map((n) => {
         const active = pathname === n.href;
         return (
           <Link
@@ -62,6 +99,8 @@ function NavLinks({
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+  const isWorkspace = pathname === "/dashboard";
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -90,7 +129,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-full flex-col bg-zinc-950 md:flex-row">
-      {/* Mobile header */}
       <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-white/[0.06] bg-zinc-950/90 px-4 backdrop-blur-xl md:hidden">
         <button
           type="button"
@@ -111,7 +149,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <span className="w-10" aria-hidden />
       </header>
 
-      {/* Mobile drawer */}
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 md:hidden">
           <button
@@ -161,7 +198,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
 
-      {/* Desktop sidebar */}
       <aside className="hidden w-56 shrink-0 flex-col border-r border-white/[0.06] bg-zinc-950/80 py-6 md:flex">
         <div className="mb-6 flex items-center gap-3 px-5">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400/20 to-amber-600/10 text-sm font-bold text-amber-400 ring-1 ring-amber-500/20">
@@ -190,7 +226,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="min-w-0 flex-1">
-        <div className="mx-auto max-w-5xl px-4 py-6 md:px-8 md:py-10">
+        <div
+          className={cn(
+            "mx-auto min-w-0",
+            isWorkspace
+              ? "w-full max-w-none px-3 py-4 md:px-6 md:py-6"
+              : "max-w-5xl px-4 py-6 md:px-8 md:py-10"
+          )}
+        >
           {children}
         </div>
       </main>
