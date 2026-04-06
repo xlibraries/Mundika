@@ -134,7 +134,9 @@ export default function BillingPage() {
   }
 
   if (loading || !userId) {
-    return <div className="h-40 animate-pulse rounded-xl bg-white/[0.04]" />;
+    return (
+      <div className="h-40 animate-pulse rounded border border-[#dadce0] bg-[#f8f9fa]" />
+    );
   }
 
   return (
@@ -147,7 +149,7 @@ export default function BillingPage() {
             type="button"
             variant="ghost"
             size="sm"
-            className="text-zinc-400"
+            className="text-[#5f6368] hover:text-[#202124]"
             onClick={() => firstLineRef.current?.focus()}
           >
             Focus first line
@@ -158,7 +160,7 @@ export default function BillingPage() {
       <form onSubmit={onSubmit} className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5">
-            <span className="text-xs font-medium text-zinc-500">Party</span>
+            <span className="text-xs font-medium text-[#5f6368]">Party</span>
             <Select
               required
               value={partyId}
@@ -173,7 +175,7 @@ export default function BillingPage() {
             </Select>
           </label>
           <label className="space-y-1.5">
-            <span className="text-xs font-medium text-zinc-500">Date</span>
+            <span className="text-xs font-medium text-[#5f6368]">Date</span>
             <Input
               type="date"
               required
@@ -185,7 +187,7 @@ export default function BillingPage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5">
-            <span className="text-xs font-medium text-zinc-500">Payment</span>
+            <span className="text-xs font-medium text-[#5f6368]">Payment</span>
             <Select
               value={billType}
               onChange={(e) => setBillType(e.target.value as BillType)}
@@ -195,7 +197,7 @@ export default function BillingPage() {
             </Select>
           </label>
           <label className="space-y-1.5">
-            <span className="text-xs font-medium text-zinc-500">
+            <span className="text-xs font-medium text-[#5f6368]">
               Vehicle / owner
             </span>
             <Input
@@ -207,16 +209,16 @@ export default function BillingPage() {
         </div>
 
         <div className="space-y-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <p className="text-xs font-medium uppercase tracking-wide text-[#5f6368]">
             Lines
           </p>
           {lines.map((line, i) => (
             <div
               key={i}
-              className="grid gap-3 rounded-xl border border-white/[0.06] bg-zinc-900/20 p-3 sm:grid-cols-12 sm:items-end"
+              className="grid gap-3 rounded-sm border border-[#dadce0] bg-[#f8f9fa] p-3 sm:grid-cols-12 sm:items-end"
             >
               <label className="space-y-1.5 sm:col-span-5">
-                <span className="text-[11px] text-zinc-600">Item</span>
+                <span className="text-[11px] text-[#5f6368]">Item</span>
                 <Select
                   ref={i === 0 ? firstLineRef : undefined}
                   value={line.item_id}
@@ -231,7 +233,7 @@ export default function BillingPage() {
                 </Select>
               </label>
               <label className="space-y-1.5 sm:col-span-2">
-                <span className="text-[11px] text-zinc-600">Qty</span>
+                <span className="text-[11px] text-[#5f6368]">Qty</span>
                 <Input
                   inputMode="decimal"
                   placeholder="0"
@@ -241,7 +243,7 @@ export default function BillingPage() {
                 />
               </label>
               <label className="space-y-1.5 sm:col-span-3">
-                <span className="text-[11px] text-zinc-600">Rate</span>
+                <span className="text-[11px] text-[#5f6368]">Rate</span>
                 <Input
                   inputMode="decimal"
                   placeholder="0"
@@ -255,7 +257,7 @@ export default function BillingPage() {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="text-zinc-500"
+                  className="text-[#5f6368] hover:text-[#202124]"
                   disabled={lines.length <= 1}
                   onClick={() =>
                     setLines((prev) => prev.filter((_, j) => j !== i))
@@ -272,12 +274,12 @@ export default function BillingPage() {
         </div>
 
         {err ? (
-          <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+          <p className="rounded border border-[#f9dedc] bg-[#fce8e6] px-3 py-2 text-sm text-[#c5221f]">
             {err}
           </p>
         ) : null}
         {msg ? (
-          <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+          <p className="rounded border border-[#ceead6] bg-[#e6f4ea] px-3 py-2 text-sm text-[#137333]">
             {msg}
           </p>
         ) : null}
@@ -287,16 +289,16 @@ export default function BillingPage() {
         </Button>
       </form>
 
-      <section className="space-y-3 border-t border-white/[0.06] pt-8">
-        <h2 className="text-sm font-medium text-zinc-400">Saved bills</h2>
-        <p className="text-xs text-zinc-500">
+      <section className="space-y-3 border-t border-[#dadce0] pt-8">
+        <h2 className="text-sm font-medium text-[#202124]">Saved bills</h2>
+        <p className="text-xs text-[#5f6368]">
           Delete a bill to undo the sale and free items for deletion from the
           inventory sheet.
         </p>
-        <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
+        <div className="overflow-x-auto rounded-sm border border-[#dadce0] bg-white">
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
-              <tr className="border-b border-white/[0.06] text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+              <tr className="border-b border-[#dadce0] bg-[#f8f9fa] text-[11px] font-medium uppercase tracking-wide text-[#5f6368]">
                 <th className="px-3 py-2">Date</th>
                 <th className="px-3 py-2">Party</th>
                 <th className="px-3 py-2">Type</th>
@@ -304,25 +306,25 @@ export default function BillingPage() {
                 <th className="w-24 px-3 py-2 text-center"> </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/[0.04]">
+            <tbody className="divide-y divide-[#e8eaed]">
               {bills.map((b) => (
-                <tr key={b.id} className="hover:bg-white/[0.02]">
-                  <td className="px-3 py-2 font-mono text-xs text-zinc-400">
+                <tr key={b.id} className="hover:bg-[#f8f9fa]">
+                  <td className="px-3 py-2 font-mono text-xs text-[#5f6368]">
                     {b.bill_date}
                   </td>
-                  <td className="max-w-[200px] truncate px-3 py-2 text-zinc-200">
+                  <td className="max-w-[200px] truncate px-3 py-2 text-[#202124]">
                     {b.party_name_snapshot}
                   </td>
-                  <td className="px-3 py-2 capitalize text-zinc-400">
+                  <td className="px-3 py-2 capitalize text-[#5f6368]">
                     {b.bill_type}
                   </td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums text-zinc-200">
+                  <td className="px-3 py-2 text-right font-mono tabular-nums text-[#202124]">
                     ₹ {b.total.toFixed(2)}
                   </td>
                   <td className="px-3 py-2 text-center">
                     <button
                       type="button"
-                      className="text-xs text-zinc-500 hover:text-red-400"
+                      className="text-xs text-[#5f6368] hover:text-[#c5221f]"
                       onClick={() => void onDeleteBill(b.id)}
                     >
                       Delete
@@ -333,7 +335,7 @@ export default function BillingPage() {
             </tbody>
           </table>
           {bills.length === 0 ? (
-            <p className="px-3 py-8 text-center text-sm text-zinc-500">
+            <p className="px-3 py-8 text-center text-sm text-[#5f6368]">
               No bills yet.
             </p>
           ) : null}

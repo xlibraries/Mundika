@@ -58,13 +58,13 @@ export function PartiesBlock({
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-zinc-400">Parties</h2>
+      <h2 className="text-sm font-medium text-[#202124]">Parties</h2>
       <form
         onSubmit={onAdd}
-        className="flex flex-col gap-2 rounded-lg border border-white/[0.06] bg-zinc-900/20 p-3 sm:flex-row sm:items-end"
+        className="flex flex-col gap-2 rounded-sm border border-[#dadce0] bg-[#f8f9fa] p-3 sm:flex-row sm:items-end"
       >
         <label className="min-w-0 flex-1 space-y-1">
-          <span className="text-[11px] text-zinc-600">Name</span>
+          <span className="text-[11px] text-[#5f6368]">Name</span>
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -72,7 +72,7 @@ export function PartiesBlock({
           />
         </label>
         <label className="min-w-0 flex-1 space-y-1 sm:max-w-[200px]">
-          <span className="text-[11px] text-zinc-600">Phone</span>
+          <span className="text-[11px] text-[#5f6368]">Phone</span>
           <Input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -83,26 +83,26 @@ export function PartiesBlock({
           Add
         </Button>
       </form>
-      <div className="overflow-hidden rounded-lg border border-white/[0.06]">
+      <div className="overflow-hidden rounded-sm border border-[#dadce0] bg-white">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-white/[0.06] text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <tr className="border-b border-[#dadce0] bg-[#f8f9fa] text-[11px] font-medium uppercase tracking-wide text-[#5f6368]">
               <th className="px-3 py-2">Name</th>
               <th className="px-3 py-2 text-right">Phone</th>
               <th className="w-20 px-3 py-2 text-center"> </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/[0.04]">
+          <tbody className="divide-y divide-[#e8eaed]">
             {rows.map((p) => (
-              <tr key={p.id} className="hover:bg-white/[0.02]">
-                <td className="px-3 py-2 font-medium text-zinc-200">{p.name}</td>
-                <td className="px-3 py-2 text-right text-zinc-500">
+              <tr key={p.id} className="hover:bg-[#f8f9fa]">
+                <td className="px-3 py-2 font-medium text-[#202124]">{p.name}</td>
+                <td className="px-3 py-2 text-right text-[#5f6368]">
                   {p.phone ?? "—"}
                 </td>
                 <td className="px-3 py-2 text-center">
                   <button
                     type="button"
-                    className="text-xs text-zinc-500 hover:text-red-400"
+                    className="text-xs text-[#5f6368] hover:text-[#c5221f]"
                     onClick={() => void onDelete(p.id)}
                   >
                     Remove
@@ -113,7 +113,7 @@ export function PartiesBlock({
           </tbody>
         </table>
         {rows.length === 0 ? (
-          <p className="px-3 py-6 text-center text-sm text-zinc-500">
+          <p className="px-3 py-6 text-center text-sm text-[#5f6368]">
             No parties yet.
           </p>
         ) : null}
@@ -161,11 +161,11 @@ export function LedgerBlock({
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-zinc-400">Ledger</h2>
-      <div className="overflow-x-auto overflow-hidden rounded-lg border border-white/[0.06]">
+      <h2 className="text-sm font-medium text-[#202124]">Ledger</h2>
+      <div className="overflow-x-auto overflow-hidden rounded-sm border border-[#dadce0] bg-white">
         <table className="w-full min-w-[560px] text-left text-sm">
           <thead>
-            <tr className="border-b border-white/[0.06] text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <tr className="border-b border-[#dadce0] bg-[#f8f9fa] text-[11px] font-medium uppercase tracking-wide text-[#5f6368]">
               <th className="px-3 py-2">Date</th>
               <th className="px-3 py-2">Type</th>
               <th className="px-3 py-2">Party</th>
@@ -173,21 +173,21 @@ export function LedgerBlock({
               <th className="w-16 px-3 py-2 text-center"> </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/[0.04]">
+          <tbody className="divide-y divide-[#e8eaed]">
             {rows.map((r) => (
-              <tr key={r.id} className="hover:bg-white/[0.02]">
-                <td className="px-3 py-2 font-mono text-xs text-zinc-400">
+              <tr key={r.id} className="hover:bg-[#f8f9fa]">
+                <td className="px-3 py-2 font-mono text-xs text-[#5f6368]">
                   {r.entry_date}
                 </td>
-                <td className="px-3 py-2 capitalize text-zinc-300">
+                <td className="px-3 py-2 capitalize text-[#202124]">
                   {r.entry_type}
                 </td>
-                <td className="px-3 py-2 text-zinc-200">
+                <td className="px-3 py-2 text-[#202124]">
                   {r.party_name_snapshot ?? "—"}
                 </td>
                 <td
                   className={`px-3 py-2 text-right font-mono tabular-nums ${
-                    r.balance_delta >= 0 ? "text-emerald-400/90" : "text-zinc-400"
+                    r.balance_delta >= 0 ? "text-[#188038]" : "text-[#5f6368]"
                   }`}
                 >
                   {r.balance_delta >= 0 ? "+" : ""}
@@ -196,7 +196,7 @@ export function LedgerBlock({
                 <td className="px-3 py-2 text-center">
                   <button
                     type="button"
-                    className="text-xs text-zinc-500 hover:text-red-400"
+                    className="text-xs text-[#5f6368] hover:text-[#c5221f]"
                     onClick={() => void onDelete(r.id)}
                   >
                     Remove
@@ -207,7 +207,7 @@ export function LedgerBlock({
           </tbody>
         </table>
         {rows.length === 0 ? (
-          <p className="px-3 py-6 text-center text-sm text-zinc-500">
+          <p className="px-3 py-6 text-center text-sm text-[#5f6368]">
             No ledger entries yet.
           </p>
         ) : null}

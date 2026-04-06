@@ -72,23 +72,25 @@ function NavLinks({
             href={n.href}
             onClick={onNavigate}
             className={cn(
-              "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "group flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors",
               active
-                ? "bg-amber-500/10 text-amber-400"
-                : "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100"
+                ? "bg-[#e8f0fe] text-[#1a73e8]"
+                : "text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202124]"
             )}
           >
             <span
               className={cn(
                 "transition-colors",
-                active ? "text-amber-400" : "text-zinc-500 group-hover:text-zinc-300"
+                active
+                  ? "text-[#1a73e8]"
+                  : "text-[#5f6368] group-hover:text-[#202124]"
               )}
             >
               {n.icon}
             </span>
             {n.label}
             {active ? (
-              <span className="ml-auto h-1.5 w-1.5 rounded-full bg-amber-400" />
+              <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#1a73e8]" />
             ) : null}
           </Link>
         );
@@ -128,23 +130,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-full flex-col bg-zinc-950 md:flex-row">
-      <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-white/[0.06] bg-zinc-950/90 px-4 backdrop-blur-xl md:hidden">
+    <div className="flex min-h-full flex-col bg-white md:flex-row">
+      <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-[#dadce0] bg-white px-4 shadow-sm md:hidden">
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
-          className="rounded-lg p-2 text-zinc-400 transition hover:bg-white/[0.05] hover:text-zinc-100"
+          className="rounded p-2 text-[#5f6368] transition hover:bg-[#f1f3f4] hover:text-[#202124]"
           aria-label="Open menu"
         >
           {icons.menu}
         </button>
         <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/15 text-xs font-bold text-amber-400">
+          <span className="flex h-8 w-8 items-center justify-center rounded border border-[#dadce0] bg-[#e6f4ea] text-xs font-bold text-[#188038]">
             M
           </span>
-          <span className="text-sm font-semibold tracking-tight text-zinc-100">
-            Mundika
-          </span>
+          <span className="text-sm font-medium text-[#202124]">Mundika</span>
         </div>
         <span className="w-10" aria-hidden />
       </header>
@@ -153,17 +153,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-50 md:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/30"
             aria-label="Close menu"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="absolute left-0 top-0 flex h-full w-[min(88vw,288px)] flex-col border-r border-white/10 bg-zinc-950 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.06] p-4">
-              <span className="text-sm font-semibold text-zinc-100">Menu</span>
+          <aside className="absolute left-0 top-0 flex h-full w-[min(88vw,288px)] flex-col border-r border-[#dadce0] bg-white shadow-lg">
+            <div className="flex items-center justify-between border-b border-[#dadce0] p-4">
+              <span className="text-sm font-medium text-[#202124]">Menu</span>
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className="rounded-lg p-2 text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
+                className="rounded p-2 text-[#5f6368] hover:bg-[#f1f3f4]"
                 aria-label="Close"
               >
                 <svg
@@ -184,11 +184,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex-1 overflow-y-auto p-3">
               <NavLinks onNavigate={() => setMobileOpen(false)} />
             </div>
-            <div className="border-t border-white/[0.06] p-3">
+            <div className="border-t border-[#dadce0] p-3">
               <button
                 type="button"
                 onClick={() => void signOut()}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-200"
+                className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm font-medium text-[#5f6368] transition hover:bg-[#f1f3f4] hover:text-[#202124]"
               >
                 {icons.logout}
                 Sign out
@@ -198,26 +198,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
 
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-white/[0.06] bg-zinc-950/80 py-6 md:flex">
-        <div className="mb-6 flex items-center gap-3 px-5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400/20 to-amber-600/10 text-sm font-bold text-amber-400 ring-1 ring-amber-500/20">
+      <aside className="hidden w-56 shrink-0 flex-col border-r border-[#dadce0] bg-[#f8f9fa] py-5 md:flex">
+        <div className="mb-5 flex items-center gap-3 px-4">
+          <span className="flex h-9 w-9 items-center justify-center rounded border border-[#dadce0] bg-white text-sm font-bold text-[#188038] shadow-sm">
             M
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold tracking-tight text-zinc-100">
+            <p className="truncate text-sm font-medium text-[#202124]">
               Mundika
             </p>
-            <p className="text-[11px] text-zinc-500">Ledger &amp; stock</p>
+            <p className="text-[11px] text-[#5f6368]">Sheets on steroids</p>
           </div>
         </div>
-        <div className="flex-1 px-3">
+        <div className="flex-1 px-2">
           <NavLinks />
         </div>
-        <div className="px-3 pt-4">
+        <div className="px-2 pt-3">
           <button
             type="button"
             onClick={() => void signOut()}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-200"
+            className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm font-medium text-[#5f6368] transition hover:bg-[#f1f3f4] hover:text-[#202124]"
           >
             {icons.logout}
             Sign out
@@ -225,7 +225,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1">
+      <main className="min-w-0 flex-1 bg-white">
         <div
           className={cn(
             "mx-auto min-w-0",

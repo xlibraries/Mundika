@@ -42,22 +42,22 @@ export default function WorkspacePage() {
   if (loading || !userId) {
     return (
       <div className="space-y-6">
-        <div className="h-16 animate-pulse rounded-xl bg-white/[0.04]" />
-        <div className="h-64 animate-pulse rounded-xl bg-white/[0.04]" />
+        <div className="h-16 animate-pulse rounded border border-[#dadce0] bg-[#f8f9fa]" />
+        <div className="h-64 animate-pulse rounded border border-[#dadce0] bg-[#f8f9fa]" />
       </div>
     );
   }
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col gap-4 border-b border-white/[0.06] pb-6 sm:flex-row sm:items-start sm:justify-between">
+      <header className="flex flex-col gap-4 border-b border-[#dadce0] pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-50">
+          <h1 className="text-xl font-medium tracking-tight text-[#202124]">
             Workspace
           </h1>
-          <p className="max-w-xl text-sm text-zinc-500">
-            Excel-style stock sheet below. Today: {today}. Data stays on device
-            first; sync when online.
+          <p className="max-w-xl text-sm text-[#5f6368]">
+            Sheets-style grid below · Today: {today}. Local-first, sync when
+            online.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -73,9 +73,9 @@ export default function WorkspacePage() {
       </header>
 
       {!stats ? (
-        <div className="h-24 animate-pulse rounded-xl bg-white/[0.04]" />
+        <div className="h-24 animate-pulse rounded border border-[#dadce0] bg-[#f8f9fa]" />
       ) : (
-        <div className="grid gap-px overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.06] sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-px overflow-hidden rounded-sm border border-[#dadce0] bg-[#dadce0] sm:grid-cols-2 lg:grid-cols-4">
           <Kpi label="Sales" value={`₹ ${stats.salesTotal.toFixed(2)}`} />
           <Kpi label="Cash" value={`₹ ${stats.cashTotal.toFixed(2)}`} />
           <Kpi label="Credit" value={`₹ ${stats.creditTotal.toFixed(2)}`} />
@@ -84,7 +84,7 @@ export default function WorkspacePage() {
       )}
 
       {stats && stats.lowStock.length > 0 ? (
-        <p className="text-sm text-amber-400/90">
+        <p className="rounded border border-[#fde293] bg-[#fef7e0] px-3 py-2 text-sm text-[#b06000]">
           Low stock:{" "}
           {stats.lowStock.map((s) => `${s.name} (${s.qty})`).join(" · ")}
         </p>
@@ -112,9 +112,9 @@ export default function WorkspacePage() {
         />
       ) : null}
 
-      <p className="text-center text-[11px] text-zinc-600">
-        Billing: use the sidebar. Toggle extra nav links and blocks under{" "}
-        <span className="text-zinc-500">View</span>.
+      <p className="text-center text-[11px] text-[#5f6368]">
+        Billing: sidebar. Toggle nav &amp; blocks via{" "}
+        <span className="font-medium text-[#202124]">View</span>.
       </p>
     </div>
   );
@@ -122,11 +122,11 @@ export default function WorkspacePage() {
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-zinc-950/80 px-4 py-3">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+    <div className="bg-white px-4 py-3">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-[#5f6368]">
         {label}
       </p>
-      <p className="mt-0.5 font-mono text-lg tabular-nums text-zinc-100">
+      <p className="mt-0.5 font-mono text-lg tabular-nums text-[#202124]">
         {value}
       </p>
     </div>

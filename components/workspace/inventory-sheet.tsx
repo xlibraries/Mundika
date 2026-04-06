@@ -104,39 +104,52 @@ export function InventorySheet({
     onChanged?.();
   }
 
+  const cellInput =
+    "rounded-none border-0 bg-transparent py-1.5 text-[#202124] focus:ring-0 focus-visible:outline-none";
+
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-medium text-zinc-400">Inventory sheet</h2>
-        <Button type="button" size="sm" variant="secondary" onClick={() => void addRow()}>
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dadce0] pb-2">
+        <div>
+          <h2 className="text-sm font-medium text-[#202124]">Inventory</h2>
+          <p className="text-[11px] text-[#5f6368]">
+            Grid like Sheets — edit cells, add rows, remove rows.
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          onClick={() => void addRow()}
+        >
           + Row
         </Button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-white/[0.08] bg-zinc-950/40">
+      <div className="overflow-x-auto rounded-sm border border-[#dadce0] bg-white shadow-[0_1px_2px_rgba(60,64,67,0.15)]">
         <table className="w-full min-w-[720px] border-collapse text-left text-sm">
           <thead>
-            <tr className="border-b border-white/[0.08] bg-zinc-950/90 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-              <th className="sticky top-0 z-10 w-10 border-r border-white/[0.06] px-2 py-2 text-center font-mono text-zinc-600">
-                #
+            <tr className="border-b border-[#dadce0] bg-[#f8f9fa] text-[11px] font-medium text-[#5f6368]">
+              <th className="sticky top-0 z-10 w-10 border-r border-[#dadce0] px-1 py-2 text-center font-mono">
+                {" "}
               </th>
-              <th className="sticky top-0 z-10 min-w-[180px] border-r border-white/[0.06] px-2 py-2">
+              <th className="sticky top-0 z-10 min-w-[180px] border-r border-[#dadce0] px-2 py-2 text-left">
                 Item
               </th>
-              <th className="sticky top-0 z-10 min-w-[72px] border-r border-white/[0.06] px-2 py-2">
+              <th className="sticky top-0 z-10 min-w-[72px] border-r border-[#dadce0] px-2 py-2 text-left">
                 Unit
               </th>
-              <th className="sticky top-0 z-10 min-w-[88px] border-r border-white/[0.06] px-2 py-2 text-right">
+              <th className="sticky top-0 z-10 min-w-[88px] border-r border-[#dadce0] px-2 py-2 text-right">
                 Shop
               </th>
-              <th className="sticky top-0 z-10 min-w-[88px] border-r border-white/[0.06] px-2 py-2 text-right">
+              <th className="sticky top-0 z-10 min-w-[88px] border-r border-[#dadce0] px-2 py-2 text-right">
                 Godown
               </th>
-              <th className="sticky top-0 z-10 min-w-[96px] border-r border-white/[0.06] px-2 py-2 text-right">
+              <th className="sticky top-0 z-10 min-w-[96px] border-r border-[#dadce0] px-2 py-2 text-right">
                 Rate
               </th>
               <th className="sticky top-0 z-10 w-24 px-2 py-2 text-center">
-                —
+                {" "}
               </th>
             </tr>
           </thead>
@@ -147,67 +160,67 @@ export function InventorySheet({
               return (
                 <tr
                   key={it.id}
-                  className="border-b border-white/[0.04] hover:bg-white/[0.02]"
+                  className="border-b border-[#e8eaed] hover:bg-[#f8f9fa]"
                 >
-                  <td className="border-r border-white/[0.04] px-2 py-1 text-center font-mono text-xs text-zinc-600">
+                  <td className="border-r border-[#dadce0] bg-[#f8f9fa] px-1 py-0 text-center font-mono text-xs text-[#5f6368]">
                     {idx + 1}
                   </td>
-                  <td className="border-r border-white/[0.04] p-0">
+                  <td className="border-r border-[#e8eaed] p-0 focus-within:bg-[#e8f0fe] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[#1a73e8]">
                     <Input
                       defaultValue={it.name}
-                      className="rounded-none border-0 bg-transparent py-1.5 focus:ring-0"
+                      className={cellInput}
                       onBlur={(e) =>
                         void onBlurField(it.id, "name", e.target.value)
                       }
                     />
                   </td>
-                  <td className="border-r border-white/[0.04] p-0">
+                  <td className="border-r border-[#e8eaed] p-0 focus-within:bg-[#e8f0fe] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[#1a73e8]">
                     <Input
                       defaultValue={it.unit ?? ""}
-                      className="rounded-none border-0 bg-transparent py-1.5 focus:ring-0"
+                      className={cellInput}
                       placeholder="—"
                       onBlur={(e) =>
                         void onBlurField(it.id, "unit", e.target.value)
                       }
                     />
                   </td>
-                  <td className="border-r border-white/[0.04] p-0">
+                  <td className="border-r border-[#e8eaed] p-0 focus-within:bg-[#e8f0fe] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[#1a73e8]">
                     {shop ? (
                       <Input
                         key={`${shop.id}-${shop.updated_at}`}
                         type="number"
                         defaultValue={shop.qty}
-                        className="rounded-none border-0 bg-transparent py-1.5 text-right font-mono tabular-nums focus:ring-0"
+                        className={`${cellInput} text-right font-mono tabular-nums`}
                         onBlur={(e) =>
                           void saveQty(shop, Number(e.target.value))
                         }
                       />
                     ) : (
-                      <span className="block px-2 py-1.5 text-zinc-600">—</span>
+                      <span className="block px-2 py-1.5 text-[#5f6368]">—</span>
                     )}
                   </td>
-                  <td className="border-r border-white/[0.04] p-0">
+                  <td className="border-r border-[#e8eaed] p-0 focus-within:bg-[#e8f0fe] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[#1a73e8]">
                     {godown ? (
                       <Input
                         key={`${godown.id}-${godown.updated_at}`}
                         type="number"
                         defaultValue={godown.qty}
-                        className="rounded-none border-0 bg-transparent py-1.5 text-right font-mono tabular-nums focus:ring-0"
+                        className={`${cellInput} text-right font-mono tabular-nums`}
                         onBlur={(e) =>
                           void saveQty(godown, Number(e.target.value))
                         }
                       />
                     ) : (
-                      <span className="block px-2 py-1.5 text-zinc-600">—</span>
+                      <span className="block px-2 py-1.5 text-[#5f6368]">—</span>
                     )}
                   </td>
-                  <td className="border-r border-white/[0.04] p-0">
+                  <td className="border-r border-[#e8eaed] p-0 focus-within:bg-[#e8f0fe] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[#1a73e8]">
                     <Input
                       defaultValue={
                         it.rate_default != null ? String(it.rate_default) : ""
                       }
                       inputMode="decimal"
-                      className="rounded-none border-0 bg-transparent py-1.5 text-right font-mono tabular-nums focus:ring-0"
+                      className={`${cellInput} text-right font-mono tabular-nums`}
                       placeholder="—"
                       onBlur={(e) =>
                         void onBlurField(it.id, "rate_default", e.target.value)
@@ -217,7 +230,7 @@ export function InventorySheet({
                   <td className="px-1 py-1 text-center">
                     <button
                       type="button"
-                      className="rounded px-2 py-1 text-xs text-zinc-500 hover:bg-red-500/10 hover:text-red-400"
+                      className="rounded px-2 py-1 text-xs text-[#5f6368] hover:bg-[#fce8e6] hover:text-[#d93025]"
                       onClick={() => void onRemove(it.id)}
                     >
                       Remove
@@ -229,7 +242,7 @@ export function InventorySheet({
           </tbody>
         </table>
         {items.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-zinc-500">
+          <p className="px-4 py-6 text-center text-sm text-[#5f6368]">
             No rows yet. Click + Row to add.
           </p>
         ) : null}

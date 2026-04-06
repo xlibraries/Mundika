@@ -2,7 +2,7 @@ import { forwardRef } from "react";
 import { cn } from "@/lib/cn";
 
 const field =
-  "w-full rounded-lg border border-white/10 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/25";
+  "w-full rounded border border-[#dadce0] bg-white px-3 py-2 text-sm text-[#202124] placeholder:text-[#80868b] outline-none transition focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]";
 
 export function Input({
   className,
@@ -20,7 +20,7 @@ export const Select = forwardRef<
       ref={ref}
       className={cn(
         field,
-        "cursor-pointer appearance-none bg-zinc-900/60",
+        "cursor-pointer appearance-none bg-white",
         className
       )}
       {...props}
