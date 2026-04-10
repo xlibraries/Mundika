@@ -24,6 +24,7 @@ export function InventorySheet({
   const [items, setItems] = useState<ItemRow[]>([]);
   const [inv, setInv] = useState<InventoryRow[]>([]);
   const [filter, setFilter] = useState("");
+  const [cellError, setCellError] = useState<string | null>(null);
   const filterRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -68,10 +69,12 @@ export function InventorySheet({
   async function saveQty(row: InventoryRow, raw: string) {
     const parsed = parseNonnegativeStockQty(raw);
     if (!parsed.ok) {
+      setCellError("Quantity must be 0 or more");
       await load();
       onChanged?.();
       return;
     }
+    setCellError(null);
     const now = new Date().toISOString();
     const next = { ...row, qty: parsed.qty, updated_at: now };
     await db.inventory.put(next);
@@ -92,13 +95,18 @@ export function InventorySheet({
         } else {
           const n = Number(raw);
           if (!Number.isFinite(n) || n < 0) {
+            setCellError("Rate must be 0 or more");
             await load();
             return;
           }
+          setCellError(null);
           await updateItemFields(userId, itemId, { rate_default: n });
         }
       } else if (field === "name") {
-        if (!raw.trim()) return;
+        if (!raw.trim()) {
+          setCellError("Item name cannot be empty");
+          return;
+        }
         await updateItemFields(userId, itemId, { name: raw.trim() });
       } else {
         await updateItemFields(userId, itemId, {
@@ -144,6 +152,11 @@ export function InventorySheet({
 
   return (
     <div className="space-y-2">
+      {cellError ? (
+        <p role="alert" aria-live="polite" className="rounded border border-[#f9dedc] bg-[#fce8e6] px-3 py-2 text-sm text-[#c5221f]">
+          {cellError}
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dadce0] pb-2">
         <div>
           <h2 className="text-sm font-medium text-[#202124]">Inventory</h2>
@@ -203,13 +216,13 @@ export function InventorySheet({
             </tr>
           </thead>
           <tbody>
-            {filteredItems.map((it) => {
+            {filteredItems.map((it, rowIdx) => {
               const shop = invRow(it.id, "shop");
               const godown = invRow(it.id, "godown");
               const shopQty = shop?.qty ?? 0;
               const godQty = godown?.qty ?? 0;
               const totalQty = shopQty + godQty;
-              const rowNum = items.findIndex((x) => x.id === it.id) + 1;
+              const rowNum = rowIdx + 1;
               return (
                 <tr
                   key={it.id}
@@ -290,6 +303,7 @@ export function InventorySheet({
                   <td className="px-1 py-1 text-center">
                     <button
                       type="button"
+                      aria-label={`Remove ${it.name}`}
                       className="rounded px-2 py-1 text-xs text-[#5f6368] hover:bg-[#fce8e6] hover:text-[#d93025]"
                       onClick={() => void onRemove(it.id)}
                     >

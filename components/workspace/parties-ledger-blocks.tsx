@@ -22,6 +22,8 @@ export function PartiesBlock({
   const [rows, setRows] = useState<PartyRow[]>([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
 
   const load = useCallback(async () => {
     const list = await db.parties.where("user_id").equals(userId).toArray();
@@ -38,12 +40,23 @@ export function PartiesBlock({
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
-    await createParty(userId, { name, phone: phone || null });
-    setName("");
-    setPhone("");
-    await load();
-    onChanged?.();
+    if (!name.trim()) {
+      setAddError("Name is required");
+      return;
+    }
+    setAddError(null);
+    setIsAdding(true);
+    try {
+      await createParty(userId, { name, phone: phone || null });
+      setName("");
+      setPhone("");
+      await load();
+      onChanged?.();
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : "Could not add party");
+    } finally {
+      setIsAdding(false);
+    }
   }
 
   async function onDelete(id: string) {
@@ -80,10 +93,15 @@ export function PartiesBlock({
             placeholder="Optional"
           />
         </label>
-        <Button type="submit" size="sm">
-          Add
+        <Button type="submit" size="sm" disabled={isAdding}>
+          {isAdding ? "Adding…" : "Add"}
         </Button>
       </form>
+      {addError ? (
+        <p role="alert" aria-live="polite" className="rounded border border-[#f9dedc] bg-[#fce8e6] px-3 py-2 text-sm text-[#c5221f]">
+          {addError}
+        </p>
+      ) : null}
       <div className="overflow-hidden rounded-sm border border-[#dadce0] bg-white">
         <table className="w-full text-left text-sm">
           <thead>
@@ -103,6 +121,7 @@ export function PartiesBlock({
                 <td className="px-3 py-2 text-center">
                   <button
                     type="button"
+                    aria-label={`Remove party ${p.name}`}
                     className="text-xs text-[#5f6368] hover:text-[#c5221f]"
                     onClick={() => void onDelete(p.id)}
                   >
@@ -196,6 +215,7 @@ export function LedgerBlock({
                 <td className="px-3 py-2 text-center">
                   <button
                     type="button"
+                    aria-label={`Remove ledger entry for ${r.party_name_snapshot ?? "party"} on ${r.entry_date}`}
                     className="text-xs text-[#5f6368] hover:text-[#c5221f]"
                     onClick={() => void onDelete(r.id)}
                   >

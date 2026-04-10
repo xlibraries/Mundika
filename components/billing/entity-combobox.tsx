@@ -211,7 +211,7 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
                 aria-selected={i === highlightIdx}
                 className={cn(
                   "cursor-pointer px-3 py-1.5 text-sm",
-                  i === highlightIdx ? "bg-[#e8f0fe] text-[#202124]" : "text-[#202124]"
+                  i === highlightIdx ? "bg-[#e8f0fe] font-medium text-[#202124]" : "text-[#202124]"
                 )}
                 onMouseEnter={() => setHighlight(i)}
                 onMouseDown={(ev) => ev.preventDefault()}
@@ -223,7 +223,7 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
           </ul>
         ) : null}
         {open && matches.length === 0 ? (
-          <div className="absolute z-50 mt-1 w-full rounded border border-[#dadce0] bg-white px-3 py-2 text-sm text-[#5f6368] shadow-md">
+          <div aria-live="polite" className="absolute z-50 mt-1 w-full rounded border border-[#dadce0] bg-white px-3 py-2 text-sm text-[#5f6368] shadow-md">
             No matches
           </div>
         ) : null}

@@ -68,6 +68,7 @@ export default function BillingPage() {
   ]);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [bills, setBills] = useState<BillRow[]>([]);
   const [lineIssues, setLineIssues] = useState<Record<number, LineIssue>>({});
   const [partyMissing, setPartyMissing] = useState(false);
@@ -144,6 +145,24 @@ export default function BillingPage() {
     rateRefs.current.length = lines.length;
   }, [lines.length]);
 
+  // Auto-clear success message after 4 s (#8)
+  useEffect(() => {
+    if (!msg) return;
+    const t = window.setTimeout(() => setMsg(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [msg]);
+
+  // Warn before navigating away when form has unsaved data (#10)
+  const isDirty = partyId !== "" || lines.some((l) => l.item_id || l.qty !== "1" || l.rate !== "");
+  useEffect(() => {
+    if (!isDirty) return;
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
+
   const liveTotals = useMemo(() => {
     const rowTotals: (number | null)[] = [];
     let grand = 0;
@@ -192,7 +211,8 @@ export default function BillingPage() {
 
   const handleSave = useCallback(
     async (printAfter: boolean) => {
-      if (!userId) return;
+      if (!userId || isSaving) return;
+      setIsSaving(true);
       setErr(null);
       setMsg(null);
       setPartyMissing(false);
@@ -276,10 +296,13 @@ export default function BillingPage() {
         }
       } catch (er) {
         setErr(er instanceof Error ? er.message : "Could not save bill");
+      } finally {
+        setIsSaving(false);
       }
     },
     [
       userId,
+      isSaving,
       partyId,
       parties,
       billDate,
@@ -664,12 +687,12 @@ export default function BillingPage() {
           </div>
 
           {err ? (
-            <p className="rounded border border-[#f9dedc] bg-[#fce8e6] px-3 py-2 text-sm text-[#c5221f]">
+            <p role="alert" aria-live="polite" className="rounded border border-[#f9dedc] bg-[#fce8e6] px-3 py-2 text-sm text-[#c5221f]">
               {err}
             </p>
           ) : null}
           {msg ? (
-            <p className="rounded border border-[#ceead6] bg-[#e6f4ea] px-3 py-2 text-sm text-[#137333]">
+            <p role="status" aria-live="polite" className="rounded border border-[#ceead6] bg-[#e6f4ea] px-3 py-2 text-sm text-[#137333]">
               {msg}
             </p>
           ) : null}
@@ -679,15 +702,17 @@ export default function BillingPage() {
               type="button"
               size="lg"
               className="w-full sm:w-auto"
+              disabled={isSaving}
               onClick={() => void handleSave(false)}
             >
-              Save bill
+              {isSaving ? "Saving…" : "Save bill"}
             </Button>
             <Button
               type="button"
               size="lg"
               variant="secondary"
               className="w-full sm:w-auto"
+              disabled={isSaving}
               onClick={() => void handleSave(true)}
             >
               Save &amp; print
@@ -730,6 +755,7 @@ export default function BillingPage() {
                     <td className="px-3 py-2 text-center">
                       <button
                         type="button"
+                        aria-label={`Delete bill for ${b.party_name_snapshot} on ${b.bill_date}`}
                         className="text-xs text-[#5f6368] hover:text-[#c5221f]"
                         onClick={() => void onDeleteBill(b.id)}
                       >
