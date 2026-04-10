@@ -6,6 +6,8 @@ import type {
   ItemRow,
   LedgerEntryRow,
   PartyRow,
+  PurchaseItemRow,
+  PurchaseRow,
   SyncQueueRow,
 } from "@/lib/types/domain";
 
@@ -17,6 +19,8 @@ export class MundikaDB extends Dexie {
   bill_items!: Table<BillItemRow, string>;
   ledger_entries!: Table<LedgerEntryRow, string>;
   sync_queue!: Table<SyncQueueRow, string>;
+  purchases!: Table<PurchaseRow, string>;
+  purchase_items!: Table<PurchaseItemRow, string>;
 
   constructor() {
     super("mundika");
@@ -32,6 +36,12 @@ export class MundikaDB extends Dexie {
     // v2: adds bill_number index (existing rows get undefined — handled gracefully)
     this.version(2).stores({
       bills: "id, user_id, party_id, bill_date, bill_number, updated_at",
+    });
+    // v3: adds purchases and purchase_items tables
+    this.version(3).stores({
+      purchases:
+        "id, user_id, party_id, purchase_date, purchase_number, updated_at",
+      purchase_items: "id, user_id, purchase_id, item_id, updated_at",
     });
   }
 }

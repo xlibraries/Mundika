@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 import { icons } from "@/components/layout/nav-icons";
 import { useWorkspacePrefs } from "@/store/workspace-preferences";
 
-type NavKey = "parties" | "inventory" | "ledger" | "items";
+type NavKey = "parties" | "inventory" | "ledger" | "items" | "purchases";
 
 const NAV_ITEMS: Array<{
   href: string;
@@ -18,6 +18,7 @@ const NAV_ITEMS: Array<{
 }> = [
   { href: "/dashboard", label: "Workspace", icon: icons.dashboard },
   { href: "/billing", label: "Billing", icon: icons.billing },
+  { href: "/purchases", label: "Purchases", icon: icons.purchases, navKey: "purchases" },
   { href: "/dashboard#parties", label: "Parties", icon: icons.parties, navKey: "parties" },
   {
     href: "/dashboard#inventory",
@@ -43,6 +44,7 @@ function NavLinks({
   );
   const showNavLedger = useWorkspacePrefs((s) => s.showNavLedger ?? true);
   const showNavItems = useWorkspacePrefs((s) => s.showNavItems ?? false);
+  const showNavPurchases = useWorkspacePrefs((s) => s.showNavPurchases ?? true);
 
   const visible = useMemo(() => {
     return NAV_ITEMS.filter((n) => {
@@ -56,11 +58,13 @@ function NavLinks({
           return showNavLedger;
         case "items":
           return showNavItems;
+        case "purchases":
+          return showNavPurchases;
         default:
           return true;
       }
     });
-  }, [showNavInventory, showNavItems, showNavLedger, showNavParties]);
+  }, [showNavInventory, showNavItems, showNavLedger, showNavParties, showNavPurchases]);
 
   return (
     <nav className={cn("flex flex-col gap-0.5", className)}>

@@ -82,8 +82,42 @@ export interface LedgerEntryRow {
   entry_type: LedgerEntryType;
   balance_delta: number;
   ref_bill_id: string | null;
+  /** Reference to a purchase (for purchase-type ledger entries). */
+  ref_purchase_id: string | null;
   note: string | null;
   entry_date: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PurchasePaymentType = "cash" | "credit";
+
+export interface PurchaseRow {
+  id: string;
+  user_id: string;
+  /** Sequential invoice number per user (1, 2, 3 …). */
+  purchase_number: number;
+  party_id: string;
+  party_name_snapshot: string;
+  purchase_date: string; // YYYY-MM-DD
+  ref_number: string | null; // supplier's bill/invoice number
+  payment_type: PurchasePaymentType;
+  total: number;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PurchaseItemRow {
+  id: string;
+  user_id: string;
+  purchase_id: string;
+  item_id: string;
+  qty: number;
+  unit_cost: number;
+  line_total: number;
+  /** Where stock goes. */
+  destination: "shop" | "godown";
   created_at: string;
   updated_at: string;
 }

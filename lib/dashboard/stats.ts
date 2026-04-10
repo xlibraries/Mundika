@@ -20,8 +20,14 @@ export async function getDashboardStats(userId: string, day: string) {
     else creditTotal += b.total;
   }
 
-  // No purchase flow exists yet; always 0 until a purchase entry type is implemented.
-  const purchasesTotal = 0;
+  const purchasesForDay = await db.purchases
+    .where("user_id")
+    .equals(userId)
+    .filter((p) => p.purchase_date === dayStr)
+    .toArray();
+  const purchasesTotal = Math.round(
+    purchasesForDay.reduce((s, p) => s + p.total, 0) * 100
+  ) / 100;
 
   const inv = await db.inventory
     .where("user_id")

@@ -9,6 +9,8 @@ const TABLES = new Set([
   "bills",
   "bill_items",
   "ledger_entries",
+  "purchases",
+  "purchase_items",
 ]);
 
 let flushing = false;

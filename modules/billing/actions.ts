@@ -99,6 +99,7 @@ export async function createBill(
     entry_type: "sale",
     balance_delta,
     ref_bill_id: billId,
+    ref_purchase_id: null,
     note: null,
     entry_date: billDate,
     created_at: now,
