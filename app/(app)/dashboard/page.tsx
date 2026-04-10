@@ -7,25 +7,21 @@ import { useUserId } from "@/hooks/use-user-id";
 import { useAppStore } from "@/store/app-store";
 import { Badge } from "@/components/ui/badge";
 import { InventorySheet } from "@/components/workspace/inventory-sheet";
-import {
-  LedgerBlock,
-  PartiesBlock,
-} from "@/components/workspace/parties-ledger-blocks";
+import { LedgerBlock } from "@/components/workspace/parties-ledger-blocks";
 
-type TabId = "overview" | "inventory" | "parties" | "ledger";
+type TabId = "overview" | "inventory" | "ledger";
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: "overview", label: "Overview" },
   { id: "inventory", label: "Inventory" },
-  { id: "parties", label: "Contacts" },
   { id: "ledger", label: "Ledger" },
 ];
 
 function getInitialTab(): TabId {
   if (typeof window === "undefined") return "inventory";
-  const hash = window.location.hash.slice(1) as TabId;
-  if (TABS.some((t) => t.id === hash)) return hash;
-  return "inventory";
+  const hash = window.location.hash.slice(1);
+  const match = TABS.find((t) => t.id === hash);
+  return match ? (match.id as TabId) : "inventory";
 }
 
 function TabBar({
@@ -101,10 +97,9 @@ export default function WorkspacePage() {
   // Sync tab if browser hash changes externally (back/forward)
   useEffect(() => {
     function onHashChange() {
-      const hash = window.location.hash.slice(1) as TabId;
-      if (TABS.some((t) => t.id === hash)) {
-        setActiveTab(hash);
-      }
+      const hash = window.location.hash.slice(1);
+      const match = TABS.find((t) => t.id === hash);
+      if (match) setActiveTab(match.id as TabId);
     }
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
@@ -167,21 +162,13 @@ export default function WorkspacePage() {
             </p>
           )}
           <p className="text-sm text-[#5f6368]">
-            Switch to Inventory, Parties, or Ledger tabs to manage your data.
+            Switch to Inventory or Ledger tabs to manage your data.
           </p>
         </div>
       )}
 
       {activeTab === "inventory" && (
         <InventorySheet
-          userId={userId}
-          refreshToken={refreshToken}
-          onChanged={bump}
-        />
-      )}
-
-      {activeTab === "parties" && (
-        <PartiesBlock
           userId={userId}
           refreshToken={refreshToken}
           onChanged={bump}

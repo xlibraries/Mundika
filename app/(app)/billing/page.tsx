@@ -10,6 +10,7 @@ import {
 import { db } from "@/lib/db";
 import { createBill } from "@/modules/billing/actions";
 import { deleteBill } from "@/modules/billing/delete";
+import { createParty } from "@/modules/parties/actions";
 import type { BillRow, BillType, InventoryRow, ItemRow, PartyRow } from "@/lib/types/domain";
 import { useUserId } from "@/hooks/use-user-id";
 import { PageHeader } from "@/components/layout/page-header";
@@ -366,6 +367,32 @@ export default function BillingPage() {
     setRecentPartyIds(readRecentIds("parties"));
   }
 
+  async function handleCreateCustomer(name: string) {
+    if (!userId) return;
+    const existing = parties.find(
+      (p) => p.name.trim().toLowerCase() === name.trim().toLowerCase()
+    );
+    if (existing) {
+      onPartyPick(existing.id);
+      requestAnimationFrame(() => onAdvanceFromParty());
+      return;
+    }
+    try {
+      const created = await createParty(userId, { name: name.trim() });
+      setParties((prev) =>
+        [...prev, created].sort((a, b) => a.name.localeCompare(b.name))
+      );
+      onPartyPick(created.id);
+      requestAnimationFrame(() => onAdvanceFromParty());
+    } catch {
+      setErr("Could not create customer");
+    }
+  }
+
+  function onAdvanceFromParty() {
+    dateRef.current?.focus();
+  }
+
   function onItemPick(i: number, id: string) {
     const item = itemById.get(id);
     setLines((prev) => {
@@ -477,6 +504,7 @@ export default function BillingPage() {
                 placeholder="Type to search customer…"
                 onValueChange={onPartyPick}
                 onAdvance={() => dateRef.current?.focus()}
+                onCreateOption={handleCreateCustomer}
               />
             </label>
             <label className="space-y-1.5">

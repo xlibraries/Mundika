@@ -21,6 +21,8 @@ export type EntityComboboxProps = {
   onValueChange: (id: string) => void;
   /** When the list is closed and a value is already chosen. */
   onAdvance?: () => void;
+  /** Called with the typed name when user wants to create a new option inline. */
+  onCreateOption?: (label: string) => void;
   placeholder?: string;
   disabled?: boolean;
   invalid?: boolean;
@@ -56,6 +58,7 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
       priorityIds = [],
       onValueChange,
       onAdvance,
+      onCreateOption,
       placeholder = "Search…",
       disabled,
       invalid,
@@ -194,6 +197,13 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
                 pick(matches[highlightIdx]!.id);
                 return;
               }
+              if (open && matches.length === 0 && query.trim() && onCreateOption) {
+                const label = query.trim();
+                onCreateOption(label);
+                setOpen(false);
+                setQuery("");
+                return;
+              }
               if (!open && valueId && onAdvance) onAdvance();
             }
           }}
@@ -222,7 +232,22 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
             ))}
           </ul>
         ) : null}
-        {open && matches.length === 0 && query.trim() ? (
+        {open && matches.length === 0 && query.trim() && onCreateOption ? (
+          <div
+            role="option"
+            aria-selected={false}
+            className="absolute z-50 mt-1 w-full cursor-pointer rounded border border-[#dadce0] bg-white px-3 py-1.5 text-sm text-[#1a73e8] shadow-md hover:bg-[#e8f0fe]"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              const label = query.trim();
+              onCreateOption(label);
+              setOpen(false);
+              setQuery("");
+            }}
+          >
+            + Add &ldquo;{query.trim()}&rdquo; as new contact
+          </div>
+        ) : open && matches.length === 0 && query.trim() ? (
           <div aria-live="polite" className="absolute z-50 mt-1 w-full rounded border border-[#dadce0] bg-white px-3 py-2 text-sm text-[#5f6368] shadow-md">
             No matches
           </div>

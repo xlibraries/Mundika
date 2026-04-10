@@ -10,6 +10,7 @@ import {
 import { db } from "@/lib/db";
 import { createPurchase } from "@/modules/purchases/actions";
 import { deletePurchase } from "@/modules/purchases/delete";
+import { createParty } from "@/modules/parties/actions";
 import type {
   ItemRow,
   PartyRow,
@@ -333,6 +334,28 @@ export default function PurchasesPage() {
     setRecentPartyIds(readRecentIds("parties"));
   }
 
+  async function handleCreateSupplier(name: string) {
+    if (!userId) return;
+    const existing = parties.find(
+      (p) => p.name.trim().toLowerCase() === name.trim().toLowerCase()
+    );
+    if (existing) {
+      onPartyPick(existing.id);
+      requestAnimationFrame(() => dateRef.current?.focus());
+      return;
+    }
+    try {
+      const created = await createParty(userId, { name: name.trim() });
+      setParties((prev) =>
+        [...prev, created].sort((a, b) => a.name.localeCompare(b.name))
+      );
+      onPartyPick(created.id);
+      requestAnimationFrame(() => dateRef.current?.focus());
+    } catch {
+      setErr("Could not create supplier");
+    }
+  }
+
   function onItemPick(i: number, id: string) {
     setLines((prev) => {
       const next = [...prev];
@@ -447,6 +470,7 @@ export default function PurchasesPage() {
               placeholder="Type to search supplier…"
               onValueChange={onPartyPick}
               onAdvance={() => dateRef.current?.focus()}
+              onCreateOption={handleCreateSupplier}
             />
           </label>
           <label className="space-y-1.5">
