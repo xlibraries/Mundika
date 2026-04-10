@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getDashboardStats } from "@/lib/dashboard/stats";
+import { formatINR } from "@/lib/format/inr";
 import { useUserId } from "@/hooks/use-user-id";
 import { useAppStore } from "@/store/app-store";
 import { useWorkspacePrefs } from "@/store/workspace-preferences";
@@ -76,10 +77,10 @@ export default function WorkspacePage() {
         <div className="h-24 animate-pulse rounded border border-[#dadce0] bg-[#f8f9fa]" />
       ) : (
         <div className="grid gap-px overflow-hidden rounded-sm border border-[#dadce0] bg-[#dadce0] sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi label="Sales" value={`₹ ${stats.salesTotal.toFixed(2)}`} />
-          <Kpi label="Cash" value={`₹ ${stats.cashTotal.toFixed(2)}`} />
-          <Kpi label="Credit" value={`₹ ${stats.creditTotal.toFixed(2)}`} />
-          <Kpi label="Purchases" value={`₹ ${stats.purchasesTotal.toFixed(2)}`} />
+          <Kpi label="Sales" value={formatINR(stats.salesTotal)} />
+          <Kpi label="Cash" value={formatINR(stats.cashTotal)} />
+          <Kpi label="Credit" value={formatINR(stats.creditTotal)} />
+          <Kpi label="Purchases" value={formatINR(stats.purchasesTotal)} />
         </div>
       )}
 

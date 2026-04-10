@@ -21,6 +21,11 @@ export interface ItemRow {
   id: string;
   user_id: string;
   name: string;
+  /**
+   * Display-only label (e.g. "bag", "10Kg"). Shop/godown quantities are plain
+   * numbers in that label’s row; there is no separate pack vs base-unit layer
+   * in billing or deductions yet.
+   */
   unit: string | null;
   rate_default: number | null;
   created_at: string;

@@ -4,12 +4,12 @@ import { cn } from "@/lib/cn";
 const field =
   "w-full rounded border border-[#dadce0] bg-white px-3 py-2 text-sm text-[#202124] placeholder:text-[#80868b] outline-none transition focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]";
 
-export function Input({
-  className,
-  ...props
-}: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(field, className)} {...props} />;
-}
+export const Input = forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement>
+>(function Input({ className, ...props }, ref) {
+  return <input ref={ref} className={cn(field, className)} {...props} />;
+});
 
 export const Select = forwardRef<
   HTMLSelectElement,
