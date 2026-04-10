@@ -5,28 +5,81 @@ import { getDashboardStats } from "@/lib/dashboard/stats";
 import { formatINR } from "@/lib/format/inr";
 import { useUserId } from "@/hooks/use-user-id";
 import { useAppStore } from "@/store/app-store";
-import { useWorkspacePrefs } from "@/store/workspace-preferences";
 import { Badge } from "@/components/ui/badge";
 import { InventorySheet } from "@/components/workspace/inventory-sheet";
 import {
   LedgerBlock,
   PartiesBlock,
 } from "@/components/workspace/parties-ledger-blocks";
-import { ViewMenu } from "@/components/workspace/view-menu";
+
+type TabId = "overview" | "inventory" | "parties" | "ledger";
+
+const TABS: Array<{ id: TabId; label: string }> = [
+  { id: "overview", label: "Overview" },
+  { id: "inventory", label: "Inventory" },
+  { id: "parties", label: "Parties" },
+  { id: "ledger", label: "Ledger" },
+];
+
+function getInitialTab(): TabId {
+  if (typeof window === "undefined") return "inventory";
+  const hash = window.location.hash.slice(1) as TabId;
+  if (TABS.some((t) => t.id === hash)) return hash;
+  return "inventory";
+}
+
+function TabBar({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: TabId;
+  onTabChange: (id: TabId) => void;
+}) {
+  function handleKeyDown(e: React.KeyboardEvent, idx: number) {
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      onTabChange(TABS[(idx + 1) % TABS.length].id);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      onTabChange(TABS[(idx - 1 + TABS.length) % TABS.length].id);
+    }
+  }
+
+  return (
+    <div
+      role="tablist"
+      className="flex border-b border-[#dadce0]"
+      aria-label="Workspace sections"
+    >
+      {TABS.map((t, idx) => (
+        <button
+          key={t.id}
+          role="tab"
+          aria-selected={activeTab === t.id}
+          onClick={() => onTabChange(t.id)}
+          onKeyDown={(e) => handleKeyDown(e, idx)}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-1 ${
+            activeTab === t.id
+              ? "border-[#1a73e8] text-[#1a73e8]"
+              : "border-transparent text-[#5f6368] hover:text-[#202124]"
+          }`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function WorkspacePage() {
   const { userId, loading } = useUserId();
   const online = useAppStore((s) => s.online);
   const syncState = useAppStore((s) => s.syncState);
   const lastSyncAt = useAppStore((s) => s.lastSyncAt);
-  const showSectionParties = useWorkspacePrefs(
-    (s) => s.showSectionParties ?? true
-  );
-  const showSectionLedger = useWorkspacePrefs(
-    (s) => s.showSectionLedger ?? true
-  );
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  const [activeTab, setActiveTab] = useState<TabId>(getInitialTab);
 
   const [stats, setStats] = useState<Awaited<
     ReturnType<typeof getDashboardStats>
@@ -40,6 +93,23 @@ export default function WorkspacePage() {
     void getDashboardStats(userId, today).then(setStats);
   }, [userId, today, refreshToken]);
 
+  function handleTabChange(id: TabId) {
+    setActiveTab(id);
+    history.replaceState(null, "", `/dashboard#${id}`);
+  }
+
+  // Sync tab if browser hash changes externally (back/forward)
+  useEffect(() => {
+    function onHashChange() {
+      const hash = window.location.hash.slice(1) as TabId;
+      if (TABS.some((t) => t.id === hash)) {
+        setActiveTab(hash);
+      }
+    }
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
   if (loading || !userId) {
     return (
       <div className="space-y-6">
@@ -50,15 +120,14 @@ export default function WorkspacePage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <header className="flex flex-col gap-4 border-b border-[#dadce0] pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-xl font-medium tracking-tight text-[#202124]">
             Workspace
           </h1>
           <p className="max-w-xl text-sm text-[#5f6368]">
-            Sheets-style grid below · Today: {today}. Local-first, sync when
-            online.
+            Local-first · Today: {today}. Syncs when online.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -69,7 +138,6 @@ export default function WorkspacePage() {
             {syncState === "syncing" ? "Syncing" : "Idle"}
             {lastSyncAt ? ` · ${lastSyncAt.slice(11, 19)}` : ""}
           </Badge>
-          <ViewMenu />
         </div>
       </header>
 
@@ -84,45 +152,49 @@ export default function WorkspacePage() {
         </div>
       )}
 
-      {stats && stats.lowStock.length > 0 ? (
-        <p className="rounded border border-[#fde293] bg-[#fef7e0] px-3 py-2 text-sm text-[#b06000]">
-          Low stock:{" "}
-          {stats.lowStock.map((s) => `${s.name} (${s.qty})`).join(" · ")}
-        </p>
-      ) : null}
+      <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
 
-      <section id="inventory">
+      {activeTab === "overview" && (
+        <div className="space-y-4">
+          {stats && stats.lowStock.length > 0 ? (
+            <p className="rounded border border-[#fde293] bg-[#fef7e0] px-3 py-2 text-sm text-[#b06000]">
+              Low stock:{" "}
+              {stats.lowStock.map((s) => `${s.name} (${s.qty})`).join(" · ")}
+            </p>
+          ) : (
+            <p className="rounded border border-[#dadce0] bg-[#f8f9fa] px-3 py-2 text-sm text-[#5f6368]">
+              No low-stock items.
+            </p>
+          )}
+          <p className="text-sm text-[#5f6368]">
+            Switch to Inventory, Parties, or Ledger tabs to manage your data.
+          </p>
+        </div>
+      )}
+
+      {activeTab === "inventory" && (
         <InventorySheet
           userId={userId}
           refreshToken={refreshToken}
           onChanged={bump}
         />
-      </section>
+      )}
 
-      {showSectionParties ? (
-        <section id="parties">
-          <PartiesBlock
-            userId={userId}
-            refreshToken={refreshToken}
-            onChanged={bump}
-          />
-        </section>
-      ) : null}
+      {activeTab === "parties" && (
+        <PartiesBlock
+          userId={userId}
+          refreshToken={refreshToken}
+          onChanged={bump}
+        />
+      )}
 
-      {showSectionLedger ? (
-        <section id="ledger">
-          <LedgerBlock
-            userId={userId}
-            refreshToken={refreshToken}
-            onChanged={bump}
-          />
-        </section>
-      ) : null}
-
-      <p className="text-center text-[11px] text-[#5f6368]">
-        Billing: sidebar. Toggle nav &amp; blocks via{" "}
-        <span className="font-medium text-[#202124]">View</span>.
-      </p>
+      {activeTab === "ledger" && (
+        <LedgerBlock
+          userId={userId}
+          refreshToken={refreshToken}
+          onChanged={bump}
+        />
+      )}
     </div>
   );
 }

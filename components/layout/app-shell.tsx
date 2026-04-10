@@ -1,33 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/cn";
 import { icons } from "@/components/layout/nav-icons";
-import { useWorkspacePrefs } from "@/store/workspace-preferences";
 
-type NavKey = "parties" | "inventory" | "ledger" | "items" | "purchases";
-
-const NAV_ITEMS: Array<{
-  href: string;
-  label: string;
-  icon: React.ReactNode;
-  navKey?: NavKey;
-}> = [
+const NAV_ITEMS = [
   { href: "/dashboard", label: "Workspace", icon: icons.dashboard },
   { href: "/billing", label: "Billing", icon: icons.billing },
-  { href: "/purchases", label: "Purchases", icon: icons.purchases, navKey: "purchases" },
-  { href: "/dashboard#parties", label: "Parties", icon: icons.parties, navKey: "parties" },
-  {
-    href: "/dashboard#inventory",
-    label: "Inventory",
-    icon: icons.inventory,
-    navKey: "inventory",
-  },
-  { href: "/dashboard#ledger", label: "Ledger", icon: icons.ledger, navKey: "ledger" },
-  { href: "/items", label: "Items", icon: icons.items, navKey: "items" },
+  { href: "/purchases", label: "Purchases", icon: icons.purchases },
 ];
 
 function NavLinks({
@@ -38,38 +21,14 @@ function NavLinks({
   className?: string;
 }) {
   const pathname = usePathname();
-  const showNavParties = useWorkspacePrefs((s) => s.showNavParties ?? true);
-  const showNavInventory = useWorkspacePrefs(
-    (s) => s.showNavInventory ?? true
-  );
-  const showNavLedger = useWorkspacePrefs((s) => s.showNavLedger ?? true);
-  const showNavItems = useWorkspacePrefs((s) => s.showNavItems ?? false);
-  const showNavPurchases = useWorkspacePrefs((s) => s.showNavPurchases ?? true);
-
-  const visible = useMemo(() => {
-    return NAV_ITEMS.filter((n) => {
-      if (!n.navKey) return true;
-      switch (n.navKey) {
-        case "parties":
-          return showNavParties;
-        case "inventory":
-          return showNavInventory;
-        case "ledger":
-          return showNavLedger;
-        case "items":
-          return showNavItems;
-        case "purchases":
-          return showNavPurchases;
-        default:
-          return true;
-      }
-    });
-  }, [showNavInventory, showNavItems, showNavLedger, showNavParties, showNavPurchases]);
 
   return (
     <nav className={cn("flex flex-col gap-0.5", className)}>
-      {visible.map((n) => {
-        const active = n.href === pathname || (n.href.startsWith("/dashboard#") && pathname === "/dashboard");
+      {NAV_ITEMS.map((n) => {
+        const active =
+          n.href === "/dashboard"
+            ? pathname === "/dashboard" || pathname.startsWith("/dashboard")
+            : pathname === n.href;
         return (
           <Link
             key={n.href}
@@ -106,7 +65,7 @@ function NavLinks({
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
-  const isWorkspace = pathname === "/dashboard";
+  const isWorkspace = pathname === "/dashboard" || pathname.startsWith("/dashboard");
 
   useEffect(() => {
     if (!mobileOpen) return;
