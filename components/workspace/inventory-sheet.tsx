@@ -25,6 +25,7 @@ export function InventorySheet({
   const [inv, setInv] = useState<InventoryRow[]>([]);
   const [filter, setFilter] = useState("");
   const [cellError, setCellError] = useState<string | null>(null);
+  const [cellResetKey, setCellResetKey] = useState(0);
   const filterRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -70,6 +71,7 @@ export function InventorySheet({
     const parsed = parseNonnegativeStockQty(raw);
     if (!parsed.ok) {
       setCellError("Quantity must be 0 or more");
+      setCellResetKey((k) => k + 1);
       await load();
       onChanged?.();
       return;
@@ -96,6 +98,7 @@ export function InventorySheet({
           const n = Number(raw);
           if (!Number.isFinite(n) || n < 0) {
             setCellError("Rate must be 0 or more");
+            setCellResetKey((k) => k + 1);
             await load();
             return;
           }
@@ -254,7 +257,7 @@ export function InventorySheet({
                   <td className="border-r border-[#e8eaed] p-0 focus-within:bg-[#e8f0fe] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[#1a73e8]">
                     {shop ? (
                       <Input
-                        key={`${shop.id}-${shop.updated_at}`}
+                        key={`${shop.id}-${shop.updated_at}-${cellResetKey}`}
                         type="text"
                         inputMode="decimal"
                         defaultValue={String(shop.qty)}
@@ -268,7 +271,7 @@ export function InventorySheet({
                   <td className="border-r border-[#e8eaed] p-0 focus-within:bg-[#e8f0fe] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[#1a73e8]">
                     {godown ? (
                       <Input
-                        key={`${godown.id}-${godown.updated_at}`}
+                        key={`${godown.id}-${godown.updated_at}-${cellResetKey}`}
                         type="text"
                         inputMode="decimal"
                         defaultValue={String(godown.qty)}

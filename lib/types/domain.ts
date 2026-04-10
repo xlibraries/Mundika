@@ -45,6 +45,8 @@ export interface InventoryRow {
 export interface BillRow {
   id: string;
   user_id: string;
+  /** Sequential invoice number per user (1, 2, 3 …). Undefined on old rows migrated from before v2. */
+  bill_number?: number;
   party_id: string;
   party_name_snapshot: string;
   bill_date: string;

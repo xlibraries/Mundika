@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { db } from "@/lib/db";
 import { createParty } from "@/modules/parties/actions";
 import { deleteParty } from "@/modules/parties/delete";
+import { updateParty } from "@/modules/parties/update";
 import { deleteLedgerEntry } from "@/modules/ledger/delete";
 import type { LedgerEntryRow, PartyRow } from "@/lib/types/domain";
 import { formatINR } from "@/lib/format/inr";
@@ -24,6 +25,9 @@ export function PartiesBlock({
   const [phone, setPhone] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
 
   const load = useCallback(async () => {
     const list = await db.parties.where("user_id").equals(userId).toArray();
@@ -59,6 +63,24 @@ export function PartiesBlock({
     }
   }
 
+  function startEdit(p: PartyRow) {
+    setEditingId(p.id);
+    setEditName(p.name);
+    setEditPhone(p.phone ?? "");
+  }
+
+  async function saveEdit(id: string) {
+    if (!editName.trim()) return;
+    try {
+      await updateParty(userId, id, { name: editName, phone: editPhone || null });
+      setEditingId(null);
+      await load();
+      onChanged?.();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Could not update");
+    }
+  }
+
   async function onDelete(id: string) {
     if (!window.confirm("Delete this party?")) return;
     try {
@@ -81,7 +103,7 @@ export function PartiesBlock({
           <span className="text-[11px] text-[#5f6368]">Name</span>
           <Input
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => { setName(e.target.value); if (addError) setAddError(null); }}
             placeholder="Customer"
           />
         </label>
@@ -108,28 +130,73 @@ export function PartiesBlock({
             <tr className="border-b border-[#dadce0] bg-[#f8f9fa] text-[11px] font-medium uppercase tracking-wide text-[#5f6368]">
               <th className="px-3 py-2">Name</th>
               <th className="px-3 py-2 text-right">Phone</th>
-              <th className="w-20 px-3 py-2 text-center"> </th>
+              <th className="w-36 px-3 py-2 text-center"> </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e8eaed]">
-            {rows.map((p) => (
-              <tr key={p.id} className="hover:bg-[#f8f9fa]">
-                <td className="px-3 py-2 font-medium text-[#202124]">{p.name}</td>
-                <td className="px-3 py-2 text-right text-[#5f6368]">
-                  {p.phone ?? "—"}
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <button
-                    type="button"
-                    aria-label={`Remove party ${p.name}`}
-                    className="text-xs text-[#5f6368] hover:text-[#c5221f]"
-                    onClick={() => void onDelete(p.id)}
-                  >
-                    Remove
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {rows.map((p) =>
+              editingId === p.id ? (
+                <tr key={p.id} className="bg-[#e8f0fe]">
+                  <td className="px-2 py-1.5">
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="h-7 text-sm"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void saveEdit(p.id);
+                        if (e.key === "Escape") setEditingId(null);
+                      }}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <Input
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      placeholder="Phone"
+                      className="h-7 text-sm"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void saveEdit(p.id);
+                        if (e.key === "Escape") setEditingId(null);
+                      }}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5 text-center">
+                    <div className="flex justify-center gap-2">
+                      <button type="button" onClick={() => void saveEdit(p.id)} className="text-xs font-medium text-[#1a73e8] hover:underline">Save</button>
+                      <button type="button" onClick={() => setEditingId(null)} className="text-xs text-[#5f6368] hover:underline">Cancel</button>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                <tr key={p.id} className="hover:bg-[#f8f9fa]">
+                  <td className="px-3 py-2 font-medium text-[#202124]">{p.name}</td>
+                  <td className="px-3 py-2 text-right text-[#5f6368]">
+                    {p.phone ?? "—"}
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <div className="flex justify-center gap-3">
+                      <button
+                        type="button"
+                        aria-label={`Edit party ${p.name}`}
+                        className="text-xs text-[#1a73e8] hover:underline"
+                        onClick={() => startEdit(p)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Remove party ${p.name}`}
+                        className="text-xs text-[#5f6368] hover:text-[#c5221f]"
+                        onClick={() => void onDelete(p.id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            )}
           </tbody>
         </table>
         {rows.length === 0 ? (
@@ -189,7 +256,7 @@ export function LedgerBlock({
               <th className="px-3 py-2">Date</th>
               <th className="px-3 py-2">Type</th>
               <th className="px-3 py-2">Party</th>
-              <th className="px-3 py-2 text-right">Δ</th>
+              <th className="px-3 py-2 text-right" title="Amount added to or removed from the party's outstanding balance">Balance change (₹)</th>
               <th className="w-16 px-3 py-2 text-center"> </th>
             </tr>
           </thead>

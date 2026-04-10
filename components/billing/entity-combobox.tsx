@@ -222,7 +222,7 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
             ))}
           </ul>
         ) : null}
-        {open && matches.length === 0 ? (
+        {open && matches.length === 0 && query.trim() ? (
           <div aria-live="polite" className="absolute z-50 mt-1 w-full rounded border border-[#dadce0] bg-white px-3 py-2 text-sm text-[#5f6368] shadow-md">
             No matches
           </div>

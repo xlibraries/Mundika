@@ -10,7 +10,7 @@ import {
 import { db } from "@/lib/db";
 import { createBill } from "@/modules/billing/actions";
 import { deleteBill } from "@/modules/billing/delete";
-import type { BillRow, BillType, ItemRow, PartyRow } from "@/lib/types/domain";
+import type { BillRow, BillType, InventoryRow, ItemRow, PartyRow } from "@/lib/types/domain";
 import { useUserId } from "@/hooks/use-user-id";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ type LineIssue = { qty?: boolean; rate?: boolean };
 
 type PrintBill = {
   id: string;
+  bill_number?: number;
   bill_date: string;
   party_name: string;
   bill_type: BillType;
@@ -56,6 +57,7 @@ export default function BillingPage() {
   const { userId, loading } = useUserId();
   const [parties, setParties] = useState<PartyRow[]>([]);
   const [items, setItems] = useState<ItemRow[]>([]);
+  const [inv, setInv] = useState<InventoryRow[]>([]);
 
   const [partyId, setPartyId] = useState("");
   const [billDate, setBillDate] = useState(() =>
@@ -97,6 +99,15 @@ export default function BillingPage() {
     [items]
   );
 
+  // Total available stock per item (shop + godown) for stock-out warnings
+  const stockByItemId = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of inv) {
+      m.set(r.item_id, (m.get(r.item_id) ?? 0) + r.qty);
+    }
+    return m;
+  }, [inv]);
+
   const loadBills = useCallback(async () => {
     if (!userId) return;
     const list = await db.bills.where("user_id").equals(userId).toArray();
@@ -114,11 +125,13 @@ export default function BillingPage() {
       void Promise.all([
         db.parties.where("user_id").equals(userId).toArray(),
         db.items.where("user_id").equals(userId).toArray(),
-      ]).then(([p, i]) => {
+        db.inventory.where("user_id").equals(userId).toArray(),
+      ]).then(([p, i, n]) => {
         p.sort((a, b) => a.name.localeCompare(b.name));
         i.sort((a, b) => a.name.localeCompare(b.name));
         setParties(p);
         setItems(i);
+        setInv(n);
       });
       void loadBills();
     }, 0);
@@ -165,24 +178,29 @@ export default function BillingPage() {
 
   const liveTotals = useMemo(() => {
     const rowTotals: (number | null)[] = [];
+    const stockWarnings: boolean[] = [];
     let grand = 0;
     for (const line of lines) {
       if (!line.item_id) {
         rowTotals.push(null);
+        stockWarnings.push(false);
         continue;
       }
       const p = parseFilledLine(line);
       if (!p.ok) {
         rowTotals.push(null);
+        stockWarnings.push(false);
         continue;
       }
+      const available = stockByItemId.get(line.item_id) ?? 0;
+      stockWarnings.push(p.qty > available);
       const t = Math.round(p.qty * p.rate * 100) / 100;
       grand += t;
       rowTotals.push(t);
     }
     const grandRounded = Math.round(grand * 100) / 100;
-    return { rowTotals, grand: grandRounded };
-  }, [lines]);
+    return { rowTotals, grand: grandRounded, stockWarnings };
+  }, [lines, stockByItemId]);
 
   function clearLineIssue(i: number, field: keyof LineIssue) {
     setLineIssues((prev) => {
@@ -218,46 +236,46 @@ export default function BillingPage() {
       setPartyMissing(false);
       setLineIssues({});
 
-      if (!partyId) {
-        setPartyMissing(true);
-        partyRef.current?.focus();
-        return;
-      }
-
-      const party = parties.find((p) => p.id === partyId);
-      if (!party) {
-        setErr("Party not found");
-        return;
-      }
-
-      const parsed = lines
-        .filter((l) => l.item_id)
-        .map((l) => ({
-          item_id: l.item_id,
-          qty: Number(l.qty),
-          rate: Number(l.rate),
-        }));
-
-      if (parsed.length === 0) {
-        setErr("Add at least one line with an item");
-        return;
-      }
-
-      const issues: Record<number, LineIssue> = {};
-      lines.forEach((l, i) => {
-        if (!l.item_id) return;
-        const p = parseFilledLine(l);
-        if (!p.ok && p.issue) issues[i] = p.issue;
-      });
-      if (Object.keys(issues).length > 0) {
-        setLineIssues(issues);
-        const first = Number(Object.keys(issues).sort((a, b) => Number(a) - Number(b))[0]);
-        if (issues[first]?.qty) qtyRefs.current[first]?.focus();
-        else rateRefs.current[first]?.focus();
-        return;
-      }
-
       try {
+        if (!partyId) {
+          setPartyMissing(true);
+          partyRef.current?.focus();
+          return;
+        }
+
+        const party = parties.find((p) => p.id === partyId);
+        if (!party) {
+          setErr("Party not found");
+          return;
+        }
+
+        const parsed = lines
+          .filter((l) => l.item_id)
+          .map((l) => ({
+            item_id: l.item_id,
+            qty: Number(l.qty),
+            rate: Number(l.rate),
+          }));
+
+        if (parsed.length === 0) {
+          setErr("Add at least one line with an item");
+          return;
+        }
+
+        const issues: Record<number, LineIssue> = {};
+        lines.forEach((l, i) => {
+          if (!l.item_id) return;
+          const p = parseFilledLine(l);
+          if (!p.ok && p.issue) issues[i] = p.issue;
+        });
+        if (Object.keys(issues).length > 0) {
+          setLineIssues(issues);
+          const first = Number(Object.keys(issues).sort((a, b) => Number(a) - Number(b))[0]);
+          if (issues[first]?.qty) qtyRefs.current[first]?.focus();
+          else rateRefs.current[first]?.focus();
+          return;
+        }
+
         const { bill } = await createBill(userId, {
           party_id: partyId,
           party_name_snapshot: party.name,
@@ -271,7 +289,7 @@ export default function BillingPage() {
           })),
         });
         setMsg(
-          `Bill saved · ${bill.id.slice(0, 8)} · ${formatINR(bill.total)}`
+          `Bill #${bill.bill_number ?? "—"} saved · ${formatINR(bill.total)}`
         );
         setLines([{ item_id: "", qty: "1", rate: "" }]);
         setVehicle("");
@@ -280,6 +298,7 @@ export default function BillingPage() {
         if (printAfter) {
           const slip: PrintBill = {
             id: bill.id,
+            bill_number: bill.bill_number,
             bill_date: bill.bill_date,
             party_name: bill.party_name_snapshot,
             bill_type: bill.bill_type,
@@ -576,15 +595,23 @@ export default function BillingPage() {
               const rowIssue = lineIssues[i];
               const rowBad = Boolean(rowIssue?.qty || rowIssue?.rate);
               const rowTotal = liveTotals.rowTotals[i];
+              const stockWarn = liveTotals.stockWarnings[i] ?? false;
               return (
                 <div
                   key={i}
                   className={`grid gap-3 rounded-sm border p-3 sm:grid-cols-12 sm:items-end ${
                     rowBad
                       ? "border-[#f9ab00] bg-[#fef7e0]"
+                      : stockWarn
+                      ? "border-[#d93025] bg-[#fce8e6]"
                       : "border-[#dadce0] bg-[#f8f9fa]"
                   }`}
                 >
+                  {stockWarn ? (
+                    <p className="col-span-full text-[11px] font-medium text-[#c5221f]">
+                      ⚠ Insufficient stock — qty exceeds available ({stockByItemId.get(line.item_id) ?? 0} in stock)
+                    </p>
+                  ) : null}
                   <label className="space-y-1.5 sm:col-span-4">
                     <span className="text-[11px] text-[#5f6368]">Item</span>
                     <EntityCombobox
@@ -730,6 +757,7 @@ export default function BillingPage() {
             <table className="w-full min-w-[560px] text-left text-sm">
               <thead>
                 <tr className="border-b border-[#dadce0] bg-[#f8f9fa] text-[11px] font-medium uppercase tracking-wide text-[#5f6368]">
+                  <th className="w-12 px-3 py-2">#</th>
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Party</th>
                   <th className="px-3 py-2">Type</th>
@@ -740,6 +768,9 @@ export default function BillingPage() {
               <tbody className="divide-y divide-[#e8eaed]">
                 {bills.map((b) => (
                   <tr key={b.id} className="hover:bg-[#f8f9fa]">
+                    <td className="px-3 py-2 font-mono text-xs text-[#5f6368]">
+                      {b.bill_number ?? "—"}
+                    </td>
                     <td className="px-3 py-2 font-mono text-xs text-[#5f6368]">
                       {b.bill_date}
                     </td>
@@ -779,16 +810,20 @@ export default function BillingPage() {
         <div className="hidden print:block">
           <div className="mx-auto max-w-md space-y-4 p-6 font-sans text-black">
             <header className="border-b border-black pb-3">
-              <h1 className="text-xl font-semibold">Bill</h1>
+              <div className="flex items-start justify-between">
+                <h1 className="text-xl font-semibold">Bill</h1>
+                {printBill.bill_number != null ? (
+                  <span className="font-mono text-sm font-semibold text-neutral-700">
+                    #{printBill.bill_number}
+                  </span>
+                ) : null}
+              </div>
               <p className="mt-1 text-sm text-neutral-700">
                 {printBill.party_name}
               </p>
               <p className="text-xs text-neutral-600">
                 {printBill.bill_date} · {printBill.bill_type}
                 {printBill.vehicle ? ` · ${printBill.vehicle}` : ""}
-              </p>
-              <p className="mt-2 font-mono text-xs text-neutral-500">
-                {printBill.id}
               </p>
             </header>
             <table className="w-full text-sm">

@@ -91,26 +91,32 @@ export default function WorkspacePage() {
         </p>
       ) : null}
 
-      <InventorySheet
-        userId={userId}
-        refreshToken={refreshToken}
-        onChanged={bump}
-      />
-
-      {showSectionParties ? (
-        <PartiesBlock
+      <section id="inventory">
+        <InventorySheet
           userId={userId}
           refreshToken={refreshToken}
           onChanged={bump}
         />
+      </section>
+
+      {showSectionParties ? (
+        <section id="parties">
+          <PartiesBlock
+            userId={userId}
+            refreshToken={refreshToken}
+            onChanged={bump}
+          />
+        </section>
       ) : null}
 
       {showSectionLedger ? (
-        <LedgerBlock
-          userId={userId}
-          refreshToken={refreshToken}
-          onChanged={bump}
-        />
+        <section id="ledger">
+          <LedgerBlock
+            userId={userId}
+            refreshToken={refreshToken}
+            onChanged={bump}
+          />
+        </section>
       ) : null}
 
       <p className="text-center text-[11px] text-[#5f6368]">

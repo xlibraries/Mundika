@@ -48,9 +48,13 @@ export async function createBill(
   const now = new Date().toISOString();
   const billDate = input.bill_date.slice(0, 10);
 
+  const existingCount = await db.bills.where("user_id").equals(userId).count();
+  const bill_number = existingCount + 1;
+
   const bill: BillRow = {
     id: billId,
     user_id: userId,
+    bill_number,
     party_id: input.party_id,
     party_name_snapshot: input.party_name_snapshot.trim() || party.name,
     bill_date: billDate,

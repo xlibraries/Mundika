@@ -18,14 +18,14 @@ const NAV_ITEMS: Array<{
 }> = [
   { href: "/dashboard", label: "Workspace", icon: icons.dashboard },
   { href: "/billing", label: "Billing", icon: icons.billing },
-  { href: "/parties", label: "Parties", icon: icons.parties, navKey: "parties" },
+  { href: "/dashboard#parties", label: "Parties", icon: icons.parties, navKey: "parties" },
   {
-    href: "/inventory",
+    href: "/dashboard#inventory",
     label: "Inventory",
     icon: icons.inventory,
     navKey: "inventory",
   },
-  { href: "/ledger", label: "Ledger", icon: icons.ledger, navKey: "ledger" },
+  { href: "/dashboard#ledger", label: "Ledger", icon: icons.ledger, navKey: "ledger" },
   { href: "/items", label: "Items", icon: icons.items, navKey: "items" },
 ];
 
@@ -65,7 +65,7 @@ function NavLinks({
   return (
     <nav className={cn("flex flex-col gap-0.5", className)}>
       {visible.map((n) => {
-        const active = pathname === n.href;
+        const active = n.href === pathname || (n.href.startsWith("/dashboard#") && pathname === "/dashboard");
         return (
           <Link
             key={n.href}

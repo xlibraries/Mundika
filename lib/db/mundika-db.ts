@@ -29,6 +29,10 @@ export class MundikaDB extends Dexie {
       ledger_entries: "id, user_id, party_id, entry_date, updated_at",
       sync_queue: "id, table_name, created_at",
     });
+    // v2: adds bill_number index (existing rows get undefined — handled gracefully)
+    this.version(2).stores({
+      bills: "id, user_id, party_id, bill_date, bill_number, updated_at",
+    });
   }
 }
 
