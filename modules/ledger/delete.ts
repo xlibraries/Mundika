@@ -10,10 +10,14 @@ export async function deleteLedgerEntry(
     throw new Error("Entry not found");
   }
   if (row.ref_bill_id) {
-    throw new Error("This entry is linked to a bill. Delete the bill from the billing page instead.");
+    throw new Error(
+      "This entry is linked to a bill. Delete the bill from Workspace → Transactions (Billing) instead."
+    );
   }
   if (row.ref_purchase_id) {
-    throw new Error("This entry is linked to a purchase. Delete the purchase from the purchases page instead.");
+    throw new Error(
+      "This entry is linked to a purchase. Delete it from Workspace → Transactions (Purchase) instead."
+    );
   }
 
   await db.transaction("rw", [db.ledger_entries, db.sync_queue], async () => {

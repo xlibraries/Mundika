@@ -3,9 +3,11 @@ import { createMiddlewareClient } from "@/utils/supabase/middleware";
 
 const isProtected = (path: string) =>
   path.startsWith("/dashboard") ||
+  path.startsWith("/analytics") ||
   path.startsWith("/parties") ||
   path.startsWith("/items") ||
   path.startsWith("/billing") ||
+  path.startsWith("/purchases") ||
   path.startsWith("/ledger") ||
   path.startsWith("/inventory");
 

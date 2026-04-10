@@ -127,7 +127,7 @@ export function InventorySheet({
           <h2 className="text-sm font-medium text-[#202124]">Inventory</h2>
           <p className="text-[11px] text-[#5f6368]">
             Read-only view · <kbd className="font-mono">/</kbd> focuses filter ·
-            use Purchases to add stock
+            use Workspace → Transactions (Purchase) to add stock
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -344,7 +344,7 @@ export function InventorySheet({
         </table>
         {items.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-[#5f6368]">
-            No items yet. Add stock via Purchases.
+            No items yet. Add stock via Workspace → Transactions (Purchase).
           </p>
         ) : filteredItems.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-[#5f6368]">

@@ -9,9 +9,18 @@ import { icons } from "@/components/layout/nav-icons";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Workspace", icon: icons.dashboard },
-  { href: "/billing", label: "Billing", icon: icons.billing },
-  { href: "/purchases", label: "Purchases", icon: icons.purchases },
-];
+  { href: "/analytics", label: "Analytics", icon: icons.analytics },
+] as const;
+
+function navItemActive(href: string, pathname: string) {
+  if (href === "/dashboard") {
+    return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+  }
+  if (href === "/analytics") {
+    return pathname === "/analytics" || pathname.startsWith("/analytics/");
+  }
+  return pathname === href;
+}
 
 function NavLinks({
   onNavigate,
@@ -25,10 +34,7 @@ function NavLinks({
   return (
     <nav className={cn("flex flex-col gap-0.5", className)}>
       {NAV_ITEMS.map((n) => {
-        const active =
-          n.href === "/dashboard"
-            ? pathname === "/dashboard" || pathname.startsWith("/dashboard")
-            : pathname === n.href;
+        const active = navItemActive(n.href, pathname);
         return (
           <Link
             key={n.href}
@@ -65,7 +71,11 @@ function NavLinks({
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
-  const isWorkspace = pathname === "/dashboard" || pathname.startsWith("/dashboard");
+  const useWorkspaceMain =
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
+    pathname === "/analytics" ||
+    pathname.startsWith("/analytics/");
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -93,7 +103,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-full flex-col bg-white md:flex-row">
+    <div className="flex min-h-full flex-col bg-[#f1f3f4] md:flex-row">
       <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-[#dadce0] bg-white px-4 shadow-sm md:hidden">
         <button
           type="button"
@@ -161,16 +171,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
 
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-[#dadce0] bg-[#f8f9fa] py-5 md:flex">
-        <div className="mb-5 flex items-center gap-3 px-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded border border-[#dadce0] bg-white text-sm font-bold text-[#188038] shadow-sm">
+      <aside className="hidden w-56 shrink-0 flex-col border-r border-[#dadce0] bg-white py-5 md:flex">
+        <div className="mb-6 flex items-center gap-3 px-4">
+          <span className="flex h-9 w-9 items-center justify-center rounded border border-[#dadce0] bg-[#e6f4ea] text-sm font-bold text-[#188038] shadow-sm">
             M
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-[#202124]">
+            <p className="truncate text-sm font-semibold text-[#202124]">
               Mundika
             </p>
-            <p className="text-[11px] text-[#5f6368]">Sheets on steroids</p>
+            <p className="text-[11px] text-[#5f6368]">Shop workspace</p>
           </div>
         </div>
         <div className="flex-1 px-2">
@@ -188,11 +198,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 bg-white">
+      <main className="min-w-0 flex-1">
         <div
           className={cn(
-            "mx-auto min-w-0",
-            isWorkspace
+            "mx-auto min-h-full min-w-0",
+            useWorkspaceMain
               ? "w-full max-w-none px-3 py-4 md:px-6 md:py-6"
               : "max-w-5xl px-4 py-6 md:px-8 md:py-10"
           )}

@@ -82,6 +82,17 @@ export const icons = {
       />
     </svg>
   ),
+  analytics: (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className="size-[18px]">
+      <path
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 19h16M7 16V9m5 7V5m5 11v-5"
+      />
+    </svg>
+  ),
   logout: (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden className="size-[18px]">
       <path

@@ -23,6 +23,7 @@ import type {
 } from "@/lib/types/domain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/cn";
 import { formatINR } from "@/lib/format/inr";
 import {
   EntityCombobox,
@@ -37,6 +38,8 @@ import { rememberId, readRecentIds } from "@/lib/billing/recent-ids";
 export type TransactionFormProps = {
   defaultMode?: "billing" | "purchase";
   userId: string;
+  /** Framed panel inside workspace (single shell). */
+  embedded?: boolean;
 };
 
 type TxLine = {
@@ -75,6 +78,7 @@ function parseFilledLine(l: TxLine): {
 export function TransactionForm({
   defaultMode = "billing",
   userId,
+  embedded = false,
 }: TransactionFormProps) {
   // ---- mode ----------------------------------------------------------------
   const [mode, setMode] = useState<"billing" | "purchase">(defaultMode);
@@ -593,7 +597,13 @@ export function TransactionForm({
 
   // ---- render --------------------------------------------------------------
   return (
-    <div className="space-y-8">
+    <div
+      className={cn(
+        !embedded && "space-y-8",
+        embedded &&
+          "space-y-6 rounded-lg border border-[#dadce0] bg-white p-4 shadow-sm md:p-6"
+      )}
+    >
       {/* ------------------------------------------------------------------ */}
       {/* FORM                                                                */}
       {/* ------------------------------------------------------------------ */}
@@ -1032,7 +1042,12 @@ export function TransactionForm({
       {/* HISTORY                                                             */}
       {/* ------------------------------------------------------------------ */}
       {mode === "billing" ? (
-        <section className="space-y-3 border-t border-[#dadce0] pt-8">
+        <section
+          className={cn(
+            "space-y-3 border-t",
+            embedded ? "border-[#e8eaed] pt-6" : "border-[#dadce0] pt-8"
+          )}
+        >
           <h2 className="text-sm font-medium text-[#202124]">Saved bills</h2>
           <p className="text-xs text-[#5f6368]">
             Delete a bill to undo the sale and free items for deletion from the
@@ -1090,7 +1105,12 @@ export function TransactionForm({
           </div>
         </section>
       ) : (
-        <section className="space-y-3 border-t border-[#dadce0] pt-8">
+        <section
+          className={cn(
+            "space-y-3 border-t",
+            embedded ? "border-[#e8eaed] pt-6" : "border-[#dadce0] pt-8"
+          )}
+        >
           <h2 className="text-sm font-medium text-[#202124]">Purchase history</h2>
           <p className="text-xs text-[#5f6368]">
             Delete a purchase to reverse stock and remove the ledger entry.
