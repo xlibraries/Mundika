@@ -24,6 +24,7 @@ export async function deleteItem(userId: string, itemId: string): Promise<void> 
     async () => {
       for (const r of invRows) {
         await db.inventory.delete(r.id);
+        await enqueueSync("inventory", "delete", r.id, {});
       }
       await db.items.delete(itemId);
       await enqueueSync("items", "delete", itemId, {});

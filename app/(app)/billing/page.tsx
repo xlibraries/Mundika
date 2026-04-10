@@ -44,7 +44,7 @@ function parseFilledLine(l: Line): {
 } {
   const qty = Number(l.qty);
   const rate = Number(l.rate);
-  const badQty = !(qty > 0) || Number.isNaN(qty);
+  const badQty = !(qty > 0);
   const badRate = rate < 0 || Number.isNaN(rate);
   if (badQty || badRate) {
     return { ok: false, qty: 0, rate: 0, issue: { qty: badQty, rate: badRate } };

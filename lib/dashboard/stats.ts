@@ -20,12 +20,8 @@ export async function getDashboardStats(userId: string, day: string) {
     else creditTotal += b.total;
   }
 
-  const purchases = await db.ledger_entries
-    .where("user_id")
-    .equals(userId)
-    .filter((e) => e.entry_type === "purchase" && e.entry_date === dayStr)
-    .toArray();
-  const purchasesTotal = purchases.reduce((s, e) => s + Math.abs(e.balance_delta), 0);
+  // No purchase flow exists yet; always 0 until a purchase entry type is implemented.
+  const purchasesTotal = 0;
 
   const inv = await db.inventory
     .where("user_id")

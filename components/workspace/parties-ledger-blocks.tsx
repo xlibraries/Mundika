@@ -6,6 +6,7 @@ import { createParty } from "@/modules/parties/actions";
 import { deleteParty } from "@/modules/parties/delete";
 import { deleteLedgerEntry } from "@/modules/ledger/delete";
 import type { LedgerEntryRow, PartyRow } from "@/lib/types/domain";
+import { formatINR } from "@/lib/format/inr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -190,8 +191,7 @@ export function LedgerBlock({
                     r.balance_delta >= 0 ? "text-[#188038]" : "text-[#5f6368]"
                   }`}
                 >
-                  {r.balance_delta >= 0 ? "+" : ""}
-                  {r.balance_delta}
+                  {r.balance_delta >= 0 ? "+" : "-"}{formatINR(Math.abs(r.balance_delta))}
                 </td>
                 <td className="px-3 py-2 text-center">
                   <button

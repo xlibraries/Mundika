@@ -9,6 +9,9 @@ export async function deleteLedgerEntry(
   if (!row || row.user_id !== userId) {
     throw new Error("Entry not found");
   }
+  if (row.ref_bill_id) {
+    throw new Error("This entry is linked to a bill. Delete the bill from the billing page instead.");
+  }
 
   await db.transaction("rw", [db.ledger_entries, db.sync_queue], async () => {
     await db.ledger_entries.delete(entryId);
