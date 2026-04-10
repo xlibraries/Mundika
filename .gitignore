@@ -74,3 +74,7 @@ supabase/.temp
 .claude-flow/neural/
 *.log
 *.tmp
+.claude-flow/metrics/learning.json
+.claude-flow/metrics/swarm-activity.json
+.claude-flow/metrics/v3-progress.json
+.claude-flow/security/audit-status.json
