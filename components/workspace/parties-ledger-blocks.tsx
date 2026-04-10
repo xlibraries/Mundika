@@ -57,7 +57,7 @@ export function PartiesBlock({
       await load();
       onChanged?.();
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : "Could not add party");
+      setAddError(err instanceof Error ? err.message : "Could not add contact");
     } finally {
       setIsAdding(false);
     }
@@ -77,24 +77,24 @@ export function PartiesBlock({
       await load();
       onChanged?.();
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "Could not update");
+      window.alert(err instanceof Error ? err.message : "Could not update contact");
     }
   }
 
   async function onDelete(id: string) {
-    if (!window.confirm("Delete this party?")) return;
+    if (!window.confirm("Delete this contact?")) return;
     try {
       await deleteParty(userId, id);
       await load();
       onChanged?.();
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "Could not delete");
+      window.alert(err instanceof Error ? err.message : "Could not delete contact");
     }
   }
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-[#202124]">Parties</h2>
+      <h2 className="text-sm font-medium text-[#202124]">Contacts</h2>
       <form
         onSubmit={onAdd}
         className="flex flex-col gap-2 rounded-sm border border-[#dadce0] bg-[#f8f9fa] p-3 sm:flex-row sm:items-end"
@@ -104,7 +104,7 @@ export function PartiesBlock({
           <Input
             value={name}
             onChange={(e) => { setName(e.target.value); if (addError) setAddError(null); }}
-            placeholder="Customer"
+            placeholder="Contact name"
           />
         </label>
         <label className="min-w-0 flex-1 space-y-1 sm:max-w-[200px]">
@@ -116,7 +116,7 @@ export function PartiesBlock({
           />
         </label>
         <Button type="submit" size="sm" disabled={isAdding}>
-          {isAdding ? "Adding…" : "Add"}
+          {isAdding ? "Adding…" : "Add Contact"}
         </Button>
       </form>
       {addError ? (
@@ -178,7 +178,7 @@ export function PartiesBlock({
                     <div className="flex justify-center gap-3">
                       <button
                         type="button"
-                        aria-label={`Edit party ${p.name}`}
+                        aria-label={`Edit contact ${p.name}`}
                         className="text-xs text-[#1a73e8] hover:underline"
                         onClick={() => startEdit(p)}
                       >
@@ -186,7 +186,7 @@ export function PartiesBlock({
                       </button>
                       <button
                         type="button"
-                        aria-label={`Remove party ${p.name}`}
+                        aria-label={`Remove contact ${p.name}`}
                         className="text-xs text-[#5f6368] hover:text-[#c5221f]"
                         onClick={() => void onDelete(p.id)}
                       >
@@ -201,7 +201,7 @@ export function PartiesBlock({
         </table>
         {rows.length === 0 ? (
           <p className="px-3 py-6 text-center text-sm text-[#5f6368]">
-            No parties yet.
+            No contacts yet.
           </p>
         ) : null}
       </div>
@@ -255,7 +255,7 @@ export function LedgerBlock({
             <tr className="border-b border-[#dadce0] bg-[#f8f9fa] text-[11px] font-medium uppercase tracking-wide text-[#5f6368]">
               <th className="px-3 py-2">Date</th>
               <th className="px-3 py-2">Type</th>
-              <th className="px-3 py-2">Party</th>
+              <th className="px-3 py-2">Contact</th>
               <th className="px-3 py-2 text-right" title="Amount added to or removed from the party's outstanding balance">Balance change (₹)</th>
               <th className="w-16 px-3 py-2 text-center"> </th>
             </tr>
@@ -282,7 +282,7 @@ export function LedgerBlock({
                 <td className="px-3 py-2 text-center">
                   <button
                     type="button"
-                    aria-label={`Remove ledger entry for ${r.party_name_snapshot ?? "party"} on ${r.entry_date}`}
+                    aria-label={`Remove ledger entry for ${r.party_name_snapshot ?? "contact"} on ${r.entry_date}`}
                     className="text-xs text-[#5f6368] hover:text-[#c5221f]"
                     onClick={() => void onDelete(r.id)}
                   >

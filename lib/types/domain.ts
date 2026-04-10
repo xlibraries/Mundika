@@ -122,6 +122,20 @@ export interface PurchaseItemRow {
   updated_at: string;
 }
 
+export interface StockTransferRow {
+  id: string;
+  user_id: string;
+  item_id: string;
+  item_name_snapshot: string;
+  from_location: "shop" | "godown";
+  to_location: "shop" | "godown";
+  qty: number;
+  note: string | null;
+  transfer_date: string; // YYYY-MM-DD
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SyncQueueRow {
   id: string;
   table_name: string;

@@ -435,7 +435,7 @@ export default function PurchasesPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5">
             <span className="text-xs font-medium text-[#5f6368]">
-              Supplier (Party)
+              Supplier
             </span>
             <EntityCombobox
               ref={partyRef}
@@ -764,7 +764,7 @@ export default function PurchasesPage() {
               <tr className="border-b border-[#dadce0] bg-[#f8f9fa] text-[11px] font-medium uppercase tracking-wide text-[#5f6368]">
                 <th className="w-12 px-3 py-2">#</th>
                 <th className="px-3 py-2">Date</th>
-                <th className="px-3 py-2">Party</th>
+                <th className="px-3 py-2">Supplier</th>
                 <th className="px-3 py-2">Type</th>
                 <th className="px-3 py-2 text-right">Total</th>
                 <th className="w-24 px-3 py-2 text-center"> </th>

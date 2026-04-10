@@ -17,7 +17,7 @@ type TabId = "overview" | "inventory" | "parties" | "ledger";
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: "overview", label: "Overview" },
   { id: "inventory", label: "Inventory" },
-  { id: "parties", label: "Parties" },
+  { id: "parties", label: "Contacts" },
   { id: "ledger", label: "Ledger" },
 ];
 

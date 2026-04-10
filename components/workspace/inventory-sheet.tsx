@@ -1,13 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/lib/db";
-import { createItem } from "@/modules/items/actions";
-import { deleteItem } from "@/modules/items/delete";
-import { updateItemFields } from "@/modules/items/update";
-import { enqueueSync } from "@/lib/sync/queue";
-import { formatINR } from "@/lib/format/inr";
-import { parseNonnegativeStockQty } from "@/lib/inventory/quantity";
+import { createStockTransfer } from "@/modules/inventory/transfer";
 import type { InventoryRow, ItemRow } from "@/lib/types/domain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +19,19 @@ export function InventorySheet({
   const [items, setItems] = useState<ItemRow[]>([]);
   const [inv, setInv] = useState<InventoryRow[]>([]);
   const [filter, setFilter] = useState("");
-  const [cellError, setCellError] = useState<string | null>(null);
-  const [cellResetKey, setCellResetKey] = useState(0);
   const filterRef = useRef<HTMLInputElement>(null);
+
+  // Transfer panel state
+  const [transferItemId, setTransferItemId] = useState<string | null>(null);
+  const [transferFrom, setTransferFrom] = useState<"shop" | "godown">("shop");
+  const [transferTo, setTransferTo] = useState<"shop" | "godown">("godown");
+  const [transferQty, setTransferQty] = useState("1");
+  const [transferNote, setTransferNote] = useState("");
+  const [transferDate, setTransferDate] = useState(() =>
+    new Date().toISOString().slice(0, 10)
+  );
+  const [transferErr, setTransferErr] = useState<string | null>(null);
+  const [isTransferring, setIsTransferring] = useState(false);
 
   const load = useCallback(async () => {
     const [i, n] = await Promise.all([
@@ -67,105 +72,62 @@ export function InventorySheet({
     return inv.find((r) => r.item_id === itemId && r.location === loc);
   }
 
-  async function saveQty(row: InventoryRow, raw: string) {
-    const parsed = parseNonnegativeStockQty(raw);
-    if (!parsed.ok) {
-      setCellError("Quantity must be 0 or more");
-      setCellResetKey((k) => k + 1);
-      await load();
-      onChanged?.();
+  function openTransfer(item: ItemRow) {
+    if (transferItemId === item.id) {
+      setTransferItemId(null);
       return;
     }
-    setCellError(null);
-    const now = new Date().toISOString();
-    const next = { ...row, qty: parsed.qty, updated_at: now };
-    await db.inventory.put(next);
-    await enqueueSync("inventory", "upsert", next.id, { ...next });
-    setInv((prev) => prev.map((r) => (r.id === row.id ? next : r)));
-    onChanged?.();
+    const shop = invRow(item.id, "shop");
+    const godown = invRow(item.id, "godown");
+    // Default: from whichever has more stock
+    const from: "shop" | "godown" =
+      (godown?.qty ?? 0) > (shop?.qty ?? 0) ? "godown" : "shop";
+    const to: "shop" | "godown" = from === "shop" ? "godown" : "shop";
+    setTransferFrom(from);
+    setTransferTo(to);
+    setTransferQty("1");
+    setTransferNote("");
+    setTransferDate(new Date().toISOString().slice(0, 10));
+    setTransferErr(null);
+    setTransferItemId(item.id);
   }
 
-  async function onBlurField(
-    itemId: string,
-    field: "name" | "unit" | "rate_default",
-    raw: string
-  ) {
+  async function handleTransfer(item: ItemRow) {
+    if (isTransferring) return;
+    setIsTransferring(true);
+    setTransferErr(null);
     try {
-      if (field === "rate_default") {
-        if (raw.trim() === "") {
-          await updateItemFields(userId, itemId, { rate_default: null });
-        } else {
-          const n = Number(raw);
-          if (!Number.isFinite(n) || n < 0) {
-            setCellError("Rate must be 0 or more");
-            setCellResetKey((k) => k + 1);
-            await load();
-            return;
-          }
-          setCellError(null);
-          await updateItemFields(userId, itemId, { rate_default: n });
-        }
-      } else if (field === "name") {
-        if (!raw.trim()) {
-          setCellError("Item name cannot be empty");
-          return;
-        }
-        await updateItemFields(userId, itemId, { name: raw.trim() });
-      } else {
-        await updateItemFields(userId, itemId, {
-          unit: raw.trim() === "" ? null : raw.trim(),
-        });
+      const qty = Number(transferQty);
+      if (!(qty > 0) || !Number.isFinite(qty)) {
+        setTransferErr("Quantity must be a positive number");
+        return;
       }
-      await load();
-      onChanged?.();
-    } catch {
-      /* ignore */
-    }
-  }
-
-  async function onRemove(itemId: string) {
-    if (
-      !window.confirm(
-        "Delete this item and its shop/godown rows? This cannot be undone."
-      )
-    ) {
-      return;
-    }
-    try {
-      await deleteItem(userId, itemId);
+      await createStockTransfer(userId, {
+        item_id: item.id,
+        from_location: transferFrom,
+        to_location: transferTo,
+        qty,
+        note: transferNote || null,
+        transfer_date: transferDate,
+      });
+      setTransferItemId(null);
       await load();
       onChanged?.();
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : "Could not delete");
+      setTransferErr(e instanceof Error ? e.message : "Transfer failed");
+    } finally {
+      setIsTransferring(false);
     }
   }
 
-  async function addRow() {
-    await createItem(userId, {
-      name: `Item ${items.length + 1}`,
-      unit: null,
-      rate_default: null,
-    });
-    await load();
-    onChanged?.();
-  }
-
-  const cellInput =
-    "rounded-none border-0 bg-transparent py-1.5 text-[#202124] focus:ring-0 focus-visible:outline-none";
-
   return (
     <div className="space-y-2">
-      {cellError ? (
-        <p role="alert" aria-live="polite" className="rounded border border-[#f9dedc] bg-[#fce8e6] px-3 py-2 text-sm text-[#c5221f]">
-          {cellError}
-        </p>
-      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dadce0] pb-2">
         <div>
           <h2 className="text-sm font-medium text-[#202124]">Inventory</h2>
           <p className="text-[11px] text-[#5f6368]">
-            Sheets-style cells · <kbd className="font-mono">/</kbd> focuses
-            filter · quantities must be ≥ 0.
+            Read-only view · <kbd className="font-mono">/</kbd> focuses filter ·
+            use Purchases to add stock
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -177,14 +139,6 @@ export function InventorySheet({
             className="h-8 w-44 text-xs"
             aria-label="Filter inventory rows"
           />
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => void addRow()}
-          >
-            + Row
-          </Button>
         </div>
       </div>
 
@@ -226,101 +180,171 @@ export function InventorySheet({
               const godQty = godown?.qty ?? 0;
               const totalQty = shopQty + godQty;
               const rowNum = rowIdx + 1;
+              const isTransferOpen = transferItemId === it.id;
               return (
-                <tr
-                  key={it.id}
-                  className="border-b border-[#e8eaed] hover:bg-[#f8f9fa]"
-                >
-                  <td className="border-r border-[#dadce0] bg-[#f8f9fa] px-1 py-0 text-center font-mono text-xs text-[#5f6368]">
-                    {rowNum}
-                  </td>
-                  <td className="border-r border-[#e8eaed] p-0 focus-within:bg-[#e8f0fe] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[#1a73e8]">
-                    <Input
-                      defaultValue={it.name}
-                      className={cellInput}
-                      onBlur={(e) =>
-                        void onBlurField(it.id, "name", e.target.value)
-                      }
-                    />
-                  </td>
-                  <td className="border-r border-[#e8eaed] p-0 focus-within:bg-[#e8f0fe] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[#1a73e8]">
-                    <Input
-                      defaultValue={it.unit ?? ""}
-                      className={cellInput}
-                      placeholder="—"
-                      title="Display label only; stock is shop + godown qty."
-                      onBlur={(e) =>
-                        void onBlurField(it.id, "unit", e.target.value)
-                      }
-                    />
-                  </td>
-                  <td className="border-r border-[#e8eaed] p-0 focus-within:bg-[#e8f0fe] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[#1a73e8]">
-                    {shop ? (
-                      <Input
-                        key={`${shop.id}-${shop.updated_at}-${cellResetKey}`}
-                        type="text"
-                        inputMode="decimal"
-                        defaultValue={String(shop.qty)}
-                        className={`${cellInput} text-right font-mono tabular-nums`}
-                        onBlur={(e) => void saveQty(shop, e.target.value)}
-                      />
-                    ) : (
-                      <span className="block px-2 py-1.5 text-[#5f6368]">—</span>
-                    )}
-                  </td>
-                  <td className="border-r border-[#e8eaed] p-0 focus-within:bg-[#e8f0fe] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[#1a73e8]">
-                    {godown ? (
-                      <Input
-                        key={`${godown.id}-${godown.updated_at}-${cellResetKey}`}
-                        type="text"
-                        inputMode="decimal"
-                        defaultValue={String(godown.qty)}
-                        className={`${cellInput} text-right font-mono tabular-nums`}
-                        onBlur={(e) => void saveQty(godown, e.target.value)}
-                      />
-                    ) : (
-                      <span className="block px-2 py-1.5 text-[#5f6368]">—</span>
-                    )}
-                  </td>
-                  <td className="border-r border-[#e8eaed] px-2 py-1.5 text-right font-mono tabular-nums text-[#202124]">
-                    {shop || godown ? totalQty : "—"}
-                  </td>
-                  <td className="border-r border-[#e8eaed] p-0 focus-within:bg-[#e8f0fe] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[#1a73e8]">
-                    <Input
-                      defaultValue={
-                        it.rate_default != null ? String(it.rate_default) : ""
-                      }
-                      inputMode="decimal"
-                      className={`${cellInput} text-right font-mono tabular-nums`}
-                      placeholder="—"
-                      title={
-                        it.rate_default != null
-                          ? formatINR(it.rate_default)
-                          : "Default rate in INR"
-                      }
-                      onBlur={(e) =>
-                        void onBlurField(it.id, "rate_default", e.target.value)
-                      }
-                    />
-                  </td>
-                  <td className="px-1 py-1 text-center">
-                    <button
-                      type="button"
-                      aria-label={`Remove ${it.name}`}
-                      className="rounded px-2 py-1 text-xs text-[#5f6368] hover:bg-[#fce8e6] hover:text-[#d93025]"
-                      onClick={() => void onRemove(it.id)}
+                <Fragment key={it.id}>
+                  <tr
+                    className="border-b border-[#e8eaed] hover:bg-[#f8f9fa]"
+                  >
+                    <td className="border-r border-[#dadce0] bg-[#f8f9fa] px-1 py-0 text-center font-mono text-xs text-[#5f6368]">
+                      {rowNum}
+                    </td>
+                    <td className="border-r border-[#e8eaed] px-2 py-1.5 text-[#202124]">
+                      {it.name}
+                    </td>
+                    <td className="border-r border-[#e8eaed] px-2 py-1.5 text-[#5f6368]">
+                      {it.unit ?? "—"}
+                    </td>
+                    <td className="border-r border-[#e8eaed] px-2 py-1.5 text-right font-mono tabular-nums text-[#202124]">
+                      {shop ? shopQty : "—"}
+                    </td>
+                    <td className="border-r border-[#e8eaed] px-2 py-1.5 text-right font-mono tabular-nums text-[#202124]">
+                      {godown ? godQty : "—"}
+                    </td>
+                    <td className="border-r border-[#e8eaed] px-2 py-1.5 text-right font-mono tabular-nums text-[#202124]">
+                      {shop || godown ? totalQty : "—"}
+                    </td>
+                    <td className="border-r border-[#e8eaed] px-2 py-1.5 text-right font-mono tabular-nums text-[#5f6368]">
+                      {it.rate_default != null ? it.rate_default : "—"}
+                    </td>
+                    <td className="px-1 py-1 text-center">
+                      <button
+                        type="button"
+                        aria-label={`Transfer stock for ${it.name}`}
+                        aria-expanded={isTransferOpen}
+                        className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
+                          isTransferOpen
+                            ? "bg-[#e8f0fe] text-[#1a73e8]"
+                            : "text-[#5f6368] hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
+                        }`}
+                        onClick={() => openTransfer(it)}
+                      >
+                        Transfer
+                      </button>
+                    </td>
+                  </tr>
+                  {isTransferOpen && (
+                    <tr
+                      className="border-b border-[#dadce0] bg-[#f0f4ff]"
                     >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
+                      <td />
+                      <td colSpan={7} className="px-3 py-3">
+                        <div className="flex flex-wrap items-end gap-3">
+                          <div className="space-y-1">
+                            <span className="text-[11px] text-[#5f6368]">From</span>
+                            <select
+                              value={transferFrom}
+                              onChange={(e) => {
+                                const from = e.target.value as "shop" | "godown";
+                                setTransferFrom(from);
+                                setTransferTo(from === "shop" ? "godown" : "shop");
+                                setTransferErr(null);
+                              }}
+                              className="block h-8 rounded border border-[#dadce0] bg-white px-2 text-xs text-[#202124] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                            >
+                              <option value="shop">Shop</option>
+                              <option value="godown">Godown</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-[11px] text-[#5f6368]">To</span>
+                            <select
+                              value={transferTo}
+                              onChange={(e) => {
+                                const to = e.target.value as "shop" | "godown";
+                                setTransferTo(to);
+                                setTransferFrom(to === "shop" ? "godown" : "shop");
+                                setTransferErr(null);
+                              }}
+                              className="block h-8 rounded border border-[#dadce0] bg-white px-2 text-xs text-[#202124] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                            >
+                              <option value="godown">Godown</option>
+                              <option value="shop">Shop</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-[11px] text-[#5f6368]">
+                              Qty{" "}
+                              <span className="text-[#80868b]">
+                                (max{" "}
+                                {transferFrom === "shop"
+                                  ? shop?.qty ?? 0
+                                  : godown?.qty ?? 0}
+                                )
+                              </span>
+                            </span>
+                            <Input
+                              type="number"
+                              min={1}
+                              step={1}
+                              value={transferQty}
+                              onChange={(e) => {
+                                setTransferQty(e.target.value);
+                                setTransferErr(null);
+                              }}
+                              className="h-8 w-24 text-xs"
+                              autoFocus
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-[11px] text-[#5f6368]">Date</span>
+                            <Input
+                              type="date"
+                              value={transferDate}
+                              onChange={(e) => setTransferDate(e.target.value)}
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                          <div className="min-w-[140px] flex-1 space-y-1">
+                            <span className="text-[11px] text-[#5f6368]">
+                              Note (optional)
+                            </span>
+                            <Input
+                              value={transferNote}
+                              onChange={(e) => setTransferNote(e.target.value)}
+                              placeholder="—"
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={isTransferring}
+                              onClick={() => void handleTransfer(it)}
+                            >
+                              {isTransferring ? "Saving…" : "Save"}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => setTransferItemId(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                        {transferErr ? (
+                          <p
+                            role="alert"
+                            aria-live="polite"
+                            className="mt-2 rounded border border-[#f9dedc] bg-[#fce8e6] px-3 py-1.5 text-xs text-[#c5221f]"
+                          >
+                            {transferErr}
+                          </p>
+                        ) : null}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               );
             })}
           </tbody>
         </table>
         {items.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-[#5f6368]">
-            No rows yet. Click + Row to add.
+            No items yet. Add stock via Purchases.
           </p>
         ) : filteredItems.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-[#5f6368]">

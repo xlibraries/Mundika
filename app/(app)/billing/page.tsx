@@ -455,7 +455,7 @@ export default function BillingPage() {
       <div className="print:hidden">
         <PageHeader
           title="New bill"
-          description="Party and items are searchable (type a few letters, Enter). Enter moves through fields; C / U set cash or credit when not typing; Ctrl+Enter saves. Stock is reduced from shop first, then godown."
+          description="Customer and items are searchable (type a few letters, Enter). Enter moves through fields; C / U set cash or credit when not typing; Ctrl+Enter saves. Stock is reduced from shop first, then godown."
           actions={
             <span className="text-xs text-[#5f6368]">
               Enter → next · C/U · Ctrl+Enter → save
@@ -466,15 +466,15 @@ export default function BillingPage() {
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-1.5">
-              <span className="text-xs font-medium text-[#5f6368]">Party</span>
+              <span className="text-xs font-medium text-[#5f6368]">Customer</span>
               <EntityCombobox
                 ref={partyRef}
-                aria-label="Party"
+                aria-label="Customer"
                 valueId={partyId}
                 options={partyOptions}
                 priorityIds={recentPartyIds}
                 invalid={partyMissing}
-                placeholder="Type to search party…"
+                placeholder="Type to search customer…"
                 onValueChange={onPartyPick}
                 onAdvance={() => dateRef.current?.focus()}
               />
@@ -759,7 +759,7 @@ export default function BillingPage() {
                 <tr className="border-b border-[#dadce0] bg-[#f8f9fa] text-[11px] font-medium uppercase tracking-wide text-[#5f6368]">
                   <th className="w-12 px-3 py-2">#</th>
                   <th className="px-3 py-2">Date</th>
-                  <th className="px-3 py-2">Party</th>
+                  <th className="px-3 py-2">Customer</th>
                   <th className="px-3 py-2">Type</th>
                   <th className="px-3 py-2 text-right">Total</th>
                   <th className="w-24 px-3 py-2 text-center"> </th>

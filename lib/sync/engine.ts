@@ -11,6 +11,7 @@ const TABLES = new Set([
   "ledger_entries",
   "purchases",
   "purchase_items",
+  "stock_transfers",
 ]);
 
 let flushing = false;

@@ -8,6 +8,7 @@ import type {
   PartyRow,
   PurchaseItemRow,
   PurchaseRow,
+  StockTransferRow,
   SyncQueueRow,
 } from "@/lib/types/domain";
 
@@ -21,6 +22,7 @@ export class MundikaDB extends Dexie {
   sync_queue!: Table<SyncQueueRow, string>;
   purchases!: Table<PurchaseRow, string>;
   purchase_items!: Table<PurchaseItemRow, string>;
+  stock_transfers!: Table<StockTransferRow, string>;
 
   constructor() {
     super("mundika");
@@ -42,6 +44,10 @@ export class MundikaDB extends Dexie {
       purchases:
         "id, user_id, party_id, purchase_date, purchase_number, updated_at",
       purchase_items: "id, user_id, purchase_id, item_id, updated_at",
+    });
+    // v4: adds stock_transfers table
+    this.version(4).stores({
+      stock_transfers: "id, user_id, item_id, transfer_date, updated_at",
     });
   }
 }
