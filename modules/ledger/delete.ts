@@ -12,6 +12,9 @@ export async function deleteLedgerEntry(
   if (row.ref_bill_id) {
     throw new Error("This entry is linked to a bill. Delete the bill from the billing page instead.");
   }
+  if (row.ref_purchase_id) {
+    throw new Error("This entry is linked to a purchase. Delete the purchase from the purchases page instead.");
+  }
 
   await db.transaction("rw", [db.ledger_entries, db.sync_queue], async () => {
     await db.ledger_entries.delete(entryId);
