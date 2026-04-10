@@ -53,6 +53,10 @@ export interface BillRow {
   total: number;
   bill_type: BillType;
   vehicle_info: string | null;
+  /** Optional address snapshot for this transaction (not from contacts table). */
+  address?: string | null;
+  /** Optional phone snapshot for this transaction (not from contacts table). */
+  phone?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -104,6 +108,10 @@ export interface PurchaseRow {
   payment_type: PurchasePaymentType;
   total: number;
   note: string | null;
+  /** Optional address snapshot for this transaction (not from contacts table). */
+  address?: string | null;
+  /** Optional phone snapshot for this transaction (not from contacts table). */
+  phone?: string | null;
   created_at: string;
   updated_at: string;
 }
