@@ -1,22 +1,24 @@
 @import "tailwindcss";
 
-/* Google Sheets–inspired workspace tokens */
+/* Light pastel sage + off-white workspace tokens */
 :root {
+  /** Sidebar brand + main “today” strip: keep similar min height (md). */
+  --shell-ribbon-min: 17.75rem;
   color-scheme: light;
-  --gs-bg: #ffffff;
-  --gs-surface: #f8f9fa;
-  --gs-surface-hover: #f1f3f4;
-  --gs-border: #dadce0;
-  --gs-grid: #e8eaed;
-  --gs-text: #202124;
-  --gs-text-secondary: #5f6368;
-  --gs-primary: #1a73e8;
-  --gs-primary-hover: #1557b0;
-  --gs-sheets-green: #188038;
-  --gs-selection: #e8f0fe;
-  --gs-selection-border: #1a73e8;
-  --gs-danger: #d93025;
-  --gs-success: #188038;
+  --gs-bg: #f6faf7;
+  --gs-surface: #eef5f0;
+  --gs-surface-hover: #e3efe6;
+  --gs-border: #c5dccf;
+  --gs-grid: #d9e8de;
+  --gs-text: #2a382f;
+  --gs-text-secondary: #5c6e62;
+  --gs-primary: #6b9b7a;
+  --gs-primary-hover: #598a68;
+  --gs-sheets-green: #4d7a5c;
+  --gs-selection: #dff0e5;
+  --gs-selection-border: #6b9b7a;
+  --gs-danger: #c44d42;
+  --gs-success: #3d6b4f;
 }
 
 @theme inline {
@@ -46,5 +48,5 @@ body {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #dadce0 transparent;
+  scrollbar-color: #b8d4c2 #f0f6f2;
 }

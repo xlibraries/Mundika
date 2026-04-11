@@ -53,21 +53,21 @@ export function LoginForm() {
     <div className="relative flex min-h-full flex-1 flex-col items-center justify-center p-6">
       <div className="w-full max-w-[400px] space-y-8">
         <div className="space-y-2 text-center sm:text-left">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded border border-[#dadce0] bg-white text-lg font-bold text-[#188038] shadow-sm sm:mx-0">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded border border-[#c5dccf] bg-[#faf9f5] text-lg font-bold text-[#4d7a5c] shadow-sm sm:mx-0">
             M
           </div>
-          <h1 className="text-2xl font-medium tracking-tight text-[#202124]">
+          <h1 className="text-2xl font-medium tracking-tight text-[#2a382f]">
             Sign in
           </h1>
-          <p className="text-sm leading-relaxed text-[#5f6368]">
+          <p className="text-sm leading-relaxed text-[#5c6e62]">
             Works like Sheets: data on your device first, sync when online.
           </p>
         </div>
 
-        <div className="rounded-lg border border-[#dadce0] bg-white p-6 shadow-[0_1px_2px_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
+        <div className="rounded-lg border border-[#c5dccf] bg-[#faf9f5] p-6 shadow-[0_1px_2px_rgba(42,56,47,0.08),0_4px_12px_-4px_rgba(42,56,47,0.12)]">
           <form onSubmit={signInEmail} className="space-y-4">
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium text-[#5f6368]">Email</span>
+              <span className="text-xs font-medium text-[#5c6e62]">Email</span>
               <Input
                 type="email"
                 required
@@ -78,7 +78,7 @@ export function LoginForm() {
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium text-[#5f6368]">
+              <span className="text-xs font-medium text-[#5c6e62]">
                 Password
               </span>
               <Input
@@ -91,7 +91,7 @@ export function LoginForm() {
               />
             </label>
             {error ? (
-              <p className="rounded border border-[#fad2cf] bg-[#fce8e6] px-3 py-2 text-sm text-[#d93025]">
+              <p className="rounded border border-[#f0c4c0] bg-[#fcecea] px-3 py-2 text-sm text-[#c44d42]">
                 {error}
               </p>
             ) : null}
@@ -107,10 +107,10 @@ export function LoginForm() {
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[#dadce0]" />
+              <div className="w-full border-t border-[#c5dccf]" />
             </div>
-            <div className="relative flex justify-center text-[11px] uppercase tracking-wider text-[#5f6368]">
-              <span className="bg-white px-2">or</span>
+            <div className="relative flex justify-center text-[11px] uppercase tracking-wider text-[#5c6e62]">
+              <span className="bg-[#faf9f5] px-2">or</span>
             </div>
           </div>
 
@@ -125,7 +125,7 @@ export function LoginForm() {
           </Button>
         </div>
 
-        <p className="text-center text-[11px] text-[#5f6368]">
+        <p className="text-center text-[11px] text-[#5c6e62]">
           Encrypted in transit to Supabase when you sync.
         </p>
       </div>

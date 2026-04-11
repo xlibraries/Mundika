@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 import { icons } from "@/components/layout/nav-icons";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Workspace", icon: icons.dashboard },
+  { href: "/dashboard", label: "Inventory", icon: icons.dashboard },
   { href: "/analytics", label: "Analytics", icon: icons.analytics },
 ] as const;
 
@@ -32,7 +32,12 @@ function NavLinks({
   const pathname = usePathname();
 
   return (
-    <nav className={cn("flex flex-col gap-0.5", className)}>
+    <nav
+      className={cn(
+        "flex min-h-0 flex-1 flex-col justify-center gap-8 py-6",
+        className
+      )}
+    >
       {NAV_ITEMS.map((n) => {
         const active = navItemActive(n.href, pathname);
         return (
@@ -41,26 +46,23 @@ function NavLinks({
             href={n.href}
             onClick={onNavigate}
             className={cn(
-              "group flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors",
+              "group flex min-h-[3.5rem] items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition-colors",
               active
-                ? "bg-[#e8f0fe] text-[#1a73e8]"
-                : "text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202124]"
+                ? "border-[#a3c9b0] bg-[#faf9f5] text-[#2a382f] shadow-sm"
+                : "border-[#cfe3d4] bg-[#f1f6f2] text-[#5c6e62] hover:border-[#b8d4c2] hover:bg-[#e8f2ea] hover:text-[#2a382f]"
             )}
           >
             <span
               className={cn(
                 "transition-colors",
                 active
-                  ? "text-[#1a73e8]"
-                  : "text-[#5f6368] group-hover:text-[#202124]"
+                  ? "text-[#4d7a5c]"
+                  : "text-[#7a9180] group-hover:text-[#4d7a5c]"
               )}
             >
               {n.icon}
             </span>
             {n.label}
-            {active ? (
-              <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#1a73e8]" />
-            ) : null}
           </Link>
         );
       })}
@@ -103,21 +105,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-full flex-col bg-[#f1f3f4] md:flex-row">
-      <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-[#dadce0] bg-white px-4 shadow-sm md:hidden">
+    <div className="flex min-h-full flex-col bg-[#f6faf7] text-[#2a382f] md:flex-row">
+      <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-[#cfe3d4] bg-[#eef5f0] px-4 md:hidden">
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
-          className="rounded p-2 text-[#5f6368] transition hover:bg-[#f1f3f4] hover:text-[#202124]"
+          className="rounded-xl p-2 text-[#5c6e62] transition hover:bg-[#e3efe6] hover:text-[#2a382f]"
           aria-label="Open menu"
         >
           {icons.menu}
         </button>
         <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded border border-[#dadce0] bg-[#e6f4ea] text-xs font-bold text-[#188038]">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#b8d4c2] bg-[#faf9f5] text-xs font-bold text-[#4d7a5c]">
             M
           </span>
-          <span className="text-sm font-medium text-[#202124]">Mundika</span>
+          <span className="text-sm font-medium text-[#2a382f]">Mundika</span>
         </div>
         <span className="w-10" aria-hidden />
       </header>
@@ -126,17 +128,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-50 md:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-black/30"
+            className="absolute inset-0 bg-[#2a382f]/35"
             aria-label="Close menu"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="absolute left-0 top-0 flex h-full w-[min(88vw,288px)] flex-col border-r border-[#dadce0] bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b border-[#dadce0] p-4">
-              <span className="text-sm font-medium text-[#202124]">Menu</span>
+          <aside className="absolute left-0 top-0 flex h-full w-[min(88vw,288px)] flex-col border-r border-[#cfe3d4] bg-[#eef5f0] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#cfe3d4] p-4">
+              <span className="text-sm font-medium text-[#2a382f]">Menu</span>
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className="rounded p-2 text-[#5f6368] hover:bg-[#f1f3f4]"
+                className="rounded-lg p-2 text-[#5c6e62] hover:bg-[#e3efe6] hover:text-[#2a382f]"
                 aria-label="Close"
               >
                 <svg
@@ -154,14 +156,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </svg>
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-3">
+            <div className="flex flex-1 flex-col overflow-y-auto p-3">
+              <div className="mb-4 flex min-h-[var(--shell-ribbon-min)] items-center justify-center rounded-2xl border border-[#cfe3d4] bg-[#faf9f5] px-3 py-3">
+                <p className="text-center text-sm font-semibold tracking-tight text-[#2a382f]">
+                  Mundika
+                </p>
+              </div>
               <NavLinks onNavigate={() => setMobileOpen(false)} />
             </div>
-            <div className="border-t border-[#dadce0] p-3">
+            <div className="border-t border-[#cfe3d4] p-3">
               <button
                 type="button"
                 onClick={() => void signOut()}
-                className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm font-medium text-[#5f6368] transition hover:bg-[#f1f3f4] hover:text-[#202124]"
+                className="flex w-full items-center gap-3 rounded-xl border border-[#cfe3d4] px-3 py-2.5 text-sm font-medium text-[#5c6e62] transition hover:bg-[#e3efe6] hover:text-[#2a382f]"
               >
                 {icons.logout}
                 Sign out
@@ -171,26 +178,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
 
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-[#dadce0] bg-white py-5 md:flex">
-        <div className="mb-6 flex items-center gap-3 px-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded border border-[#dadce0] bg-[#e6f4ea] text-sm font-bold text-[#188038] shadow-sm">
-            M
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-[#202124]">
-              Mundika
-            </p>
-            <p className="text-[11px] text-[#5f6368]">Shop workspace</p>
-          </div>
+      <aside className="hidden min-h-0 w-[220px] shrink-0 flex-col border-r border-[#cfe3d4] bg-[#eef5f0] px-3 py-6 md:flex md:min-h-screen">
+        <div
+          className="mb-4 flex min-h-[var(--shell-ribbon-min)] shrink-0 flex-col items-center justify-center rounded-2xl border border-[#cfe3d4] bg-[#faf9f5] px-3 py-4"
+          aria-label="Mundika"
+        >
+          <p className="text-center text-sm font-semibold tracking-tight text-[#2a382f]">
+            Mundika
+          </p>
         </div>
-        <div className="flex-1 px-2">
+        <div className="flex min-h-0 flex-1 flex-col">
           <NavLinks />
         </div>
-        <div className="px-2 pt-3">
+        <div className="mt-auto shrink-0 pt-6">
           <button
             type="button"
             onClick={() => void signOut()}
-            className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm font-medium text-[#5f6368] transition hover:bg-[#f1f3f4] hover:text-[#202124]"
+            className="flex w-full items-center gap-3 rounded-2xl border border-[#cfe3d4] px-4 py-3 text-sm font-medium text-[#5c6e62] transition hover:border-[#b8d4c2] hover:bg-[#e3efe6] hover:text-[#2a382f]"
           >
             {icons.logout}
             Sign out
@@ -198,7 +202,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1">
+      <main className="min-w-0 flex-1 bg-[#f6faf7]">
         <div
           className={cn(
             "mx-auto min-h-full min-w-0",

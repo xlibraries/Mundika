@@ -166,7 +166,7 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
             if (valueId) setQuery(selected?.label ?? "");
           }}
           className={cn(
-            "w-full rounded border border-[#dadce0] bg-white px-3 py-2 text-sm text-[#202124] outline-none transition focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]",
+            "w-full rounded border border-[#c5dccf] bg-[#faf9f5] px-3 py-2 text-sm text-[#2a382f] outline-none transition focus:border-[#6b9b7a] focus:ring-1 focus:ring-[#6b9b7a]",
             invalid && "border-[#d93025] bg-[#fce8e6]/40",
             inputClassName
           )}
@@ -212,7 +212,7 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
           <ul
             id={listId}
             role="listbox"
-            className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded border border-[#dadce0] bg-white py-1 shadow-md"
+            className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded border border-[#c5dccf] bg-[#faf9f5] py-1 shadow-md"
           >
             {matches.map((o, i) => (
               <li
@@ -221,7 +221,7 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
                 aria-selected={i === highlightIdx}
                 className={cn(
                   "cursor-pointer px-3 py-1.5 text-sm",
-                  i === highlightIdx ? "bg-[#e8f0fe] font-medium text-[#202124]" : "text-[#202124]"
+                  i === highlightIdx ? "bg-[#dff0e5] font-medium text-[#2a382f]" : "text-[#2a382f]"
                 )}
                 onMouseEnter={() => setHighlight(i)}
                 onMouseDown={(ev) => ev.preventDefault()}
@@ -236,7 +236,7 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
           <div
             role="option"
             aria-selected={false}
-            className="absolute z-50 mt-1 w-full cursor-pointer rounded border border-[#dadce0] bg-white px-3 py-1.5 text-sm text-[#1a73e8] shadow-md hover:bg-[#e8f0fe]"
+            className="absolute z-50 mt-1 w-full cursor-pointer rounded border border-[#c5dccf] bg-[#faf9f5] px-3 py-1.5 text-sm text-[#4d7a5c] shadow-md hover:bg-[#dff0e5]"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               const label = query.trim();
@@ -248,7 +248,7 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
             + Add &ldquo;{query.trim()}&rdquo; as new contact
           </div>
         ) : open && matches.length === 0 && query.trim() ? (
-          <div aria-live="polite" className="absolute z-50 mt-1 w-full rounded border border-[#dadce0] bg-white px-3 py-2 text-sm text-[#5f6368] shadow-md">
+          <div aria-live="polite" className="absolute z-50 mt-1 w-full rounded border border-[#c5dccf] bg-[#faf9f5] px-3 py-2 text-sm text-[#5c6e62] shadow-md">
             No matches
           </div>
         ) : null}

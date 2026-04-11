@@ -595,68 +595,91 @@ export function TransactionForm({
   const saveLabel = mode === "billing" ? "Save bill" : "Save purchase";
   const nextNumber = mode === "billing" ? bills.length + 1 : purchases.length + 1;
 
+  const modeTablist = (
+    <div
+      className={cn(
+        "flex w-full overflow-hidden border border-[#c5dccf] bg-[#e8f1ea] p-1",
+        embedded
+          ? "rounded-none border-x-0 border-t-0 border-b-0 bg-[#dce8df]"
+          : "rounded-2xl"
+      )}
+      role="tablist"
+      aria-label="Transaction mode"
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={mode === "purchase"}
+        onClick={() => switchMode("purchase")}
+        className={`flex min-h-[2.75rem] flex-1 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold tracking-wide transition ${
+          mode === "purchase"
+            ? "bg-white text-[#2a382f] shadow-sm"
+            : "text-[#5c6e62] hover:text-[#2a382f]"
+        }`}
+      >
+        Purchase
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={mode === "billing"}
+        onClick={() => switchMode("billing")}
+        className={`flex min-h-[2.75rem] flex-1 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold tracking-wide transition ${
+          mode === "billing"
+            ? "bg-white text-[#2a382f] shadow-sm"
+            : "text-[#5c6e62] hover:text-[#2a382f]"
+        }`}
+      >
+        Billing
+      </button>
+    </div>
+  );
+
+  const modeHint = (
+    <p className="text-right text-xs text-[#5c6e62]">
+      {mode === "billing" ? "Bill" : "Purchase"}&nbsp;#
+      <span className="font-mono font-medium text-[#2a382f]">{nextNumber}</span>
+      &nbsp;·&nbsp;Enter → next · C/U · Ctrl+Enter → save
+    </p>
+  );
+
+  const modeToolbar = (
+    <div className="flex w-full flex-col gap-2">
+      {modeTablist}
+      {modeHint}
+    </div>
+  );
+
   // ---- render --------------------------------------------------------------
   return (
     <div
       className={cn(
         !embedded && "space-y-8",
-        embedded &&
-          "space-y-6 rounded-lg border border-[#dadce0] bg-white p-4 shadow-sm md:p-6"
+        embedded && "flex min-h-0 flex-1 flex-col overflow-hidden bg-white"
       )}
     >
+      {embedded ? (
+        <div className="shrink-0 border-b border-[#dce8df] bg-[#eef5f0]">
+          <div className="w-full py-1.5">{modeTablist}</div>
+          <div className="px-4 pb-2 pt-0.5 md:px-6">{modeHint}</div>
+        </div>
+      ) : null}
+
       {/* ------------------------------------------------------------------ */}
       {/* FORM                                                                */}
       {/* ------------------------------------------------------------------ */}
-      <div className="space-y-5">
-
-        {/* Mode switch + auto number */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div
-            className="inline-flex rounded border border-[#dadce0] bg-[#f8f9fa] p-0.5"
-            role="tablist"
-            aria-label="Transaction mode"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "billing"}
-              onClick={() => switchMode("billing")}
-              className={`rounded px-4 py-1.5 text-sm font-medium transition ${
-                mode === "billing"
-                  ? "bg-white shadow-sm text-[#202124]"
-                  : "text-[#5f6368] hover:text-[#202124]"
-              }`}
-            >
-              Billing
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "purchase"}
-              onClick={() => switchMode("purchase")}
-              className={`rounded px-4 py-1.5 text-sm font-medium transition ${
-                mode === "purchase"
-                  ? "bg-white shadow-sm text-[#202124]"
-                  : "text-[#5f6368] hover:text-[#202124]"
-              }`}
-            >
-              Purchase
-            </button>
-          </div>
-
-          <span className="text-xs text-[#5f6368]">
-            {mode === "billing" ? "Bill" : "Purchase"}&nbsp;#
-            <span className="font-mono font-medium text-[#202124]">
-              {nextNumber}
-            </span>
-            &nbsp;·&nbsp;Enter → next · C/U · Ctrl+Enter → save
-          </span>
-        </div>
+      <div
+        className={cn(
+          "space-y-5",
+          embedded && "px-4 py-4 md:px-6 md:py-5"
+        )}
+      >
+        {!embedded ? modeToolbar : null}
 
         {/* Row 1: party, date, ref */}
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="space-y-1.5">
-            <span className="text-xs font-medium text-[#5f6368]">{partyLabel}</span>
+            <span className="text-xs font-medium text-[#5c6e62]">{partyLabel}</span>
             <EntityCombobox
               ref={partyRef}
               aria-label={partyLabel}
@@ -672,7 +695,7 @@ export function TransactionForm({
           </label>
 
           <label className="space-y-1.5">
-            <span className="text-xs font-medium text-[#5f6368]">Date</span>
+            <span className="text-xs font-medium text-[#5c6e62]">Date</span>
             <div className="flex gap-2">
               <Input
                 ref={dateRef}
@@ -700,7 +723,7 @@ export function TransactionForm({
           </label>
 
           <label className="space-y-1.5">
-            <span className="text-xs font-medium text-[#5f6368]">{refLabel}</span>
+            <span className="text-xs font-medium text-[#5c6e62]">{refLabel}</span>
             <Input
               ref={refNumberRef}
               placeholder="Optional"
@@ -718,7 +741,7 @@ export function TransactionForm({
         {/* Row 2: address, phone, payment */}
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="space-y-1.5">
-            <span className="text-xs font-medium text-[#5f6368]">
+            <span className="text-xs font-medium text-[#5c6e62]">
               Address (optional)
             </span>
             <Input
@@ -735,7 +758,7 @@ export function TransactionForm({
           </label>
 
           <label className="space-y-1.5">
-            <span className="text-xs font-medium text-[#5f6368]">
+            <span className="text-xs font-medium text-[#5c6e62]">
               Phone (optional)
             </span>
             <Input
@@ -753,11 +776,11 @@ export function TransactionForm({
           </label>
 
           <div className="space-y-1.5">
-            <span className="text-xs font-medium text-[#5f6368]">
+            <span className="text-xs font-medium text-[#5c6e62]">
               Payment (Cash / Credit)
             </span>
             <div
-              className="flex rounded border border-[#dadce0] bg-white p-0.5"
+              className="flex rounded border border-[#c5dccf] bg-white p-0.5"
               role="radiogroup"
               aria-label="Payment type"
             >
@@ -766,10 +789,10 @@ export function TransactionForm({
                 type="button"
                 role="radio"
                 aria-checked={paymentType === "cash"}
-                className={`flex-1 rounded px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1a73e8] ${
+                className={`flex-1 rounded px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#6b9b7a] ${
                   paymentType === "cash"
-                    ? "bg-[#1a73e8] text-white"
-                    : "text-[#5f6368] hover:bg-[#f1f3f4]"
+                    ? "bg-[#6b9b7a] text-white"
+                    : "text-[#5c6e62] hover:bg-[#eaf2ec]"
                 }`}
                 onClick={() => setPaymentType("cash")}
                 onKeyDown={(e) => {
@@ -784,10 +807,10 @@ export function TransactionForm({
                 type="button"
                 role="radio"
                 aria-checked={paymentType === "credit"}
-                className={`flex-1 rounded px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1a73e8] ${
+                className={`flex-1 rounded px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#6b9b7a] ${
                   paymentType === "credit"
-                    ? "bg-[#1a73e8] text-white"
-                    : "text-[#5f6368] hover:bg-[#f1f3f4]"
+                    ? "bg-[#6b9b7a] text-white"
+                    : "text-[#5c6e62] hover:bg-[#eaf2ec]"
                 }`}
                 onClick={() => setPaymentType("credit")}
                 onKeyDown={(e) => {
@@ -799,7 +822,7 @@ export function TransactionForm({
                 Credit
               </button>
             </div>
-            <p className="text-[11px] text-[#80868b]">
+            <p className="text-[11px] text-[#6f7f74]">
               Press <kbd className="font-mono">C</kbd> or{" "}
               <kbd className="font-mono">U</kbd> when focus is not in a text field.
             </p>
@@ -809,7 +832,7 @@ export function TransactionForm({
         {/* Purchase-only: note */}
         {mode === "purchase" ? (
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-[#5f6368]">
+            <span className="text-xs font-medium text-[#5c6e62]">
               Note (optional)
             </span>
             <Input
@@ -823,19 +846,19 @@ export function TransactionForm({
         {/* Line items table */}
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-[#5f6368]">
+            <p className="text-xs font-medium uppercase tracking-wide text-[#5c6e62]">
               Lines
             </p>
-            <p className="text-sm font-medium tabular-nums text-[#202124]">
+            <p className="text-sm font-medium tabular-nums text-[#2a382f]">
               Total{" "}
               <span className="font-mono">{formatINR(liveTotals.grand)}</span>
             </p>
           </div>
 
-          <div className="overflow-x-auto rounded-sm border border-[#dadce0] bg-white">
+          <div className="overflow-x-auto rounded-sm border border-[#c5dccf] bg-white">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-[#dadce0] bg-[#f8f9fa] text-[11px] font-medium uppercase tracking-wide text-[#5f6368]">
+                <tr className="border-b border-[#c5dccf] bg-[#f4f8f5] text-[11px] font-medium uppercase tracking-wide text-[#5c6e62]">
                   <th className="px-2 py-1.5 text-left" style={{ width: "38%" }}>
                     Item
                   </th>
@@ -875,7 +898,7 @@ export function TransactionForm({
                       ) : null}
                       {/* main data row */}
                       <tr
-                        className={`border-b border-[#e8eaed] ${
+                        className={`border-b border-[#dce8df] ${
                           rowBad
                             ? "bg-[#fef7e0]"
                             : stockWarn
@@ -945,7 +968,7 @@ export function TransactionForm({
                             }`}
                           />
                         </td>
-                        <td className="px-2 py-1 text-right font-mono tabular-nums text-[#202124] whitespace-nowrap">
+                        <td className="px-2 py-1 text-right font-mono tabular-nums text-[#2a382f] whitespace-nowrap">
                           {rowTotal != null ? formatINR(rowTotal) : "—"}
                         </td>
                         {mode === "purchase" ? (
@@ -966,7 +989,7 @@ export function TransactionForm({
                                 onDestEnter(i);
                               }}
                               aria-label={`Line ${i + 1} destination`}
-                              className="w-full rounded border border-[#dadce0] bg-white px-2 py-2 text-sm text-[#202124] focus:border-[#1a73e8] focus:outline-none"
+                              className="w-full rounded border border-[#c5dccf] bg-white px-2 py-2 text-sm text-[#2a382f] focus:border-[#6b9b7a] focus:outline-none"
                             >
                               <option value="godown">Godown</option>
                               <option value="shop">Shop</option>
@@ -981,7 +1004,7 @@ export function TransactionForm({
                             onClick={() =>
                               setLines((prev) => prev.filter((_, j) => j !== i))
                             }
-                            className="rounded px-1.5 py-1 text-sm text-[#5f6368] transition hover:bg-[#f1f3f4] hover:text-[#c5221f] disabled:cursor-not-allowed disabled:opacity-30"
+                            className="rounded px-1.5 py-1 text-sm text-[#5c6e62] transition hover:bg-[#eaf2ec] hover:text-[#c5221f] disabled:cursor-not-allowed disabled:opacity-30"
                           >
                             ×
                           </button>
@@ -1018,7 +1041,7 @@ export function TransactionForm({
           <p
             role="status"
             aria-live="polite"
-            className="rounded border border-[#ceead6] bg-[#e6f4ea] px-3 py-2 text-sm text-[#137333]"
+            className="rounded border border-[#c5e5cf] bg-[#e4f2e8] px-3 py-2 text-sm text-[#3d6b4f]"
           >
             {msg}
           </p>
@@ -1045,18 +1068,20 @@ export function TransactionForm({
         <section
           className={cn(
             "space-y-3 border-t",
-            embedded ? "border-[#e8eaed] pt-6" : "border-[#dadce0] pt-8"
+            embedded
+              ? "border-[#dce8df] px-4 pb-4 pt-6 md:px-6 md:pb-6"
+              : "border-[#c5dccf] pt-8"
           )}
         >
-          <h2 className="text-sm font-medium text-[#202124]">Saved bills</h2>
-          <p className="text-xs text-[#5f6368]">
+          <h2 className="text-sm font-medium text-[#2a382f]">Saved bills</h2>
+          <p className="text-xs text-[#5c6e62]">
             Delete a bill to undo the sale and free items for deletion from the
             inventory sheet.
           </p>
-          <div className="overflow-x-auto rounded-sm border border-[#dadce0] bg-white">
+          <div className="overflow-x-auto rounded-sm border border-[#c5dccf] bg-white">
             <table className="w-full min-w-[560px] text-left text-sm">
               <thead>
-                <tr className="border-b border-[#dadce0] bg-[#f8f9fa] text-[11px] font-medium uppercase tracking-wide text-[#5f6368]">
+                <tr className="border-b border-[#c5dccf] bg-[#f4f8f5] text-[11px] font-medium uppercase tracking-wide text-[#5c6e62]">
                   <th className="w-12 px-3 py-2">#</th>
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Customer</th>
@@ -1065,29 +1090,29 @@ export function TransactionForm({
                   <th className="w-24 px-3 py-2 text-center"> </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#e8eaed]">
+              <tbody className="divide-y divide-[#dce8df]">
                 {bills.map((b) => (
-                  <tr key={b.id} className="hover:bg-[#f8f9fa]">
-                    <td className="px-3 py-2 font-mono text-xs text-[#5f6368]">
+                  <tr key={b.id} className="hover:bg-[#f4f8f5]">
+                    <td className="px-3 py-2 font-mono text-xs text-[#5c6e62]">
                       {b.bill_number ?? "—"}
                     </td>
-                    <td className="px-3 py-2 font-mono text-xs text-[#5f6368]">
+                    <td className="px-3 py-2 font-mono text-xs text-[#5c6e62]">
                       {b.bill_date}
                     </td>
-                    <td className="max-w-[200px] truncate px-3 py-2 text-[#202124]">
+                    <td className="max-w-[200px] truncate px-3 py-2 text-[#2a382f]">
                       {b.party_name_snapshot}
                     </td>
-                    <td className="px-3 py-2 capitalize text-[#5f6368]">
+                    <td className="px-3 py-2 capitalize text-[#5c6e62]">
                       {b.bill_type}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[#202124]">
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[#2a382f]">
                       {formatINR(b.total)}
                     </td>
                     <td className="px-3 py-2 text-center">
                       <button
                         type="button"
                         aria-label={`Delete bill for ${b.party_name_snapshot} on ${b.bill_date}`}
-                        className="text-xs text-[#5f6368] hover:text-[#c5221f]"
+                        className="text-xs text-[#5c6e62] hover:text-[#c5221f]"
                         onClick={() => void onDeleteBill(b.id)}
                       >
                         Delete
@@ -1098,7 +1123,7 @@ export function TransactionForm({
               </tbody>
             </table>
             {bills.length === 0 ? (
-              <p className="px-3 py-8 text-center text-sm text-[#5f6368]">
+              <p className="px-3 py-8 text-center text-sm text-[#5c6e62]">
                 No bills yet.
               </p>
             ) : null}
@@ -1108,17 +1133,19 @@ export function TransactionForm({
         <section
           className={cn(
             "space-y-3 border-t",
-            embedded ? "border-[#e8eaed] pt-6" : "border-[#dadce0] pt-8"
+            embedded
+              ? "border-[#dce8df] px-4 pb-4 pt-6 md:px-6 md:pb-6"
+              : "border-[#c5dccf] pt-8"
           )}
         >
-          <h2 className="text-sm font-medium text-[#202124]">Purchase history</h2>
-          <p className="text-xs text-[#5f6368]">
+          <h2 className="text-sm font-medium text-[#2a382f]">Purchase history</h2>
+          <p className="text-xs text-[#5c6e62]">
             Delete a purchase to reverse stock and remove the ledger entry.
           </p>
-          <div className="overflow-x-auto rounded-sm border border-[#dadce0] bg-white">
+          <div className="overflow-x-auto rounded-sm border border-[#c5dccf] bg-white">
             <table className="w-full min-w-[560px] text-left text-sm">
               <thead>
-                <tr className="border-b border-[#dadce0] bg-[#f8f9fa] text-[11px] font-medium uppercase tracking-wide text-[#5f6368]">
+                <tr className="border-b border-[#c5dccf] bg-[#f4f8f5] text-[11px] font-medium uppercase tracking-wide text-[#5c6e62]">
                   <th className="w-12 px-3 py-2">#</th>
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Supplier</th>
@@ -1127,29 +1154,29 @@ export function TransactionForm({
                   <th className="w-24 px-3 py-2 text-center"> </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#e8eaed]">
+              <tbody className="divide-y divide-[#dce8df]">
                 {purchases.map((p) => (
-                  <tr key={p.id} className="hover:bg-[#f8f9fa]">
-                    <td className="px-3 py-2 font-mono text-xs text-[#5f6368]">
+                  <tr key={p.id} className="hover:bg-[#f4f8f5]">
+                    <td className="px-3 py-2 font-mono text-xs text-[#5c6e62]">
                       {p.purchase_number}
                     </td>
-                    <td className="px-3 py-2 font-mono text-xs text-[#5f6368]">
+                    <td className="px-3 py-2 font-mono text-xs text-[#5c6e62]">
                       {p.purchase_date}
                     </td>
-                    <td className="max-w-[200px] truncate px-3 py-2 text-[#202124]">
+                    <td className="max-w-[200px] truncate px-3 py-2 text-[#2a382f]">
                       {p.party_name_snapshot}
                     </td>
-                    <td className="px-3 py-2 capitalize text-[#5f6368]">
+                    <td className="px-3 py-2 capitalize text-[#5c6e62]">
                       {p.payment_type}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[#202124]">
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[#2a382f]">
                       {formatINR(p.total)}
                     </td>
                     <td className="px-3 py-2 text-center">
                       <button
                         type="button"
                         aria-label={`Delete purchase #${p.purchase_number} from ${p.party_name_snapshot} on ${p.purchase_date}`}
-                        className="text-xs text-[#5f6368] hover:text-[#c5221f]"
+                        className="text-xs text-[#5c6e62] hover:text-[#c5221f]"
                         onClick={() =>
                           void onDeletePurchase(
                             p.id,
@@ -1165,7 +1192,7 @@ export function TransactionForm({
               </tbody>
             </table>
             {purchases.length === 0 ? (
-              <p className="px-3 py-8 text-center text-sm text-[#5f6368]">
+              <p className="px-3 py-8 text-center text-sm text-[#5c6e62]">
                 No purchases yet.
               </p>
             ) : null}

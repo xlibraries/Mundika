@@ -2,7 +2,7 @@ import { forwardRef } from "react";
 import { cn } from "@/lib/cn";
 
 const field =
-  "w-full rounded border border-[#dadce0] bg-white px-3 py-2 text-sm text-[#202124] placeholder:text-[#80868b] outline-none transition focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]";
+  "w-full rounded border border-[#c5dccf] bg-[#faf9f5] px-3 py-2 text-sm text-[#2a382f] placeholder:text-[#6f7f74] outline-none transition focus:border-[#6b9b7a] focus:ring-1 focus:ring-[#6b9b7a]";
 
 export const Input = forwardRef<
   HTMLInputElement,

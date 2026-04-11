@@ -122,12 +122,12 @@ export function InventorySheet({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dadce0] pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#c5dccf] pb-2">
         <div>
-          <h2 className="text-sm font-medium text-[#202124]">Inventory</h2>
-          <p className="text-[11px] text-[#5f6368]">
+          <h2 className="text-sm font-medium text-[#2a382f]">Inventory</h2>
+          <p className="text-[11px] text-[#5c6e62]">
             Read-only view · <kbd className="font-mono">/</kbd> focuses filter ·
-            use Workspace → Transactions (Purchase) to add stock
+            use Inventory → Transactions (Purchase) to add stock
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -142,29 +142,29 @@ export function InventorySheet({
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-sm border border-[#dadce0] bg-white shadow-[0_1px_2px_rgba(60,64,67,0.15)]">
+      <div className="overflow-x-auto rounded-sm border border-[#c5dccf] bg-[#faf9f5] shadow-[0_1px_2px_rgba(42,56,47,0.08)]">
         <table className="w-full min-w-[820px] border-collapse text-left text-sm">
           <thead>
-            <tr className="border-b border-[#dadce0] bg-[#f8f9fa] text-[11px] font-medium text-[#5f6368]">
-              <th className="sticky top-0 z-10 w-10 border-r border-[#dadce0] px-1 py-2 text-center font-mono">
+            <tr className="border-b border-[#c5dccf] bg-[#f4f8f5] text-[11px] font-medium text-[#5c6e62]">
+              <th className="sticky top-0 z-10 w-10 border-r border-[#c5dccf] px-1 py-2 text-center font-mono">
                 {" "}
               </th>
-              <th className="sticky top-0 z-10 min-w-[180px] border-r border-[#dadce0] px-2 py-2 text-left">
+              <th className="sticky top-0 z-10 min-w-[180px] border-r border-[#c5dccf] px-2 py-2 text-left">
                 Item
               </th>
-              <th className="sticky top-0 z-10 min-w-[72px] border-r border-[#dadce0] px-2 py-2 text-left">
+              <th className="sticky top-0 z-10 min-w-[72px] border-r border-[#c5dccf] px-2 py-2 text-left">
                 Unit label
               </th>
-              <th className="sticky top-0 z-10 min-w-[88px] border-r border-[#dadce0] px-2 py-2 text-right">
+              <th className="sticky top-0 z-10 min-w-[88px] border-r border-[#c5dccf] px-2 py-2 text-right">
                 Shop
               </th>
-              <th className="sticky top-0 z-10 min-w-[88px] border-r border-[#dadce0] px-2 py-2 text-right">
+              <th className="sticky top-0 z-10 min-w-[88px] border-r border-[#c5dccf] px-2 py-2 text-right">
                 Godown
               </th>
-              <th className="sticky top-0 z-10 min-w-[88px] border-r border-[#dadce0] px-2 py-2 text-right">
+              <th className="sticky top-0 z-10 min-w-[88px] border-r border-[#c5dccf] px-2 py-2 text-right">
                 Total
               </th>
-              <th className="sticky top-0 z-10 min-w-[104px] border-r border-[#dadce0] px-2 py-2 text-right">
+              <th className="sticky top-0 z-10 min-w-[104px] border-r border-[#c5dccf] px-2 py-2 text-right">
                 Rate (INR)
               </th>
               <th className="sticky top-0 z-10 w-24 px-2 py-2 text-center">
@@ -184,27 +184,27 @@ export function InventorySheet({
               return (
                 <Fragment key={it.id}>
                   <tr
-                    className="border-b border-[#e8eaed] hover:bg-[#f8f9fa]"
+                    className="border-b border-[#dce8df] hover:bg-[#f4f8f5]"
                   >
-                    <td className="border-r border-[#dadce0] bg-[#f8f9fa] px-1 py-0 text-center font-mono text-xs text-[#5f6368]">
+                    <td className="border-r border-[#c5dccf] bg-[#f4f8f5] px-1 py-0 text-center font-mono text-xs text-[#5c6e62]">
                       {rowNum}
                     </td>
-                    <td className="border-r border-[#e8eaed] px-2 py-1.5 text-[#202124]">
+                    <td className="border-r border-[#dce8df] px-2 py-1.5 text-[#2a382f]">
                       {it.name}
                     </td>
-                    <td className="border-r border-[#e8eaed] px-2 py-1.5 text-[#5f6368]">
+                    <td className="border-r border-[#dce8df] px-2 py-1.5 text-[#5c6e62]">
                       {it.unit ?? "—"}
                     </td>
-                    <td className="border-r border-[#e8eaed] px-2 py-1.5 text-right font-mono tabular-nums text-[#202124]">
+                    <td className="border-r border-[#dce8df] px-2 py-1.5 text-right font-mono tabular-nums text-[#2a382f]">
                       {shop ? shopQty : "—"}
                     </td>
-                    <td className="border-r border-[#e8eaed] px-2 py-1.5 text-right font-mono tabular-nums text-[#202124]">
+                    <td className="border-r border-[#dce8df] px-2 py-1.5 text-right font-mono tabular-nums text-[#2a382f]">
                       {godown ? godQty : "—"}
                     </td>
-                    <td className="border-r border-[#e8eaed] px-2 py-1.5 text-right font-mono tabular-nums text-[#202124]">
+                    <td className="border-r border-[#dce8df] px-2 py-1.5 text-right font-mono tabular-nums text-[#2a382f]">
                       {shop || godown ? totalQty : "—"}
                     </td>
-                    <td className="border-r border-[#e8eaed] px-2 py-1.5 text-right font-mono tabular-nums text-[#5f6368]">
+                    <td className="border-r border-[#dce8df] px-2 py-1.5 text-right font-mono tabular-nums text-[#5c6e62]">
                       {it.rate_default != null ? it.rate_default : "—"}
                     </td>
                     <td className="px-1 py-1 text-center">
@@ -214,8 +214,8 @@ export function InventorySheet({
                         aria-expanded={isTransferOpen}
                         className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
                           isTransferOpen
-                            ? "bg-[#e8f0fe] text-[#1a73e8]"
-                            : "text-[#5f6368] hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
+                            ? "bg-[#dff0e5] text-[#6b9b7a]"
+                            : "text-[#5c6e62] hover:bg-[#dff0e5] hover:text-[#6b9b7a]"
                         }`}
                         onClick={() => openTransfer(it)}
                       >
@@ -225,13 +225,13 @@ export function InventorySheet({
                   </tr>
                   {isTransferOpen && (
                     <tr
-                      className="border-b border-[#dadce0] bg-[#f0f4ff]"
+                      className="border-b border-[#c5dccf] bg-[#eaf4ee]"
                     >
                       <td />
                       <td colSpan={7} className="px-3 py-3">
                         <div className="flex flex-wrap items-end gap-3">
                           <div className="space-y-1">
-                            <span className="text-[11px] text-[#5f6368]">From</span>
+                            <span className="text-[11px] text-[#5c6e62]">From</span>
                             <select
                               value={transferFrom}
                               onChange={(e) => {
@@ -240,14 +240,14 @@ export function InventorySheet({
                                 setTransferTo(from === "shop" ? "godown" : "shop");
                                 setTransferErr(null);
                               }}
-                              className="block h-8 rounded border border-[#dadce0] bg-white px-2 text-xs text-[#202124] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                              className="block h-8 rounded border border-[#c5dccf] bg-white px-2 text-xs text-[#2a382f] focus:outline-none focus:ring-1 focus:ring-[#6b9b7a]"
                             >
                               <option value="shop">Shop</option>
                               <option value="godown">Godown</option>
                             </select>
                           </div>
                           <div className="space-y-1">
-                            <span className="text-[11px] text-[#5f6368]">To</span>
+                            <span className="text-[11px] text-[#5c6e62]">To</span>
                             <select
                               value={transferTo}
                               onChange={(e) => {
@@ -256,14 +256,14 @@ export function InventorySheet({
                                 setTransferFrom(to === "shop" ? "godown" : "shop");
                                 setTransferErr(null);
                               }}
-                              className="block h-8 rounded border border-[#dadce0] bg-white px-2 text-xs text-[#202124] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                              className="block h-8 rounded border border-[#c5dccf] bg-white px-2 text-xs text-[#2a382f] focus:outline-none focus:ring-1 focus:ring-[#6b9b7a]"
                             >
                               <option value="godown">Godown</option>
                               <option value="shop">Shop</option>
                             </select>
                           </div>
                           <div className="space-y-1">
-                            <span className="text-[11px] text-[#5f6368]">
+                            <span className="text-[11px] text-[#5c6e62]">
                               Qty{" "}
                               <span className="text-[#80868b]">
                                 (max{" "}
@@ -287,7 +287,7 @@ export function InventorySheet({
                             />
                           </div>
                           <div className="space-y-1">
-                            <span className="text-[11px] text-[#5f6368]">Date</span>
+                            <span className="text-[11px] text-[#5c6e62]">Date</span>
                             <Input
                               type="date"
                               value={transferDate}
@@ -296,7 +296,7 @@ export function InventorySheet({
                             />
                           </div>
                           <div className="min-w-[140px] flex-1 space-y-1">
-                            <span className="text-[11px] text-[#5f6368]">
+                            <span className="text-[11px] text-[#5c6e62]">
                               Note (optional)
                             </span>
                             <Input
@@ -343,11 +343,11 @@ export function InventorySheet({
           </tbody>
         </table>
         {items.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-[#5f6368]">
-            No items yet. Add stock via Workspace → Transactions (Purchase).
+          <p className="px-4 py-6 text-center text-sm text-[#5c6e62]">
+            No items yet. Add stock via Inventory → Transactions (Purchase).
           </p>
         ) : filteredItems.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-[#5f6368]">
+          <p className="px-4 py-6 text-center text-sm text-[#5c6e62]">
             No items match this filter.
           </p>
         ) : null}

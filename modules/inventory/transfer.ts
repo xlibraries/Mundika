@@ -39,7 +39,7 @@ export async function createStockTransfer(
   const toRow = rows.find((r) => r.location === input.to_location);
   if (!toRow) {
     throw new Error(
-      `No inventory row for destination (${input.to_location}). Add stock via Workspace → Transactions (Purchase) first.`
+      `No inventory row for destination (${input.to_location}). Add stock via Inventory → Transactions (Purchase) first.`
     );
   }
 
