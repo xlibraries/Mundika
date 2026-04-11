@@ -11,12 +11,12 @@ export async function deleteLedgerEntry(
   }
   if (row.ref_bill_id) {
     throw new Error(
-      "This entry is linked to a bill. Delete the bill from Workspace → Transactions (Billing) instead."
+      "This entry is linked to a bill. Delete the bill from Inventory → Transactions (Billing) instead."
     );
   }
   if (row.ref_purchase_id) {
     throw new Error(
-      "This entry is linked to a purchase. Delete it from Workspace → Transactions (Purchase) instead."
+      "This entry is linked to a purchase. Delete it from Inventory → Transactions (Purchase) instead."
     );
   }
 
