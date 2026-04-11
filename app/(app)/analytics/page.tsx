@@ -61,7 +61,7 @@ function TabBar({
           aria-selected={activeTab === t.id}
           onClick={() => onTabChange(t.id)}
           onKeyDown={(e) => handleKeyDown(e, idx)}
-          className={`rounded-xl px-4 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gs-primary)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--gs-surface)] ${
+          className={`rounded-xl px-4 py-2 text-sm font-medium transition duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gs-primary)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--gs-surface)] ${
             activeTab === t.id
               ? "border border-[var(--gs-grid)] bg-[var(--gs-surface-plain)] text-[var(--gs-text)] shadow-sm"
               : "border border-transparent text-[var(--gs-text-secondary)] hover:border-[var(--gs-border)] hover:bg-[var(--gs-surface-hover)] hover:text-[var(--gs-text)]"
@@ -76,9 +76,9 @@ function TabBar({
 
 function AnalyticsSkeleton() {
   return (
-    <div className="space-y-4">
-      <div className="h-20 animate-pulse rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-surface)]" />
-      <div className="h-72 animate-pulse rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-surface)]" />
+    <div className="space-y-5">
+      <div className="h-28 animate-pulse rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-surface)]" />
+      <div className="h-80 animate-pulse rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-surface)]" />
     </div>
   );
 }
@@ -129,31 +129,31 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="flex min-h-0 flex-col gap-4">
-      <section className="flex min-h-[var(--shell-ribbon-min)] shrink-0 flex-col rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-surface)] px-4 py-5 md:px-6 md:py-6">
-        <div className="flex min-h-0 flex-1 flex-col justify-center gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex min-h-0 flex-col gap-5">
+      <section className="flex shrink-0 flex-col rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-5 py-5 shadow-[0_14px_34px_-26px_rgba(58,42,31,0.3)] md:px-7">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--gs-primary)]">
-              MUNDIKA ANALYTICS
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--gs-primary)]">
+              MUNDIKA ANALYTICS DESK
             </p>
-            <h1 className="text-base font-semibold text-[var(--gs-text)] md:text-lg">
-              Business analytics and ledgers
+            <h1 className="mt-2 text-xl font-semibold text-[var(--gs-text)] md:text-2xl">
+              Stock, ledger, and performance insights
             </h1>
-            <p className="mt-1 max-w-xl text-sm text-[var(--gs-text-secondary)]">
-              Overview, stock grid, and ledger reports — snapshot{" "}
-              <span className="font-mono text-[var(--gs-primary)]">{today}</span>.
+            <p className="mt-1 max-w-2xl text-sm text-[var(--gs-text-secondary)]">
+              Use tabs to monitor today&apos;s performance and inspect operational
+              details for <span className="font-mono text-[var(--gs-primary)]">{today}</span>.
             </p>
           </div>
           <Badge
             variant="muted"
-            className="!shrink-0 !border-[var(--gs-border)] !text-[var(--gs-text-secondary)] !normal-case !tracking-normal"
+            className="!shrink-0 !border-[var(--gs-border)] !bg-[var(--gs-surface)] !text-[var(--gs-text-secondary)] !normal-case !tracking-normal"
           >
-            Today
+            Live workspace
           </Badge>
         </div>
       </section>
 
-      <section className="flex min-h-[min(70vh,720px)] flex-1 flex-col overflow-hidden rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-panel)] shadow-[0_16px_40px_-24px_rgba(58,42,31,0.18)]">
+      <section className="flex min-h-[min(70vh,740px)] flex-1 flex-col overflow-hidden rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-panel)] shadow-[0_18px_42px_-28px_rgba(58,42,31,0.34)]">
         <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
 
         <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--gs-surface)] p-3 md:p-4">
@@ -163,7 +163,7 @@ export default function AnalyticsPage() {
                 {!stats ? (
                   <div className="h-24 animate-pulse rounded-2xl border border-[var(--gs-grid)] bg-[var(--gs-surface)]" />
                 ) : (
-                  <div className="grid gap-px overflow-hidden rounded-2xl border border-[var(--gs-grid)] bg-[var(--gs-grid)] sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="grid overflow-hidden rounded-2xl border border-[var(--gs-grid)] bg-[var(--gs-surface)] sm:grid-cols-2 lg:grid-cols-4">
                     <Stat label="Sales" value={formatINR(stats.salesTotal)} />
                     <Stat label="Cash" value={formatINR(stats.cashTotal)} />
                     <Stat label="Credit" value={formatINR(stats.creditTotal)} />
@@ -174,7 +174,7 @@ export default function AnalyticsPage() {
                   </div>
                 )}
                 {stats && stats.lowStock.length > 0 ? (
-                  <p className="rounded-xl border border-amber-200/80 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  <p className="rounded-xl border border-[var(--gs-warning)]/40 bg-[var(--gs-warning-soft)] px-3 py-2 text-sm text-[var(--gs-warning)]">
                     Low stock:{" "}
                     {stats.lowStock
                       .map((s) => `${s.name} (${s.qty})`)
@@ -219,11 +219,11 @@ export default function AnalyticsPage() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[var(--gs-surface-plain)] px-4 py-3.5 text-left">
+    <div className="border-b border-[var(--gs-grid)] px-4 py-3.5 text-left transition-colors duration-200 ease-out hover:bg-[var(--gs-surface-hover)] last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
       <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
         {label}
       </p>
-      <p className="mt-1 font-mono text-lg tabular-nums text-[var(--gs-text)]">
+      <p className="mt-1 font-mono text-xl tabular-nums text-[var(--gs-text)] md:text-2xl">
         {value}
       </p>
     </div>
