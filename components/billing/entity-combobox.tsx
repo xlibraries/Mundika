@@ -23,6 +23,8 @@ export type EntityComboboxProps = {
   onAdvance?: () => void;
   /** Called with the typed name when user wants to create a new option inline. */
   onCreateOption?: (label: string) => void;
+  /** Word shown in the "Add … as new __" prompt. Defaults to "contact". */
+  createLabel?: string;
   placeholder?: string;
   disabled?: boolean;
   invalid?: boolean;
@@ -59,6 +61,7 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
       onValueChange,
       onAdvance,
       onCreateOption,
+      createLabel = "contact",
       placeholder = "Search…",
       disabled,
       invalid,
@@ -245,7 +248,7 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
               setQuery("");
             }}
           >
-            + Add &ldquo;{query.trim()}&rdquo; as new contact
+            + Add &ldquo;{query.trim()}&rdquo; as new {createLabel}
           </div>
         ) : open && matches.length === 0 && query.trim() ? (
           <div aria-live="polite" className="absolute z-50 mt-1 w-full rounded border border-[#c5dccf] bg-[#faf9f5] px-3 py-2 text-sm text-[#5c6e62] shadow-md">

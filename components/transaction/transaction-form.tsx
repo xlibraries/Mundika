@@ -14,6 +14,7 @@ import { deleteBill } from "@/modules/billing/delete";
 import { createPurchase } from "@/modules/purchases/actions";
 import { deletePurchase } from "@/modules/purchases/delete";
 import { createParty } from "@/modules/parties/actions";
+import { createItem } from "@/modules/items/actions";
 import type {
   BillRow,
   InventoryRow,
@@ -303,6 +304,29 @@ export function TransactionForm({
           ? "Could not create customer"
           : "Could not create supplier"
       );
+    }
+  }
+
+  // ---- item create ---------------------------------------------------------
+  async function handleCreateItem(lineIndex: number, name: string) {
+    const trimmed = name.trim();
+    const existing = items.find(
+      (it) => it.name.trim().toLowerCase() === trimmed.toLowerCase()
+    );
+    if (existing) {
+      onItemPick(lineIndex, existing.id);
+      requestAnimationFrame(() => qtyRefs.current[lineIndex]?.focus());
+      return;
+    }
+    try {
+      const created = await createItem(userId, { name: trimmed });
+      setItems((prev) =>
+        [...prev, created].sort((a, b) => a.name.localeCompare(b.name))
+      );
+      onItemPick(lineIndex, created.id);
+      requestAnimationFrame(() => qtyRefs.current[lineIndex]?.focus());
+    } catch {
+      setErr("Could not create item");
     }
   }
 
@@ -918,6 +942,8 @@ export function TransactionForm({
                             placeholder="Search item…"
                             onValueChange={(id) => onItemPick(i, id)}
                             onAdvance={() => qtyRefs.current[i]?.focus()}
+                            onCreateOption={(label) => void handleCreateItem(i, label)}
+                            createLabel="item"
                           />
                         </td>
                         <td className="p-1">

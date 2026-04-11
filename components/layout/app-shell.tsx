@@ -9,17 +9,13 @@ import { icons } from "@/components/layout/nav-icons";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Inventory", icon: icons.dashboard },
+  { href: "/billing", label: "Billing", icon: icons.billing },
+  { href: "/purchases", label: "Purchases", icon: icons.purchases },
   { href: "/analytics", label: "Analytics", icon: icons.analytics },
 ] as const;
 
 function navItemActive(href: string, pathname: string) {
-  if (href === "/dashboard") {
-    return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
-  }
-  if (href === "/analytics") {
-    return pathname === "/analytics" || pathname.startsWith("/analytics/");
-  }
-  return pathname === href;
+  return pathname === href || pathname.startsWith(href + "/");
 }
 
 function NavLinks({
