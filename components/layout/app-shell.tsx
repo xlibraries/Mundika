@@ -9,8 +9,6 @@ import { icons } from "@/components/layout/nav-icons";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Inventory", icon: icons.dashboard },
-  { href: "/billing", label: "Billing", icon: icons.billing },
-  { href: "/purchases", label: "Purchases", icon: icons.purchases },
   { href: "/analytics", label: "Analytics", icon: icons.analytics },
 ] as const;
 
