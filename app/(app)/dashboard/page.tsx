@@ -88,11 +88,14 @@ function InventoryDashboardInner() {
       <section className="shrink-0 rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-surface)] px-4 py-5 shadow-sm md:px-6 md:py-6">
         <div className="flex min-h-[var(--shell-ribbon-min)] flex-col gap-4 border-b border-[var(--gs-border)] pb-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-h-0 flex-1 flex-col justify-center space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--gs-primary)]">
+              MUNDIKA OPERATIONS
+            </p>
             <h1 className="text-base font-semibold tracking-tight text-[var(--gs-text)] md:text-lg">
-              Today&apos;s overview
+              Daily business overview
             </h1>
             <p className="max-w-2xl text-sm leading-relaxed text-[var(--gs-text-secondary)]">
-              Sales today, cash vs credit split, and purchase spend —{" "}
+              Stock, billing, cash-credit split, and purchase spend in one place —{" "}
               <span className="font-mono text-[var(--gs-primary)]">{today}</span>. Sync
               when online.
             </p>

@@ -66,12 +66,15 @@ export function LoginForm() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] text-lg font-bold text-[var(--gs-primary)] shadow-sm sm:mx-0">
             M
           </div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--gs-primary)]">
+            MUNDIKA
+          </p>
           <h1 className="text-2xl font-medium tracking-tight text-[var(--gs-text)]">
-            Sign in or create your account
+            Sign in / Sign up
           </h1>
           <p className="text-sm leading-relaxed text-[var(--gs-text-secondary)]">
-            Google works as one-tap sign-up too. Your first Google login creates
-            the account automatically.
+            Digital bahi-khata for daily business operations. Google login can
+            create a new account automatically on first use.
           </p>
         </div>
 

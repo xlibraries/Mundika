@@ -113,7 +113,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--gs-grid)] bg-[var(--gs-surface-plain)] text-xs font-bold text-[var(--gs-primary)]">
             M
           </span>
-          <span className="text-sm font-medium text-[var(--gs-text)]">Mundika</span>
+          <div className="leading-none">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gs-primary)]">
+              MUNDIKA
+            </p>
+            <p className="mt-1 text-xs font-medium text-[var(--gs-text)]">Dashboard</p>
+          </div>
         </div>
         <span className="w-10" aria-hidden />
       </header>
@@ -152,9 +157,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex flex-1 flex-col overflow-y-auto p-3">
               <div className="mb-4 flex min-h-[var(--shell-ribbon-min)] items-center justify-center rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-3">
-                <p className="text-center text-sm font-semibold tracking-tight text-[var(--gs-text)]">
-                  Mundika
-                </p>
+                <div className="space-y-1 text-center">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--gs-primary)]">
+                    MUNDIKA
+                  </p>
+                  <p className="text-sm font-semibold tracking-tight text-[var(--gs-text)]">
+                    Vyapar Dashboard
+                  </p>
+                </div>
               </div>
               <NavLinks onNavigate={() => setMobileOpen(false)} />
             </div>
@@ -177,8 +187,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className="mb-4 flex min-h-[var(--shell-ribbon-min)] shrink-0 flex-col items-center justify-center rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-4"
           aria-label="Mundika"
         >
-          <p className="text-center text-sm font-semibold tracking-tight text-[var(--gs-text)]">
-            Mundika
+          <p className="text-center text-xs font-semibold uppercase tracking-[0.16em] text-[var(--gs-primary)]">
+            MUNDIKA
+          </p>
+          <p className="mt-1 text-center text-sm font-semibold tracking-tight text-[var(--gs-text)]">
+            Vyapar Dashboard
           </p>
         </div>
         <div className="flex min-h-0 flex-1 flex-col">

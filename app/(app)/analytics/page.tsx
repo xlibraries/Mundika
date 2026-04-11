@@ -133,11 +133,14 @@ export default function AnalyticsPage() {
       <section className="flex min-h-[var(--shell-ribbon-min)] shrink-0 flex-col rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-surface)] px-4 py-5 md:px-6 md:py-6">
         <div className="flex min-h-0 flex-1 flex-col justify-center gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--gs-primary)]">
+              MUNDIKA ANALYTICS
+            </p>
             <h1 className="text-base font-semibold text-[var(--gs-text)] md:text-lg">
-              Analytics
+              Business analytics and ledgers
             </h1>
             <p className="mt-1 max-w-xl text-sm text-[var(--gs-text-secondary)]">
-              Overview, stock grid, and ledger — snapshot{" "}
+              Overview, stock grid, and ledger reports — snapshot{" "}
               <span className="font-mono text-[var(--gs-primary)]">{today}</span>.
             </p>
           </div>
