@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -875,8 +874,8 @@ export function TransactionForm({
           </label>
         ) : null}
 
-        {/* Line items table */}
-        <div className="space-y-2">
+        {/* Item composer + line review */}
+        <div className="space-y-3 rounded-xl border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] p-3 md:p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
               Lines
@@ -887,178 +886,327 @@ export function TransactionForm({
             </p>
           </div>
 
-          <div className="overflow-x-auto rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)]">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
-                  <th className="px-2 py-1.5 text-left" style={{ width: "38%" }}>
-                    Item
-                  </th>
-                  <th className="px-2 py-1.5 text-right w-20">Qty</th>
-                  <th className="px-2 py-1.5 text-right w-24">
-                    {mode === "billing" ? "Rate (₹)" : "Cost (₹)"}
-                  </th>
-                  <th className="px-2 py-1.5 text-right w-24">Total</th>
-                  {mode === "purchase" ? (
-                    <th className="px-2 py-1.5 text-center w-24">Destination</th>
-                  ) : null}
-                  <th className="w-8" />
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((line, i) => {
-                  const rowIssue = lineIssues[i];
-                  const rowBad = Boolean(rowIssue?.qty || rowIssue?.rate);
-                  const rowTotal = liveTotals.rowTotals[i];
-                  const stockWarn = liveTotals.stockWarnings[i] ?? false;
+          {lines.length > 0 ? (
+            (() => {
+              const composerIndex = lines.length - 1;
+              const composerLine = lines[composerIndex]!;
+              const composerIssue = lineIssues[composerIndex];
+              const composerTotal = liveTotals.rowTotals[composerIndex];
+              const composerStock = composerLine.item_id
+                ? stockByItemId.get(composerLine.item_id) ?? 0
+                : null;
+              const composerStockWarn =
+                liveTotals.stockWarnings[composerIndex] ?? false;
+              const reviewIndexes = lines
+                .map((line, idx) => ({ line, idx }))
+                .filter(
+                  ({ line, idx }) =>
+                    idx !== composerIndex &&
+                    (line.item_id || line.qty !== "1" || line.rate !== "")
+                )
+                .map(({ idx }) => idx);
 
-                  return (
-                    <Fragment key={i}>
-                      {/* stock warning banner row */}
-                      {stockWarn ? (
-                        <tr className="bg-[var(--gs-danger-soft)]">
-                          <td
-                            colSpan={mode === "purchase" ? 6 : 5}
-                            className="px-2 py-1"
-                          >
-                            <p className="text-[11px] font-medium text-[var(--gs-danger)]">
-                              Insufficient stock — qty exceeds available (
-                              {stockByItemId.get(line.item_id) ?? 0} in stock)
-                            </p>
-                          </td>
-                        </tr>
+              return (
+                <div className="space-y-3">
+                  <div className="space-y-2 rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface)] p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
+                        Item composer
+                      </p>
+                      {composerStock != null ? (
+                        <p
+                          className={cn(
+                            "text-xs",
+                            composerStockWarn
+                              ? "text-[var(--gs-danger)]"
+                              : "text-[var(--gs-text-secondary)]"
+                          )}
+                        >
+                          Available stock:{" "}
+                          <span className="font-mono">{composerStock}</span>
+                        </p>
                       ) : null}
-                      {/* main data row */}
-                      <tr
-                        className={`border-b border-[var(--gs-grid)] ${
-                          rowBad
-                            ? "bg-[var(--gs-warning-soft)]"
-                            : stockWarn
-                            ? "bg-[var(--gs-danger-soft)]"
-                            : ""
-                        }`}
+                    </div>
+                    {composerStockWarn ? (
+                      <p className="rounded border border-[var(--gs-danger)]/30 bg-[var(--gs-danger-soft)] px-2 py-1 text-xs text-[var(--gs-danger)]">
+                        Quantity exceeds available stock.
+                      </p>
+                    ) : null}
+                    <div
+                      className={cn(
+                        "grid gap-2",
+                        mode === "purchase"
+                          ? "md:grid-cols-[2.2fr_0.8fr_1fr_1fr_1fr_auto]"
+                          : "md:grid-cols-[2.6fr_0.9fr_1fr_1fr_auto]"
+                      )}
+                    >
+                      <EntityCombobox
+                        ref={(el) => {
+                          itemRefs.current[composerIndex] = el;
+                        }}
+                        aria-label="Item composer item"
+                        valueId={composerLine.item_id}
+                        options={itemOptions}
+                        priorityIds={recentItemIds}
+                        placeholder="Search or create item…"
+                        onValueChange={(id) => onItemPick(composerIndex, id)}
+                        onAdvance={() => qtyRefs.current[composerIndex]?.focus()}
+                        onCreateOption={(label) =>
+                          void handleCreateItem(composerIndex, label)
+                        }
+                        createLabel="item"
+                      />
+                      <Input
+                        ref={(el) => {
+                          qtyRefs.current[composerIndex] = el;
+                        }}
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="Qty"
+                        value={composerLine.qty}
+                        aria-invalid={composerIssue?.qty || undefined}
+                        onChange={(e) => {
+                          updateLine(composerIndex, { qty: e.target.value });
+                          clearLineIssue(composerIndex, "qty");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter") return;
+                          e.preventDefault();
+                          rateRefs.current[composerIndex]?.focus();
+                        }}
+                        className={cn(
+                          "font-mono tabular-nums text-right",
+                          composerIssue?.qty && "border-[var(--gs-warning)]"
+                        )}
+                      />
+                      <Input
+                        ref={(el) => {
+                          rateRefs.current[composerIndex] = el;
+                        }}
+                        type="text"
+                        inputMode="decimal"
+                        placeholder={mode === "billing" ? "Rate" : "Cost"}
+                        value={composerLine.rate}
+                        aria-invalid={composerIssue?.rate || undefined}
+                        onChange={(e) => {
+                          updateLine(composerIndex, { rate: e.target.value });
+                          clearLineIssue(composerIndex, "rate");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter") return;
+                          e.preventDefault();
+                          onRateEnter(composerIndex);
+                        }}
+                        className={cn(
+                          "font-mono tabular-nums text-right",
+                          composerIssue?.rate && "border-[var(--gs-warning)]"
+                        )}
+                      />
+                      <div className="rounded border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-2 text-right font-mono text-sm text-[var(--gs-text)]">
+                        {composerTotal != null ? formatINR(composerTotal) : "—"}
+                      </div>
+                      {mode === "purchase" ? (
+                        <select
+                          ref={(el) => {
+                            destRefs.current[composerIndex] = el;
+                          }}
+                          value={composerLine.destination}
+                          onChange={(e) =>
+                            updateLine(composerIndex, {
+                              destination: e.target.value as "shop" | "godown",
+                            })
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key !== "Enter") return;
+                            e.preventDefault();
+                            onDestEnter(composerIndex);
+                          }}
+                          aria-label="Composer destination"
+                          className="w-full rounded border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-2 py-2 text-sm text-[var(--gs-text)] focus:border-[var(--gs-primary)] focus:outline-none"
+                        >
+                          <option value="godown">Godown</option>
+                          <option value="shop">Shop</option>
+                        </select>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="h-full min-h-[2.5rem]"
+                        onClick={() => {
+                          if (!composerLine.item_id) {
+                            itemRefs.current[composerIndex]?.focus();
+                            return;
+                          }
+                          onRateEnter(composerIndex);
+                        }}
                       >
-                        <td className="p-1">
-                          <EntityCombobox
-                            ref={(el) => {
-                              itemRefs.current[i] = el;
-                            }}
-                            aria-label={`Line ${i + 1} item`}
-                            valueId={line.item_id}
-                            options={itemOptions}
-                            priorityIds={recentItemIds}
-                            placeholder="Search item…"
-                            onValueChange={(id) => onItemPick(i, id)}
-                            onAdvance={() => qtyRefs.current[i]?.focus()}
-                            onCreateOption={(label) => void handleCreateItem(i, label)}
-                            createLabel="item"
-                          />
-                        </td>
-                        <td className="p-1">
-                          <Input
-                            ref={(el) => {
-                              qtyRefs.current[i] = el;
-                            }}
-                            type="text"
-                            inputMode="decimal"
-                            placeholder="0"
-                            value={line.qty}
-                            aria-invalid={rowIssue?.qty || undefined}
-                            onChange={(e) => {
-                              updateLine(i, { qty: e.target.value });
-                              clearLineIssue(i, "qty");
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key !== "Enter") return;
-                              e.preventDefault();
-                              rateRefs.current[i]?.focus();
-                            }}
-                            className={`w-full font-mono tabular-nums text-right ${
-                              rowIssue?.qty ? "border-[var(--gs-warning)]" : ""
-                            }`}
-                          />
-                        </td>
-                        <td className="p-1">
-                          <Input
-                            ref={(el) => {
-                              rateRefs.current[i] = el;
-                            }}
-                            type="text"
-                            inputMode="decimal"
-                            placeholder="0"
-                            value={line.rate}
-                            aria-invalid={rowIssue?.rate || undefined}
-                            onChange={(e) => {
-                              updateLine(i, { rate: e.target.value });
-                              clearLineIssue(i, "rate");
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key !== "Enter") return;
-                              e.preventDefault();
-                              onRateEnter(i);
-                            }}
-                            className={`w-full font-mono tabular-nums text-right ${
-                              rowIssue?.rate ? "border-[var(--gs-warning)]" : ""
-                            }`}
-                          />
-                        </td>
-                        <td className="px-2 py-1 text-right font-mono tabular-nums text-[var(--gs-text)] whitespace-nowrap">
-                          {rowTotal != null ? formatINR(rowTotal) : "—"}
-                        </td>
-                        {mode === "purchase" ? (
-                          <td className="p-1">
-                            <select
-                              ref={(el) => {
-                                destRefs.current[i] = el;
-                              }}
-                              value={line.destination}
-                              onChange={(e) =>
-                                updateLine(i, {
-                                  destination: e.target.value as "shop" | "godown",
-                                })
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key !== "Enter") return;
-                                e.preventDefault();
-                                onDestEnter(i);
-                              }}
-                              aria-label={`Line ${i + 1} destination`}
-                              className="w-full rounded border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-2 py-2 text-sm text-[var(--gs-text)] focus:border-[var(--gs-primary)] focus:outline-none"
-                            >
-                              <option value="godown">Godown</option>
-                              <option value="shop">Shop</option>
-                            </select>
-                          </td>
-                        ) : null}
-                        <td className="p-1 text-center">
-                          <button
-                            type="button"
-                            aria-label={`Remove line ${i + 1}`}
-                            disabled={lines.length <= 1}
-                            onClick={() =>
-                              setLines((prev) => prev.filter((_, j) => j !== i))
-                            }
-                            className="rounded px-1.5 py-1 text-sm text-[var(--gs-text-secondary)] transition hover:bg-[var(--gs-surface-hover)] hover:text-[var(--gs-danger)] disabled:cursor-not-allowed disabled:opacity-30"
-                          >
-                            ×
-                          </button>
-                        </td>
-                      </tr>
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        Add
+                      </Button>
+                    </div>
+                  </div>
 
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setLines((prev) => [...prev, emptyLine()])}
-          >
-            + Add line
-          </Button>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
+                      Line review
+                    </p>
+                    {reviewIndexes.length === 0 ? (
+                      <p className="rounded border border-dashed border-[var(--gs-border)] px-3 py-2 text-sm text-[var(--gs-text-secondary)]">
+                        Added lines will appear here for quick review and edits.
+                      </p>
+                    ) : (
+                      reviewIndexes.map((i) => {
+                        const line = lines[i]!;
+                        const rowIssue = lineIssues[i];
+                        const rowTotal = liveTotals.rowTotals[i];
+                        const stockWarn = liveTotals.stockWarnings[i] ?? false;
+                        const stock = line.item_id
+                          ? stockByItemId.get(line.item_id) ?? 0
+                          : null;
+
+                        return (
+                          <div
+                            key={i}
+                            className={cn(
+                              "space-y-2 rounded-lg border p-3 transition-colors",
+                              rowIssue?.qty || rowIssue?.rate
+                                ? "border-[var(--gs-warning)]/45 bg-[var(--gs-warning-soft)]"
+                                : stockWarn
+                                ? "border-[var(--gs-danger)]/40 bg-[var(--gs-danger-soft)]"
+                                : "border-[var(--gs-border)] bg-[var(--gs-surface)]"
+                            )}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-xs text-[var(--gs-text-secondary)]">
+                                Line {i + 1}
+                                {stock != null ? (
+                                  <>
+                                    {" "}
+                                    · Available:{" "}
+                                    <span className="font-mono">{stock}</span>
+                                  </>
+                                ) : null}
+                              </p>
+                              <button
+                                type="button"
+                                aria-label={`Remove line ${i + 1}`}
+                                onClick={() =>
+                                  setLines((prev) => prev.filter((_, j) => j !== i))
+                                }
+                                className="rounded px-2 py-1 text-xs text-[var(--gs-text-secondary)] transition hover:bg-[var(--gs-surface-hover)] hover:text-[var(--gs-danger)]"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                            {stockWarn ? (
+                              <p className="text-xs text-[var(--gs-danger)]">
+                                Quantity exceeds available stock.
+                              </p>
+                            ) : null}
+                            <div
+                              className={cn(
+                                "grid gap-2",
+                                mode === "purchase"
+                                  ? "md:grid-cols-[2.2fr_0.8fr_1fr_1fr_1fr]"
+                                  : "md:grid-cols-[2.6fr_0.9fr_1fr_1fr]"
+                              )}
+                            >
+                              <EntityCombobox
+                                ref={(el) => {
+                                  itemRefs.current[i] = el;
+                                }}
+                                aria-label={`Line ${i + 1} item`}
+                                valueId={line.item_id}
+                                options={itemOptions}
+                                priorityIds={recentItemIds}
+                                placeholder="Search item…"
+                                onValueChange={(id) => onItemPick(i, id)}
+                                onAdvance={() => qtyRefs.current[i]?.focus()}
+                                onCreateOption={(label) => void handleCreateItem(i, label)}
+                                createLabel="item"
+                              />
+                              <Input
+                                ref={(el) => {
+                                  qtyRefs.current[i] = el;
+                                }}
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="Qty"
+                                value={line.qty}
+                                aria-invalid={rowIssue?.qty || undefined}
+                                onChange={(e) => {
+                                  updateLine(i, { qty: e.target.value });
+                                  clearLineIssue(i, "qty");
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key !== "Enter") return;
+                                  e.preventDefault();
+                                  rateRefs.current[i]?.focus();
+                                }}
+                                className={cn(
+                                  "font-mono tabular-nums text-right",
+                                  rowIssue?.qty && "border-[var(--gs-warning)]"
+                                )}
+                              />
+                              <Input
+                                ref={(el) => {
+                                  rateRefs.current[i] = el;
+                                }}
+                                type="text"
+                                inputMode="decimal"
+                                placeholder={mode === "billing" ? "Rate" : "Cost"}
+                                value={line.rate}
+                                aria-invalid={rowIssue?.rate || undefined}
+                                onChange={(e) => {
+                                  updateLine(i, { rate: e.target.value });
+                                  clearLineIssue(i, "rate");
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key !== "Enter") return;
+                                  e.preventDefault();
+                                  onRateEnter(i);
+                                }}
+                                className={cn(
+                                  "font-mono tabular-nums text-right",
+                                  rowIssue?.rate && "border-[var(--gs-warning)]"
+                                )}
+                              />
+                              <div className="rounded border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-2 text-right font-mono text-sm text-[var(--gs-text)]">
+                                {rowTotal != null ? formatINR(rowTotal) : "—"}
+                              </div>
+                              {mode === "purchase" ? (
+                                <select
+                                  ref={(el) => {
+                                    destRefs.current[i] = el;
+                                  }}
+                                  value={line.destination}
+                                  onChange={(e) =>
+                                    updateLine(i, {
+                                      destination: e.target.value as "shop" | "godown",
+                                    })
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key !== "Enter") return;
+                                    e.preventDefault();
+                                    onDestEnter(i);
+                                  }}
+                                  aria-label={`Line ${i + 1} destination`}
+                                  className="w-full rounded border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-2 py-2 text-sm text-[var(--gs-text)] focus:border-[var(--gs-primary)] focus:outline-none"
+                                >
+                                  <option value="godown">Godown</option>
+                                  <option value="shop">Shop</option>
+                                </select>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              );
+            })()
+          ) : null}
         </div>
 
         {/* Messages */}
