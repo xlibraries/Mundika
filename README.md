@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mundika
 
-## Getting Started
+Local-first inventory, billing, purchases, and ledger workflow built with Next.js
+and Supabase auth/sync.
 
-First, run the development server:
+## Getting started
+
+1. Copy `.env.local.example` to `.env.local`.
+2. Start the app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Google auth setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Mundika uses Supabase Auth for Google sign-in/sign-up. The app code already sends
+users through Supabase OAuth and back to `/auth/callback`, but the provider must
+be configured in Supabase and Google Cloud first.
 
-## Learn More
+1. In Supabase, open `Authentication -> Providers -> Google` and enable Google.
+2. Paste your Google OAuth client ID and client secret into the Google provider.
+3. In Supabase, open `Authentication -> URL Configuration` and add:
+   `http://localhost:3000/auth/callback`
+4. In Google Cloud Console, add this Authorized JavaScript origin:
+   `http://localhost:3000`
+5. In Google Cloud Console, add this Authorized redirect URI:
+   `https://jtqvahhamlvywzgpokbv.supabase.co/auth/v1/callback`
 
-To learn more about Next.js, take a look at the following resources:
+`NEXT_PUBLIC_SITE_URL` should match the URL where the app is running. For local
+development, keep it as `http://localhost:3000`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Google OAuth through Supabase handles both sign-in and first-time sign-up.
+- Do not commit Google client secrets into the repo. Keep them in Google Cloud
+  and Supabase provider settings only.
