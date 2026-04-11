@@ -10,6 +10,7 @@ import {
 import { getDashboardStats } from "@/lib/dashboard/stats";
 import { formatINR } from "@/lib/format/inr";
 import { useUserId } from "@/hooks/use-user-id";
+import { useAppStore } from "@/store/app-store";
 import { Badge } from "@/components/ui/badge";
 import { InventorySheet } from "@/components/workspace/inventory-sheet";
 import { LedgerBlock } from "@/components/workspace/parties-ledger-blocks";
@@ -84,6 +85,7 @@ function AnalyticsSkeleton() {
 
 export default function AnalyticsPage() {
   const { userId, loading } = useUserId();
+  const lastSyncAt = useAppStore((s) => s.lastSyncAt);
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
 
@@ -101,7 +103,7 @@ export default function AnalyticsPage() {
   useEffect(() => {
     if (!userId) return;
     void getDashboardStats(userId, today).then(setStats);
-  }, [userId, today, refreshToken]);
+  }, [userId, today, refreshToken, lastSyncAt]);
 
   function handleTabChange(id: TabId) {
     setActiveTab(id);

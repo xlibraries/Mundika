@@ -9,7 +9,7 @@ import { useAppStore } from "@/store/app-store";
 import { Badge } from "@/components/ui/badge";
 import { TransactionForm } from "@/components/transaction/transaction-form";
 import { resyncAll } from "@/lib/sync/resync-all";
-import { flushSyncQueue } from "@/lib/sync/engine";
+import { syncWithRemote } from "@/lib/sync/engine";
 
 function DashboardSkeleton() {
   return (
@@ -58,7 +58,7 @@ function InventoryDashboardInner() {
   useEffect(() => {
     if (!userId) return;
     void getDashboardStats(userId, today).then(setStats);
-  }, [userId, today]);
+  }, [userId, today, lastSyncAt]);
 
   async function handleResync() {
     if (!userId || isResyncing) return;
@@ -68,8 +68,9 @@ function InventoryDashboardInner() {
       const counts = await resyncAll(userId);
       const total = Object.values(counts).reduce((s, n) => s + n, 0);
       setResyncMsg(`Re-queued ${total} rows — syncing now…`);
-      await flushSyncQueue();
-      setResyncMsg(`Sync complete. ${total} rows pushed.`);
+      await syncWithRemote(userId);
+      useAppStore.getState().setLastSyncAt(new Date().toISOString());
+      setResyncMsg(`Sync complete. ${total} rows pushed and refreshed from server.`);
       window.setTimeout(() => setResyncMsg(null), 5000);
     } catch (e) {
       setResyncMsg(e instanceof Error ? e.message : "Resync failed");

@@ -31,6 +31,7 @@ import {
   type EntityComboboxHandle,
 } from "@/components/billing/entity-combobox";
 import { rememberId, readRecentIds } from "@/lib/billing/recent-ids";
+import { useAppStore } from "@/store/app-store";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -81,6 +82,7 @@ export function TransactionForm({
   userId,
   embedded = false,
 }: TransactionFormProps) {
+  const lastSyncAt = useAppStore((s) => s.lastSyncAt);
   // ---- mode ----------------------------------------------------------------
   const [mode, setMode] = useState<"billing" | "purchase">(defaultMode);
 
@@ -224,7 +226,7 @@ export function TransactionForm({
       void loadPurchases();
     }, 0);
     return () => window.clearTimeout(t);
-  }, [userId, loadBills, loadPurchases]);
+  }, [userId, lastSyncAt, loadBills, loadPurchases]);
 
   // auto-focus party on mount
   useEffect(() => {

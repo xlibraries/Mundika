@@ -10,6 +10,7 @@ import type { LedgerEntryRow, PartyRow } from "@/lib/types/domain";
 import { formatINR } from "@/lib/format/inr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAppStore } from "@/store/app-store";
 
 export function PartiesBlock({
   userId,
@@ -20,6 +21,7 @@ export function PartiesBlock({
   refreshToken: number;
   onChanged?: () => void;
 }) {
+  const lastSyncAt = useAppStore((s) => s.lastSyncAt);
   const [rows, setRows] = useState<PartyRow[]>([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -40,7 +42,7 @@ export function PartiesBlock({
       void load();
     }, 0);
     return () => window.clearTimeout(t);
-  }, [load, refreshToken]);
+  }, [load, refreshToken, lastSyncAt]);
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -218,6 +220,7 @@ export function LedgerBlock({
   refreshToken: number;
   onChanged?: () => void;
 }) {
+  const lastSyncAt = useAppStore((s) => s.lastSyncAt);
   const [rows, setRows] = useState<LedgerEntryRow[]>([]);
 
   const load = useCallback(async () => {
@@ -233,7 +236,7 @@ export function LedgerBlock({
       void load();
     }, 0);
     return () => window.clearTimeout(t);
-  }, [load, refreshToken]);
+  }, [load, refreshToken, lastSyncAt]);
 
   async function onDelete(id: string) {
     if (!window.confirm("Remove this ledger row?")) return;

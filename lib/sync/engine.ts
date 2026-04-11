@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { createClient } from "@/utils/supabase/client";
 import type { SyncQueueRow } from "@/lib/types/domain";
+import { pullRemoteToLocal } from "@/lib/sync/pull";
 
 const TABLES = new Set([
   "parties",
@@ -69,11 +70,39 @@ export async function flushSyncQueue(): Promise<{ ok: number; failed: number }> 
   return { ok, failed };
 }
 
-export function startSyncLoop(intervalMs = 15_000) {
+/**
+ * Push local queue to Supabase, then pull server state into IndexedDB (offline cache).
+ * Skips pull while the outbound queue still has rows so local-only edits are not dropped.
+ */
+export async function syncWithRemote(userId: string): Promise<void> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return;
+
+  for (let i = 0; i < 60; i++) {
+    const before = await db.sync_queue.count();
+    if (before === 0) break;
+    await flushSyncQueue();
+    const after = await db.sync_queue.count();
+    if (after >= before) break;
+  }
+
+  if ((await db.sync_queue.count()) > 0) return;
+
+  await pullRemoteToLocal(userId);
+}
+
+export function startSyncLoop(
+  intervalMs = 15_000,
+  getUserId?: () => string | null
+) {
   if (typeof window === "undefined") return () => {};
 
   const tick = () => {
-    void flushSyncQueue();
+    const uid = getUserId?.();
+    if (uid && navigator.onLine) {
+      void syncWithRemote(uid).catch(() => {});
+    } else {
+      void flushSyncQueue();
+    }
   };
 
   const id = window.setInterval(tick, intervalMs);

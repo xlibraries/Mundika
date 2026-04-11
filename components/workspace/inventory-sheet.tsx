@@ -6,6 +6,7 @@ import { createStockTransfer } from "@/modules/inventory/transfer";
 import type { InventoryRow, ItemRow } from "@/lib/types/domain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAppStore } from "@/store/app-store";
 
 export function InventorySheet({
   userId,
@@ -16,6 +17,7 @@ export function InventorySheet({
   refreshToken: number;
   onChanged?: () => void;
 }) {
+  const lastSyncAt = useAppStore((s) => s.lastSyncAt);
   const [items, setItems] = useState<ItemRow[]>([]);
   const [inv, setInv] = useState<InventoryRow[]>([]);
   const [filter, setFilter] = useState("");
@@ -48,7 +50,7 @@ export function InventorySheet({
       void load();
     }, 0);
     return () => window.clearTimeout(t);
-  }, [load, refreshToken]);
+  }, [load, refreshToken, lastSyncAt]);
 
   useEffect(() => {
     function onWinKey(e: KeyboardEvent) {
