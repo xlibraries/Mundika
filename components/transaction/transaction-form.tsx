@@ -1120,7 +1120,7 @@ export function TransactionForm({
                 {bills.map((b) => (
                   <tr key={b.id} className="hover:bg-[#f4f8f5]">
                     <td className="px-3 py-2 font-mono text-xs text-[#5c6e62]">
-                      {b.bill_number ?? "—"}
+                      {b.bill_number != null ? `#${b.bill_number}` : "—"}
                     </td>
                     <td className="px-3 py-2 font-mono text-xs text-[#5c6e62]">
                       {b.bill_date}
@@ -1184,7 +1184,7 @@ export function TransactionForm({
                 {purchases.map((p) => (
                   <tr key={p.id} className="hover:bg-[#f4f8f5]">
                     <td className="px-3 py-2 font-mono text-xs text-[#5c6e62]">
-                      {p.purchase_number}
+                      #{p.purchase_number}
                     </td>
                     <td className="px-3 py-2 font-mono text-xs text-[#5c6e62]">
                       {p.purchase_date}

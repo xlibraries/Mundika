@@ -49,6 +49,32 @@ export class MundikaDB extends Dexie {
     this.version(4).stores({
       stock_transfers: "id, user_id, item_id, transfer_date, updated_at",
     });
+    // v5: backfill bill_number on any existing bills that lack it
+    this.version(5)
+      .stores({})
+      .upgrade(async (tx) => {
+        const bills: BillRow[] = await tx.table("bills").toArray();
+        bills.sort((a, b) =>
+          (a.created_at ?? "") < (b.created_at ?? "") ? -1 : 1
+        );
+        // Group by user_id and assign sequential numbers to those missing one
+        const counterByUser = new Map<string, number>();
+        // First pass: find the highest existing bill_number per user
+        for (const b of bills) {
+          if (b.bill_number != null) {
+            const cur = counterByUser.get(b.user_id) ?? 0;
+            if (b.bill_number > cur) counterByUser.set(b.user_id, b.bill_number);
+          }
+        }
+        // Second pass: assign missing numbers in created_at order
+        for (const b of bills) {
+          if (b.bill_number == null) {
+            const next = (counterByUser.get(b.user_id) ?? 0) + 1;
+            counterByUser.set(b.user_id, next);
+            await tx.table("bills").update(b.id, { bill_number: next });
+          }
+        }
+      });
   }
 }
 
