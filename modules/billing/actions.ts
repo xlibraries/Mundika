@@ -22,6 +22,8 @@ export async function createBill(
     bill_date: string;
     bill_type: BillType;
     vehicle_info?: string | null;
+    address?: string | null;
+    phone?: string | null;
     lines: BillLineInput[];
   }
 ): Promise<{ bill: BillRow }> {
@@ -48,8 +50,12 @@ export async function createBill(
   const now = new Date().toISOString();
   const billDate = input.bill_date.slice(0, 10);
 
-  const existingCount = await db.bills.where("user_id").equals(userId).count();
-  const bill_number = existingCount + 1;
+  const allBills = await db.bills.where("user_id").equals(userId).toArray();
+  const maxNumber = allBills.reduce(
+    (m, b) => (b.bill_number != null && b.bill_number > m ? b.bill_number : m),
+    0
+  );
+  const bill_number = maxNumber + 1;
 
   const bill: BillRow = {
     id: billId,
@@ -61,6 +67,8 @@ export async function createBill(
     total,
     bill_type: input.bill_type,
     vehicle_info: input.vehicle_info?.trim() || null,
+    address: input.address?.trim() || null,
+    phone: input.phone?.trim() || null,
     created_at: now,
     updated_at: now,
   };

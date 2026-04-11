@@ -25,6 +25,8 @@ export async function createPurchase(
     payment_type: PurchasePaymentType;
     lines: PurchaseLineInput[];
     note?: string | null;
+    address?: string | null;
+    phone?: string | null;
   }
 ): Promise<{ purchase: PurchaseRow }> {
   const party = await db.parties.get(input.party_id);
@@ -58,11 +60,12 @@ export async function createPurchase(
   const now = new Date().toISOString();
   const purchaseDate = input.purchase_date.slice(0, 10);
 
-  const existingCount = await db.purchases
-    .where("user_id")
-    .equals(userId)
-    .count();
-  const purchase_number = existingCount + 1;
+  const allPurchases = await db.purchases.where("user_id").equals(userId).toArray();
+  const maxNumber = allPurchases.reduce(
+    (m, p) => (p.purchase_number != null && p.purchase_number > m ? p.purchase_number : m),
+    0
+  );
+  const purchase_number = maxNumber + 1;
 
   const purchase: PurchaseRow = {
     id: purchaseId,
@@ -75,6 +78,8 @@ export async function createPurchase(
     payment_type: input.payment_type,
     total,
     note: input.note?.trim() || null,
+    address: input.address?.trim() || null,
+    phone: input.phone?.trim() || null,
     created_at: now,
     updated_at: now,
   };

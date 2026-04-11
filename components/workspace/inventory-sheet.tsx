@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/lib/db";
 import { createStockTransfer } from "@/modules/inventory/transfer";
+import { formatINR } from "@/lib/format/inr";
 import type { InventoryRow, ItemRow } from "@/lib/types/domain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -207,7 +208,7 @@ export function InventorySheet({
                       {shop || godown ? totalQty : "—"}
                     </td>
                     <td className="border-r border-[#dce8df] px-2 py-1.5 text-right font-mono tabular-nums text-[#5c6e62]">
-                      {it.rate_default != null ? it.rate_default : "—"}
+                      {it.rate_default != null ? formatINR(it.rate_default) : "—"}
                     </td>
                     <td className="px-1 py-1 text-center">
                       <button

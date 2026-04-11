@@ -485,6 +485,8 @@ export function TransactionForm({
           bill_date: txDate,
           bill_type: paymentType,
           vehicle_info: refNumber || null,
+          address: address || null,
+          phone: phone || null,
           lines: parsed,
         });
 
@@ -510,6 +512,8 @@ export function TransactionForm({
           payment_type: paymentType,
           lines: parsed,
           note: note || null,
+          address: address || null,
+          phone: phone || null,
         });
 
         setMsg(
