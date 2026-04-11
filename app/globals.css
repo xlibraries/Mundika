@@ -50,3 +50,55 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #b8d4c2 #f0f6f2;
 }
+
+.marwadi-landing {
+  --mw-bg: #f9f1e3;
+  --mw-surface: #f3e6d1;
+  --mw-surface-soft: #f7ead7;
+  --mw-border: #d8c4a5;
+  --mw-border-strong: #c8ad86;
+  --mw-ink: #3a2a1f;
+  --mw-muted: #6d5844;
+  --mw-brand: #b5671d;
+  --mw-brand-strong: #9c5316;
+  --mw-brand-contrast: #fff8ee;
+  --mw-glow: #f1ca93;
+  --mw-glow-soft: #dfb282;
+  background-image: linear-gradient(
+    180deg,
+    rgba(249, 241, 227, 0.95) 0%,
+    rgba(244, 231, 209, 0.9) 45%,
+    rgba(249, 241, 227, 0.98) 100%
+  );
+}
+
+@keyframes marwadiRise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.marwadi-fade-up {
+  animation: marwadiRise 700ms ease-out both;
+}
+
+.marwadi-delay {
+  animation-delay: 140ms;
+}
+
+.marwadi-plan {
+  transition:
+    transform 240ms ease,
+    border-color 240ms ease,
+    background-color 240ms ease;
+}
+
+.marwadi-plan:hover {
+  transform: translateY(-3px);
+  border-color: var(--mw-border-strong);
+}
