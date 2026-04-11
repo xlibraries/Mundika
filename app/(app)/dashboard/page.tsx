@@ -8,6 +8,8 @@ import { useUserId } from "@/hooks/use-user-id";
 import { useAppStore } from "@/store/app-store";
 import { Badge } from "@/components/ui/badge";
 import { TransactionForm } from "@/components/transaction/transaction-form";
+import { resyncAll } from "@/lib/sync/resync-all";
+import { flushSyncQueue } from "@/lib/sync/engine";
 
 function DashboardSkeleton() {
   return (
@@ -35,6 +37,8 @@ function InventoryDashboardInner() {
   const [stats, setStats] = useState<Awaited<
     ReturnType<typeof getDashboardStats>
   > | null>(null);
+  const [resyncMsg, setResyncMsg] = useState<string | null>(null);
+  const [isResyncing, setIsResyncing] = useState(false);
 
   useEffect(() => {
     const raw = window.location.hash.slice(1);
@@ -55,6 +59,24 @@ function InventoryDashboardInner() {
     if (!userId) return;
     void getDashboardStats(userId, today).then(setStats);
   }, [userId, today]);
+
+  async function handleResync() {
+    if (!userId || isResyncing) return;
+    setIsResyncing(true);
+    setResyncMsg(null);
+    try {
+      const counts = await resyncAll(userId);
+      const total = Object.values(counts).reduce((s, n) => s + n, 0);
+      setResyncMsg(`Re-queued ${total} rows — syncing now…`);
+      await flushSyncQueue();
+      setResyncMsg(`Sync complete. ${total} rows pushed.`);
+      window.setTimeout(() => setResyncMsg(null), 5000);
+    } catch (e) {
+      setResyncMsg(e instanceof Error ? e.message : "Resync failed");
+    } finally {
+      setIsResyncing(false);
+    }
+  }
 
   if (loading || !userId) {
     return <DashboardSkeleton />;
@@ -85,10 +107,22 @@ function InventoryDashboardInner() {
               variant="muted"
               className="!border-[#cfe3d4] !text-[#5c6e62] !normal-case !tracking-normal"
             >
-              {syncState === "syncing" ? "Syncing" : "Idle"}
+              {syncState === "syncing" || isResyncing ? "Syncing" : "Idle"}
               {lastSyncAt ? ` · ${lastSyncAt.slice(11, 19)}` : ""}
             </Badge>
+            <button
+              type="button"
+              disabled={isResyncing || !online}
+              onClick={() => void handleResync()}
+              className="rounded-lg border border-[#c5dccf] bg-white px-2.5 py-1 text-xs font-medium text-[#4d7a5c] transition hover:bg-[#e8f2ea] disabled:cursor-not-allowed disabled:opacity-50"
+              title="Re-push all local data to Supabase"
+            >
+              {isResyncing ? "Syncing…" : "Force resync"}
+            </button>
           </div>
+          {resyncMsg ? (
+            <p className="mt-2 text-xs text-[#4d7a5c]">{resyncMsg}</p>
+          ) : null}
         </div>
 
         {!stats ? (
