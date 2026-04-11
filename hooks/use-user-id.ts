@@ -9,10 +9,17 @@ export function useUserId() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id ?? null);
-      setLoading(false);
-    });
+    supabase.auth
+      .getUser()
+      .then(({ data }) => {
+        setUserId(data.user?.id ?? null);
+      })
+      .catch(() => {
+        setUserId(null);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_e, session) => {
