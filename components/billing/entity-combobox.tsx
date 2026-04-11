@@ -169,8 +169,8 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
             if (valueId) setQuery(selected?.label ?? "");
           }}
           className={cn(
-            "w-full rounded border border-[#c5dccf] bg-[#faf9f5] px-3 py-2 text-sm text-[#2a382f] outline-none transition focus:border-[#6b9b7a] focus:ring-1 focus:ring-[#6b9b7a]",
-            invalid && "border-[#d93025] bg-[#fce8e6]/40",
+            "w-full rounded border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-2 text-sm text-[var(--gs-text)] outline-none transition focus:border-[var(--gs-primary)] focus:ring-1 focus:ring-[var(--gs-primary)]",
+            invalid && "border-[var(--gs-danger)] bg-[var(--gs-danger-soft)]/50",
             inputClassName
           )}
           onKeyDown={(e) => {
@@ -215,7 +215,7 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
           <ul
             id={listId}
             role="listbox"
-            className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded border border-[#c5dccf] bg-[#faf9f5] py-1 shadow-md"
+            className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] py-1 shadow-md"
           >
             {matches.map((o, i) => (
               <li
@@ -224,7 +224,9 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
                 aria-selected={i === highlightIdx}
                 className={cn(
                   "cursor-pointer px-3 py-1.5 text-sm",
-                  i === highlightIdx ? "bg-[#dff0e5] font-medium text-[#2a382f]" : "text-[#2a382f]"
+                  i === highlightIdx
+                    ? "bg-[var(--gs-selection)] font-medium text-[var(--gs-text)]"
+                    : "text-[var(--gs-text)]"
                 )}
                 onMouseEnter={() => setHighlight(i)}
                 onMouseDown={(ev) => ev.preventDefault()}
@@ -239,7 +241,7 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
           <div
             role="option"
             aria-selected={false}
-            className="absolute z-50 mt-1 w-full cursor-pointer rounded border border-[#c5dccf] bg-[#faf9f5] px-3 py-1.5 text-sm text-[#4d7a5c] shadow-md hover:bg-[#dff0e5]"
+            className="absolute z-50 mt-1 w-full cursor-pointer rounded border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-1.5 text-sm text-[var(--gs-primary)] shadow-md hover:bg-[var(--gs-selection)]"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               const label = query.trim();
@@ -251,7 +253,7 @@ export const EntityCombobox = forwardRef<EntityComboboxHandle, EntityComboboxPro
             + Add &ldquo;{query.trim()}&rdquo; as new {createLabel}
           </div>
         ) : open && matches.length === 0 && query.trim() ? (
-          <div aria-live="polite" className="absolute z-50 mt-1 w-full rounded border border-[#c5dccf] bg-[#faf9f5] px-3 py-2 text-sm text-[#5c6e62] shadow-md">
+          <div aria-live="polite" className="absolute z-50 mt-1 w-full rounded border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-2 text-sm text-[var(--gs-text-secondary)] shadow-md">
             No matches
           </div>
         ) : null}

@@ -18,11 +18,11 @@ export function Button({
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded font-medium shadow-sm transition-colors disabled:pointer-events-none disabled:opacity-40",
         variant === "primary" &&
-          "bg-[#6b9b7a] text-white hover:bg-[#598a68] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6b9b7a]",
+          "bg-[var(--gs-primary)] text-[var(--gs-surface-plain)] hover:bg-[var(--gs-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gs-primary)]",
         variant === "secondary" &&
-          "border border-[#c5dccf] bg-[#faf9f5] text-[#2a382f] shadow-none hover:bg-[#f4f8f5] hover:border-[#b8d4c2]",
+          "border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] text-[var(--gs-text)] shadow-none hover:bg-[var(--gs-surface)] hover:border-[var(--gs-grid)]",
         variant === "ghost" &&
-          "text-[#5c6e62] shadow-none hover:bg-[#eaf2ec] hover:text-[#2a382f]",
+          "text-[var(--gs-text-secondary)] shadow-none hover:bg-[var(--gs-surface-hover)] hover:text-[var(--gs-text)]",
         size === "sm" && "px-3 py-1.5 text-xs",
         size === "md" && "px-4 py-2 text-sm",
         size === "lg" && "px-5 py-2.5 text-sm",

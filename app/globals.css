@@ -1,24 +1,31 @@
 @import "tailwindcss";
 
-/* Light pastel sage + off-white workspace tokens */
+/* Marwadi desert workspace tokens */
 :root {
   /** Sidebar brand + main “today” strip: keep similar min height (md). */
   --shell-ribbon-min: 17.75rem;
   color-scheme: light;
-  --gs-bg: #f6faf7;
-  --gs-surface: #eef5f0;
-  --gs-surface-hover: #e3efe6;
-  --gs-border: #c5dccf;
-  --gs-grid: #d9e8de;
-  --gs-text: #2a382f;
-  --gs-text-secondary: #5c6e62;
-  --gs-primary: #6b9b7a;
-  --gs-primary-hover: #598a68;
-  --gs-sheets-green: #4d7a5c;
-  --gs-selection: #dff0e5;
-  --gs-selection-border: #6b9b7a;
-  --gs-danger: #c44d42;
-  --gs-success: #3d6b4f;
+  --gs-bg: #f9f1e3;
+  --gs-surface: #f3e6d1;
+  --gs-surface-hover: #ecd8b9;
+  --gs-border: #d8c4a5;
+  --gs-grid: #e2d2b7;
+  --gs-text: #3a2a1f;
+  --gs-text-secondary: #6d5844;
+  --gs-primary: #b5671d;
+  --gs-primary-hover: #9c5316;
+  --gs-sheets-green: #9a6328;
+  --gs-selection: #f3dfbf;
+  --gs-selection-border: #b5671d;
+  --gs-danger: #b24a3f;
+  --gs-success: #8b6a3f;
+  --gs-surface-plain: #fff8ee;
+  --gs-panel: #f7ead7;
+  --gs-overlay: rgba(58, 42, 31, 0.35);
+  --gs-danger-soft: #fce8e2;
+  --gs-success-soft: #f3e8d8;
+  --gs-warning: #a56a1f;
+  --gs-warning-soft: #f7e9d3;
 }
 
 @theme inline {
@@ -48,7 +55,7 @@ body {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #b8d4c2 #f0f6f2;
+  scrollbar-color: var(--gs-border) var(--gs-surface);
 }
 
 .marwadi-landing {

@@ -547,6 +547,8 @@ export function TransactionForm({
     txDate,
     paymentType,
     refNumber,
+    address,
+    phone,
     note,
     loadBills,
     loadPurchases,
@@ -628,9 +630,9 @@ export function TransactionForm({
   const modeTablist = (
     <div
       className={cn(
-        "flex w-full overflow-hidden border border-[#c5dccf] bg-[#e8f1ea] p-1",
+        "flex w-full overflow-hidden border border-[var(--gs-border)] bg-[var(--gs-surface)] p-1",
         embedded
-          ? "rounded-none border-x-0 border-t-0 border-b-0 bg-[#dce8df]"
+          ? "rounded-none border-x-0 border-t-0 border-b-0 bg-[var(--gs-grid)]"
           : "rounded-2xl"
       )}
       role="tablist"
@@ -643,8 +645,8 @@ export function TransactionForm({
         onClick={() => switchMode("purchase")}
         className={`flex min-h-[2.75rem] flex-1 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold tracking-wide transition ${
           mode === "purchase"
-            ? "bg-white text-[#2a382f] shadow-sm"
-            : "text-[#5c6e62] hover:text-[#2a382f]"
+            ? "bg-[var(--gs-surface-plain)] text-[var(--gs-text)] shadow-sm"
+            : "text-[var(--gs-text-secondary)] hover:text-[var(--gs-text)]"
         }`}
       >
         Purchase
@@ -656,8 +658,8 @@ export function TransactionForm({
         onClick={() => switchMode("billing")}
         className={`flex min-h-[2.75rem] flex-1 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold tracking-wide transition ${
           mode === "billing"
-            ? "bg-white text-[#2a382f] shadow-sm"
-            : "text-[#5c6e62] hover:text-[#2a382f]"
+            ? "bg-[var(--gs-surface-plain)] text-[var(--gs-text)] shadow-sm"
+            : "text-[var(--gs-text-secondary)] hover:text-[var(--gs-text)]"
         }`}
       >
         Billing
@@ -666,9 +668,9 @@ export function TransactionForm({
   );
 
   const modeHint = (
-    <p className="text-right text-xs text-[#5c6e62]">
+    <p className="text-right text-xs text-[var(--gs-text-secondary)]">
       {mode === "billing" ? "Bill" : "Purchase"}&nbsp;#
-      <span className="font-mono font-medium text-[#2a382f]">{nextNumber}</span>
+      <span className="font-mono font-medium text-[var(--gs-text)]">{nextNumber}</span>
       &nbsp;·&nbsp;Enter → next · C/U · Ctrl+Enter → save
     </p>
   );
@@ -689,7 +691,7 @@ export function TransactionForm({
       )}
     >
       {embedded ? (
-        <div className="shrink-0 border-b border-[#dce8df] bg-[#eef5f0]">
+        <div className="shrink-0 border-b border-[var(--gs-grid)] bg-[var(--gs-surface)]">
           <div className="w-full py-1.5">{modeTablist}</div>
           <div className="px-4 pb-2 pt-0.5 md:px-6">{modeHint}</div>
         </div>
@@ -709,7 +711,7 @@ export function TransactionForm({
         {/* Row 1: party, date, ref */}
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="space-y-1.5">
-            <span className="text-xs font-medium text-[#5c6e62]">{partyLabel}</span>
+            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">{partyLabel}</span>
             <EntityCombobox
               ref={partyRef}
               aria-label={partyLabel}
@@ -725,7 +727,7 @@ export function TransactionForm({
           </label>
 
           <label className="space-y-1.5">
-            <span className="text-xs font-medium text-[#5c6e62]">Date</span>
+            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">Date</span>
             <div className="flex gap-2">
               <Input
                 ref={dateRef}
@@ -753,7 +755,7 @@ export function TransactionForm({
           </label>
 
           <label className="space-y-1.5">
-            <span className="text-xs font-medium text-[#5c6e62]">{refLabel}</span>
+            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">{refLabel}</span>
             <Input
               ref={refNumberRef}
               placeholder="Optional"
@@ -771,7 +773,7 @@ export function TransactionForm({
         {/* Row 2: address, phone, payment */}
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="space-y-1.5">
-            <span className="text-xs font-medium text-[#5c6e62]">
+            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
               Address (optional)
             </span>
             <Input
@@ -788,7 +790,7 @@ export function TransactionForm({
           </label>
 
           <label className="space-y-1.5">
-            <span className="text-xs font-medium text-[#5c6e62]">
+            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
               Phone (optional)
             </span>
             <Input
@@ -806,11 +808,11 @@ export function TransactionForm({
           </label>
 
           <div className="space-y-1.5">
-            <span className="text-xs font-medium text-[#5c6e62]">
+            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
               Payment (Cash / Credit)
             </span>
             <div
-              className="flex rounded border border-[#c5dccf] bg-white p-0.5"
+              className="flex rounded border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] p-0.5"
               role="radiogroup"
               aria-label="Payment type"
             >
@@ -819,10 +821,10 @@ export function TransactionForm({
                 type="button"
                 role="radio"
                 aria-checked={paymentType === "cash"}
-                className={`flex-1 rounded px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#6b9b7a] ${
+                className={`flex-1 rounded px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--gs-primary)] ${
                   paymentType === "cash"
-                    ? "bg-[#6b9b7a] text-white"
-                    : "text-[#5c6e62] hover:bg-[#eaf2ec]"
+                    ? "bg-[var(--gs-primary)] text-[var(--gs-surface-plain)]"
+                    : "text-[var(--gs-text-secondary)] hover:bg-[var(--gs-surface-hover)]"
                 }`}
                 onClick={() => setPaymentType("cash")}
                 onKeyDown={(e) => {
@@ -837,10 +839,10 @@ export function TransactionForm({
                 type="button"
                 role="radio"
                 aria-checked={paymentType === "credit"}
-                className={`flex-1 rounded px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#6b9b7a] ${
+                className={`flex-1 rounded px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--gs-primary)] ${
                   paymentType === "credit"
-                    ? "bg-[#6b9b7a] text-white"
-                    : "text-[#5c6e62] hover:bg-[#eaf2ec]"
+                    ? "bg-[var(--gs-primary)] text-[var(--gs-surface-plain)]"
+                    : "text-[var(--gs-text-secondary)] hover:bg-[var(--gs-surface-hover)]"
                 }`}
                 onClick={() => setPaymentType("credit")}
                 onKeyDown={(e) => {
@@ -852,7 +854,7 @@ export function TransactionForm({
                 Credit
               </button>
             </div>
-            <p className="text-[11px] text-[#6f7f74]">
+            <p className="text-[11px] text-[var(--gs-text-secondary)]">
               Press <kbd className="font-mono">C</kbd> or{" "}
               <kbd className="font-mono">U</kbd> when focus is not in a text field.
             </p>
@@ -862,7 +864,7 @@ export function TransactionForm({
         {/* Purchase-only: note */}
         {mode === "purchase" ? (
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-[#5c6e62]">
+            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
               Note (optional)
             </span>
             <Input
@@ -876,19 +878,19 @@ export function TransactionForm({
         {/* Line items table */}
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-[#5c6e62]">
+            <p className="text-xs font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
               Lines
             </p>
-            <p className="text-sm font-medium tabular-nums text-[#2a382f]">
+            <p className="text-sm font-medium tabular-nums text-[var(--gs-text)]">
               Total{" "}
               <span className="font-mono">{formatINR(liveTotals.grand)}</span>
             </p>
           </div>
 
-          <div className="overflow-x-auto rounded-sm border border-[#c5dccf] bg-white">
+          <div className="overflow-x-auto rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)]">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-[#c5dccf] bg-[#f4f8f5] text-[11px] font-medium uppercase tracking-wide text-[#5c6e62]">
+                <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
                   <th className="px-2 py-1.5 text-left" style={{ width: "38%" }}>
                     Item
                   </th>
@@ -914,12 +916,12 @@ export function TransactionForm({
                     <Fragment key={i}>
                       {/* stock warning banner row */}
                       {stockWarn ? (
-                        <tr className="bg-[#fce8e6]">
+                        <tr className="bg-[var(--gs-danger-soft)]">
                           <td
                             colSpan={mode === "purchase" ? 6 : 5}
                             className="px-2 py-1"
                           >
-                            <p className="text-[11px] font-medium text-[#c5221f]">
+                            <p className="text-[11px] font-medium text-[var(--gs-danger)]">
                               Insufficient stock — qty exceeds available (
                               {stockByItemId.get(line.item_id) ?? 0} in stock)
                             </p>
@@ -928,11 +930,11 @@ export function TransactionForm({
                       ) : null}
                       {/* main data row */}
                       <tr
-                        className={`border-b border-[#dce8df] ${
+                        className={`border-b border-[var(--gs-grid)] ${
                           rowBad
-                            ? "bg-[#fef7e0]"
+                            ? "bg-[var(--gs-warning-soft)]"
                             : stockWarn
-                            ? "bg-[#fce8e6]"
+                            ? "bg-[var(--gs-danger-soft)]"
                             : ""
                         }`}
                       >
@@ -972,7 +974,7 @@ export function TransactionForm({
                               rateRefs.current[i]?.focus();
                             }}
                             className={`w-full font-mono tabular-nums text-right ${
-                              rowIssue?.qty ? "border-[#f9ab00]" : ""
+                              rowIssue?.qty ? "border-[var(--gs-warning)]" : ""
                             }`}
                           />
                         </td>
@@ -996,11 +998,11 @@ export function TransactionForm({
                               onRateEnter(i);
                             }}
                             className={`w-full font-mono tabular-nums text-right ${
-                              rowIssue?.rate ? "border-[#f9ab00]" : ""
+                              rowIssue?.rate ? "border-[var(--gs-warning)]" : ""
                             }`}
                           />
                         </td>
-                        <td className="px-2 py-1 text-right font-mono tabular-nums text-[#2a382f] whitespace-nowrap">
+                        <td className="px-2 py-1 text-right font-mono tabular-nums text-[var(--gs-text)] whitespace-nowrap">
                           {rowTotal != null ? formatINR(rowTotal) : "—"}
                         </td>
                         {mode === "purchase" ? (
@@ -1021,7 +1023,7 @@ export function TransactionForm({
                                 onDestEnter(i);
                               }}
                               aria-label={`Line ${i + 1} destination`}
-                              className="w-full rounded border border-[#c5dccf] bg-white px-2 py-2 text-sm text-[#2a382f] focus:border-[#6b9b7a] focus:outline-none"
+                              className="w-full rounded border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-2 py-2 text-sm text-[var(--gs-text)] focus:border-[var(--gs-primary)] focus:outline-none"
                             >
                               <option value="godown">Godown</option>
                               <option value="shop">Shop</option>
@@ -1036,7 +1038,7 @@ export function TransactionForm({
                             onClick={() =>
                               setLines((prev) => prev.filter((_, j) => j !== i))
                             }
-                            className="rounded px-1.5 py-1 text-sm text-[#5c6e62] transition hover:bg-[#eaf2ec] hover:text-[#c5221f] disabled:cursor-not-allowed disabled:opacity-30"
+                            className="rounded px-1.5 py-1 text-sm text-[var(--gs-text-secondary)] transition hover:bg-[var(--gs-surface-hover)] hover:text-[var(--gs-danger)] disabled:cursor-not-allowed disabled:opacity-30"
                           >
                             ×
                           </button>
@@ -1064,7 +1066,7 @@ export function TransactionForm({
           <p
             role="alert"
             aria-live="polite"
-            className="rounded border border-[#f9dedc] bg-[#fce8e6] px-3 py-2 text-sm text-[#c5221f]"
+            className="rounded border border-[var(--gs-danger)]/30 bg-[var(--gs-danger-soft)] px-3 py-2 text-sm text-[var(--gs-danger)]"
           >
             {err}
           </p>
@@ -1073,7 +1075,7 @@ export function TransactionForm({
           <p
             role="status"
             aria-live="polite"
-            className="rounded border border-[#c5e5cf] bg-[#e4f2e8] px-3 py-2 text-sm text-[#3d6b4f]"
+            className="rounded border border-[var(--gs-success)]/30 bg-[var(--gs-success-soft)] px-3 py-2 text-sm text-[var(--gs-success)]"
           >
             {msg}
           </p>
@@ -1101,19 +1103,19 @@ export function TransactionForm({
           className={cn(
             "space-y-3 border-t",
             embedded
-              ? "border-[#dce8df] px-4 pb-4 pt-6 md:px-6 md:pb-6"
-              : "border-[#c5dccf] pt-8"
+              ? "border-[var(--gs-grid)] px-4 pb-4 pt-6 md:px-6 md:pb-6"
+              : "border-[var(--gs-border)] pt-8"
           )}
         >
-          <h2 className="text-sm font-medium text-[#2a382f]">Saved bills</h2>
-          <p className="text-xs text-[#5c6e62]">
+          <h2 className="text-sm font-medium text-[var(--gs-text)]">Saved bills</h2>
+          <p className="text-xs text-[var(--gs-text-secondary)]">
             Delete a bill to undo the sale and free items for deletion from the
             inventory sheet.
           </p>
-          <div className="overflow-x-auto rounded-sm border border-[#c5dccf] bg-white">
+          <div className="overflow-x-auto rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)]">
             <table className="w-full min-w-[560px] text-left text-sm">
               <thead>
-                <tr className="border-b border-[#c5dccf] bg-[#f4f8f5] text-[11px] font-medium uppercase tracking-wide text-[#5c6e62]">
+                <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
                   <th className="w-12 px-3 py-2">#</th>
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Customer</th>
@@ -1122,29 +1124,29 @@ export function TransactionForm({
                   <th className="w-24 px-3 py-2 text-center"> </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#dce8df]">
+              <tbody className="divide-y divide-[var(--gs-grid)]">
                 {bills.map((b) => (
-                  <tr key={b.id} className="hover:bg-[#f4f8f5]">
-                    <td className="px-3 py-2 font-mono text-xs text-[#5c6e62]">
+                  <tr key={b.id} className="hover:bg-[var(--gs-surface)]">
+                    <td className="px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)]">
                       {b.bill_number != null ? `#${b.bill_number}` : "—"}
                     </td>
-                    <td className="px-3 py-2 font-mono text-xs text-[#5c6e62]">
+                    <td className="px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)]">
                       {b.bill_date}
                     </td>
-                    <td className="max-w-[200px] truncate px-3 py-2 text-[#2a382f]">
+                    <td className="max-w-[200px] truncate px-3 py-2 text-[var(--gs-text)]">
                       {b.party_name_snapshot}
                     </td>
-                    <td className="px-3 py-2 capitalize text-[#5c6e62]">
+                    <td className="px-3 py-2 capitalize text-[var(--gs-text-secondary)]">
                       {b.bill_type}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[#2a382f]">
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--gs-text)]">
                       {formatINR(b.total)}
                     </td>
                     <td className="px-3 py-2 text-center">
                       <button
                         type="button"
                         aria-label={`Delete bill for ${b.party_name_snapshot} on ${b.bill_date}`}
-                        className="text-xs text-[#5c6e62] hover:text-[#c5221f]"
+                        className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
                         onClick={() => void onDeleteBill(b.id)}
                       >
                         Delete
@@ -1155,7 +1157,7 @@ export function TransactionForm({
               </tbody>
             </table>
             {bills.length === 0 ? (
-              <p className="px-3 py-8 text-center text-sm text-[#5c6e62]">
+              <p className="px-3 py-8 text-center text-sm text-[var(--gs-text-secondary)]">
                 No bills yet.
               </p>
             ) : null}
@@ -1166,18 +1168,18 @@ export function TransactionForm({
           className={cn(
             "space-y-3 border-t",
             embedded
-              ? "border-[#dce8df] px-4 pb-4 pt-6 md:px-6 md:pb-6"
-              : "border-[#c5dccf] pt-8"
+              ? "border-[var(--gs-grid)] px-4 pb-4 pt-6 md:px-6 md:pb-6"
+              : "border-[var(--gs-border)] pt-8"
           )}
         >
-          <h2 className="text-sm font-medium text-[#2a382f]">Purchase history</h2>
-          <p className="text-xs text-[#5c6e62]">
+          <h2 className="text-sm font-medium text-[var(--gs-text)]">Purchase history</h2>
+          <p className="text-xs text-[var(--gs-text-secondary)]">
             Delete a purchase to reverse stock and remove the ledger entry.
           </p>
-          <div className="overflow-x-auto rounded-sm border border-[#c5dccf] bg-white">
+          <div className="overflow-x-auto rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)]">
             <table className="w-full min-w-[560px] text-left text-sm">
               <thead>
-                <tr className="border-b border-[#c5dccf] bg-[#f4f8f5] text-[11px] font-medium uppercase tracking-wide text-[#5c6e62]">
+                <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
                   <th className="w-12 px-3 py-2">#</th>
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Supplier</th>
@@ -1186,29 +1188,29 @@ export function TransactionForm({
                   <th className="w-24 px-3 py-2 text-center"> </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#dce8df]">
+              <tbody className="divide-y divide-[var(--gs-grid)]">
                 {purchases.map((p) => (
-                  <tr key={p.id} className="hover:bg-[#f4f8f5]">
-                    <td className="px-3 py-2 font-mono text-xs text-[#5c6e62]">
+                  <tr key={p.id} className="hover:bg-[var(--gs-surface)]">
+                    <td className="px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)]">
                       #{p.purchase_number}
                     </td>
-                    <td className="px-3 py-2 font-mono text-xs text-[#5c6e62]">
+                    <td className="px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)]">
                       {p.purchase_date}
                     </td>
-                    <td className="max-w-[200px] truncate px-3 py-2 text-[#2a382f]">
+                    <td className="max-w-[200px] truncate px-3 py-2 text-[var(--gs-text)]">
                       {p.party_name_snapshot}
                     </td>
-                    <td className="px-3 py-2 capitalize text-[#5c6e62]">
+                    <td className="px-3 py-2 capitalize text-[var(--gs-text-secondary)]">
                       {p.payment_type}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[#2a382f]">
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--gs-text)]">
                       {formatINR(p.total)}
                     </td>
                     <td className="px-3 py-2 text-center">
                       <button
                         type="button"
                         aria-label={`Delete purchase #${p.purchase_number} from ${p.party_name_snapshot} on ${p.purchase_date}`}
-                        className="text-xs text-[#5c6e62] hover:text-[#c5221f]"
+                        className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
                         onClick={() =>
                           void onDeletePurchase(
                             p.id,
@@ -1224,7 +1226,7 @@ export function TransactionForm({
               </tbody>
             </table>
             {purchases.length === 0 ? (
-              <p className="px-3 py-8 text-center text-sm text-[#5c6e62]">
+              <p className="px-3 py-8 text-center text-sm text-[var(--gs-text-secondary)]">
                 No purchases yet.
               </p>
             ) : null}

@@ -154,9 +154,9 @@ export default function Home() {
             </div>
             <div className="rounded-3xl border border-[var(--mw-border)] bg-[var(--mw-surface)] p-6">
               <p className="text-sm leading-relaxed text-[var(--mw-muted)]">
-                "Subah se shaam tak hume sirf saaf hisaab chahiye hota hai.
+                &ldquo;Subah se shaam tak hume sirf saaf hisaab chahiye hota hai.
                 Mundika mein stock, billing aur udhaar-jama ek hi flow mein
-                milta hai, isliye team ko confusion nahi hota."
+                milta hai, isliye team ko confusion nahi hota.&rdquo;
               </p>
               <p className="mt-4 text-xs uppercase tracking-[0.14em] text-[var(--mw-brand-strong)]">
                 Vyapari note

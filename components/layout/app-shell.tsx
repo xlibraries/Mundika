@@ -42,16 +42,16 @@ function NavLinks({
             className={cn(
               "group flex min-h-[3.5rem] items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition-colors",
               active
-                ? "border-[#a3c9b0] bg-[#faf9f5] text-[#2a382f] shadow-sm"
-                : "border-[#cfe3d4] bg-[#f1f6f2] text-[#5c6e62] hover:border-[#b8d4c2] hover:bg-[#e8f2ea] hover:text-[#2a382f]"
+                ? "border-[var(--gs-grid)] bg-[var(--gs-surface-plain)] text-[var(--gs-text)] shadow-sm"
+                : "border-[var(--gs-border)] bg-[var(--gs-surface)] text-[var(--gs-text-secondary)] hover:border-[var(--gs-grid)] hover:bg-[var(--gs-surface-hover)] hover:text-[var(--gs-text)]"
             )}
           >
             <span
               className={cn(
                 "transition-colors",
                 active
-                  ? "text-[#4d7a5c]"
-                  : "text-[#7a9180] group-hover:text-[#4d7a5c]"
+                  ? "text-[var(--gs-primary)]"
+                  : "text-[var(--gs-text-secondary)] group-hover:text-[var(--gs-primary)]"
               )}
             >
               {n.icon}
@@ -99,21 +99,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-full flex-col bg-[#f6faf7] text-[#2a382f] md:flex-row">
-      <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-[#cfe3d4] bg-[#eef5f0] px-4 md:hidden">
+    <div className="flex min-h-full flex-col bg-[var(--gs-bg)] text-[var(--gs-text)] md:flex-row">
+      <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-[var(--gs-border)] bg-[var(--gs-surface)] px-4 md:hidden">
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
-          className="rounded-xl p-2 text-[#5c6e62] transition hover:bg-[#e3efe6] hover:text-[#2a382f]"
+          className="rounded-xl p-2 text-[var(--gs-text-secondary)] transition hover:bg-[var(--gs-surface-hover)] hover:text-[var(--gs-text)]"
           aria-label="Open menu"
         >
           {icons.menu}
         </button>
         <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#b8d4c2] bg-[#faf9f5] text-xs font-bold text-[#4d7a5c]">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--gs-grid)] bg-[var(--gs-surface-plain)] text-xs font-bold text-[var(--gs-primary)]">
             M
           </span>
-          <span className="text-sm font-medium text-[#2a382f]">Mundika</span>
+          <span className="text-sm font-medium text-[var(--gs-text)]">Mundika</span>
         </div>
         <span className="w-10" aria-hidden />
       </header>
@@ -122,17 +122,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-50 md:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-[#2a382f]/35"
+            className="absolute inset-0 bg-[var(--gs-overlay)]"
             aria-label="Close menu"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="absolute left-0 top-0 flex h-full w-[min(88vw,288px)] flex-col border-r border-[#cfe3d4] bg-[#eef5f0] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#cfe3d4] p-4">
-              <span className="text-sm font-medium text-[#2a382f]">Menu</span>
+          <aside className="absolute left-0 top-0 flex h-full w-[min(88vw,288px)] flex-col border-r border-[var(--gs-border)] bg-[var(--gs-surface)] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--gs-border)] p-4">
+              <span className="text-sm font-medium text-[var(--gs-text)]">Menu</span>
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className="rounded-lg p-2 text-[#5c6e62] hover:bg-[#e3efe6] hover:text-[#2a382f]"
+                className="rounded-lg p-2 text-[var(--gs-text-secondary)] hover:bg-[var(--gs-surface-hover)] hover:text-[var(--gs-text)]"
                 aria-label="Close"
               >
                 <svg
@@ -151,18 +151,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <div className="flex flex-1 flex-col overflow-y-auto p-3">
-              <div className="mb-4 flex min-h-[var(--shell-ribbon-min)] items-center justify-center rounded-2xl border border-[#cfe3d4] bg-[#faf9f5] px-3 py-3">
-                <p className="text-center text-sm font-semibold tracking-tight text-[#2a382f]">
+              <div className="mb-4 flex min-h-[var(--shell-ribbon-min)] items-center justify-center rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-3">
+                <p className="text-center text-sm font-semibold tracking-tight text-[var(--gs-text)]">
                   Mundika
                 </p>
               </div>
               <NavLinks onNavigate={() => setMobileOpen(false)} />
             </div>
-            <div className="border-t border-[#cfe3d4] p-3">
+            <div className="border-t border-[var(--gs-border)] p-3">
               <button
                 type="button"
                 onClick={() => void signOut()}
-                className="flex w-full items-center gap-3 rounded-xl border border-[#cfe3d4] px-3 py-2.5 text-sm font-medium text-[#5c6e62] transition hover:bg-[#e3efe6] hover:text-[#2a382f]"
+                className="flex w-full items-center gap-3 rounded-xl border border-[var(--gs-border)] px-3 py-2.5 text-sm font-medium text-[var(--gs-text-secondary)] transition hover:bg-[var(--gs-surface-hover)] hover:text-[var(--gs-text)]"
               >
                 {icons.logout}
                 Sign out
@@ -172,12 +172,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
 
-      <aside className="hidden min-h-0 w-[220px] shrink-0 flex-col border-r border-[#cfe3d4] bg-[#eef5f0] px-3 py-6 md:flex md:min-h-screen">
+      <aside className="hidden min-h-0 w-[220px] shrink-0 flex-col border-r border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-6 md:flex md:min-h-screen">
         <div
-          className="mb-4 flex min-h-[var(--shell-ribbon-min)] shrink-0 flex-col items-center justify-center rounded-2xl border border-[#cfe3d4] bg-[#faf9f5] px-3 py-4"
+          className="mb-4 flex min-h-[var(--shell-ribbon-min)] shrink-0 flex-col items-center justify-center rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-4"
           aria-label="Mundika"
         >
-          <p className="text-center text-sm font-semibold tracking-tight text-[#2a382f]">
+          <p className="text-center text-sm font-semibold tracking-tight text-[var(--gs-text)]">
             Mundika
           </p>
         </div>
@@ -188,7 +188,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => void signOut()}
-            className="flex w-full items-center gap-3 rounded-2xl border border-[#cfe3d4] px-4 py-3 text-sm font-medium text-[#5c6e62] transition hover:border-[#b8d4c2] hover:bg-[#e3efe6] hover:text-[#2a382f]"
+            className="flex w-full items-center gap-3 rounded-2xl border border-[var(--gs-border)] px-4 py-3 text-sm font-medium text-[var(--gs-text-secondary)] transition hover:border-[var(--gs-grid)] hover:bg-[var(--gs-surface-hover)] hover:text-[var(--gs-text)]"
           >
             {icons.logout}
             Sign out
@@ -196,7 +196,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 bg-[#f6faf7]">
+      <main className="min-w-0 flex-1 bg-[var(--gs-bg)]">
         <div
           className={cn(
             "mx-auto min-h-full min-w-0",

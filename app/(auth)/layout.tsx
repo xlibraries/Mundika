@@ -4,9 +4,9 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative flex min-h-full flex-1 flex-col bg-[#f6faf7]">
+    <div className="relative flex min-h-full flex-1 flex-col bg-[var(--gs-bg)]">
       <div
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#dff0e5_0%,transparent_48%)]"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,var(--gs-selection)_0%,transparent_48%)]"
         aria-hidden
       />
       {children}

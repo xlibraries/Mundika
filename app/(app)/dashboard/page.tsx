@@ -14,8 +14,8 @@ import { syncWithRemote } from "@/lib/sync/engine";
 function DashboardSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="h-28 animate-pulse rounded-3xl border border-[#cfe3d4] bg-[#e0ebe3]" />
-      <div className="h-72 animate-pulse rounded-3xl border border-[#cfe3d4] bg-[#e0ebe3]" />
+      <div className="h-28 animate-pulse rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-surface)]" />
+      <div className="h-72 animate-pulse rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-surface)]" />
     </div>
   );
 }
@@ -85,28 +85,28 @@ function InventoryDashboardInner() {
 
   return (
     <div className="flex min-h-0 flex-col gap-4">
-      <section className="shrink-0 rounded-3xl border border-[#c5dccf] bg-[#f1f6f2] px-4 py-5 shadow-sm md:px-6 md:py-6">
-        <div className="flex min-h-[var(--shell-ribbon-min)] flex-col gap-4 border-b border-[#cfe3d4] pb-5 sm:flex-row sm:items-center sm:justify-between">
+      <section className="shrink-0 rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-surface)] px-4 py-5 shadow-sm md:px-6 md:py-6">
+        <div className="flex min-h-[var(--shell-ribbon-min)] flex-col gap-4 border-b border-[var(--gs-border)] pb-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-h-0 flex-1 flex-col justify-center space-y-2">
-            <h1 className="text-base font-semibold tracking-tight text-[#2a382f] md:text-lg">
+            <h1 className="text-base font-semibold tracking-tight text-[var(--gs-text)] md:text-lg">
               Today&apos;s overview
             </h1>
-            <p className="max-w-2xl text-sm leading-relaxed text-[#5c6e62]">
+            <p className="max-w-2xl text-sm leading-relaxed text-[var(--gs-text-secondary)]">
               Sales today, cash vs credit split, and purchase spend —{" "}
-              <span className="font-mono text-[#4d7a5c]">{today}</span>. Sync
+              <span className="font-mono text-[var(--gs-primary)]">{today}</span>. Sync
               when online.
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <Badge
               variant={online ? "success" : "warning"}
-              className="!border-[#b8d4c2] !bg-[#e8f2ea] !normal-case !tracking-normal !text-[#2a382f]"
+              className="!border-[var(--gs-border)] !bg-[var(--gs-surface-hover)] !normal-case !tracking-normal !text-[var(--gs-text)]"
             >
               {online ? "Online" : "Offline"}
             </Badge>
             <Badge
               variant="muted"
-              className="!border-[#cfe3d4] !text-[#5c6e62] !normal-case !tracking-normal"
+              className="!border-[var(--gs-border)] !text-[var(--gs-text-secondary)] !normal-case !tracking-normal"
             >
               {syncState === "syncing" || isResyncing ? "Syncing" : "Idle"}
               {lastSyncAt ? ` · ${lastSyncAt.slice(11, 19)}` : ""}
@@ -115,21 +115,21 @@ function InventoryDashboardInner() {
               type="button"
               disabled={isResyncing || !online}
               onClick={() => void handleResync()}
-              className="rounded-lg border border-[#c5dccf] bg-white px-2.5 py-1 text-xs font-medium text-[#4d7a5c] transition hover:bg-[#e8f2ea] disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-2.5 py-1 text-xs font-medium text-[var(--gs-primary)] transition hover:bg-[var(--gs-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50"
               title="Re-push all local data to Supabase"
             >
               {isResyncing ? "Syncing…" : "Force resync"}
             </button>
           </div>
           {resyncMsg ? (
-            <p className="mt-2 text-xs text-[#4d7a5c]">{resyncMsg}</p>
+            <p className="mt-2 text-xs text-[var(--gs-primary)]">{resyncMsg}</p>
           ) : null}
         </div>
 
         {!stats ? (
-          <div className="mt-5 h-24 shrink-0 animate-pulse rounded-2xl border border-[#cfe3d4] bg-[#e0ebe3]" />
+          <div className="mt-5 h-24 shrink-0 animate-pulse rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-surface-hover)]" />
         ) : (
-          <div className="mt-5 grid shrink-0 gap-px overflow-hidden rounded-2xl border border-[#c5dccf] bg-[#c5dccf] sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-5 grid shrink-0 gap-px overflow-hidden rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-border)] sm:grid-cols-2 lg:grid-cols-4">
             <Kpi label="Sales" value={formatINR(stats.salesTotal)} />
             <Kpi label="Cash" value={formatINR(stats.cashTotal)} />
             <Kpi label="Credit" value={formatINR(stats.creditTotal)} />
@@ -138,9 +138,9 @@ function InventoryDashboardInner() {
         )}
       </section>
 
-      <section className="flex min-h-[min(70vh,720px)] flex-1 flex-col overflow-hidden rounded-3xl border border-[#c5dccf] bg-[#e8f2ec] shadow-[0_16px_40px_-24px_rgba(42,56,47,0.18)]">
-        <div className="min-h-0 flex-1 overflow-y-auto bg-[#eef5f0] p-3 md:p-4">
-          <div className="min-h-0 overflow-hidden rounded-2xl border border-[#cfe3d4]/80 bg-[#faf9f5] shadow-sm">
+      <section className="flex min-h-[min(70vh,720px)] flex-1 flex-col overflow-hidden rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-panel)] shadow-[0_16px_40px_-24px_rgba(58,42,31,0.18)]">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--gs-surface)] p-3 md:p-4">
+          <div className="min-h-0 overflow-hidden rounded-2xl border border-[var(--gs-border)]/80 bg-[var(--gs-surface-plain)] shadow-sm">
             <TransactionForm
               key={`tx-${txBootMode}`}
               userId={userId}
@@ -164,11 +164,11 @@ export default function WorkspacePage() {
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[#faf9f5] px-4 py-3.5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-[#5c6e62]">
+    <div className="bg-[var(--gs-surface-plain)] px-4 py-3.5">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
         {label}
       </p>
-      <p className="mt-1 font-mono text-lg tabular-nums text-[#2a382f]">{value}</p>
+      <p className="mt-1 font-mono text-lg tabular-nums text-[var(--gs-text)]">{value}</p>
     </div>
   );
 }

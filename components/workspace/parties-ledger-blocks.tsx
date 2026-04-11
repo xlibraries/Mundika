@@ -96,13 +96,13 @@ export function PartiesBlock({
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-[#2a382f]">Contacts</h2>
+      <h2 className="text-sm font-medium text-[var(--gs-text)]">Contacts</h2>
       <form
         onSubmit={onAdd}
-        className="flex flex-col gap-2 rounded-sm border border-[#c5dccf] bg-[#f4f8f5] p-3 sm:flex-row sm:items-end"
+        className="flex flex-col gap-2 rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface)] p-3 sm:flex-row sm:items-end"
       >
         <label className="min-w-0 flex-1 space-y-1">
-          <span className="text-[11px] text-[#5c6e62]">Name</span>
+          <span className="text-[11px] text-[var(--gs-text-secondary)]">Name</span>
           <Input
             value={name}
             onChange={(e) => { setName(e.target.value); if (addError) setAddError(null); }}
@@ -110,7 +110,7 @@ export function PartiesBlock({
           />
         </label>
         <label className="min-w-0 flex-1 space-y-1 sm:max-w-[200px]">
-          <span className="text-[11px] text-[#5c6e62]">Phone</span>
+          <span className="text-[11px] text-[var(--gs-text-secondary)]">Phone</span>
           <Input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -122,23 +122,23 @@ export function PartiesBlock({
         </Button>
       </form>
       {addError ? (
-        <p role="alert" aria-live="polite" className="rounded border border-[#f9dedc] bg-[#fce8e6] px-3 py-2 text-sm text-[#c5221f]">
+        <p role="alert" aria-live="polite" className="rounded border border-[var(--gs-danger)]/30 bg-[var(--gs-danger-soft)] px-3 py-2 text-sm text-[var(--gs-danger)]">
           {addError}
         </p>
       ) : null}
-      <div className="overflow-hidden rounded-sm border border-[#c5dccf] bg-[#faf9f5]">
+      <div className="overflow-hidden rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)]">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-[#c5dccf] bg-[#f4f8f5] text-[11px] font-medium uppercase tracking-wide text-[#5c6e62]">
+            <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
               <th className="px-3 py-2">Name</th>
               <th className="px-3 py-2 text-right">Phone</th>
               <th className="w-36 px-3 py-2 text-center"> </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#dce8df]">
+          <tbody className="divide-y divide-[var(--gs-grid)]">
             {rows.map((p) =>
               editingId === p.id ? (
-                <tr key={p.id} className="bg-[#dff0e5]">
+                <tr key={p.id} className="bg-[var(--gs-selection)]">
                   <td className="px-2 py-1.5">
                     <Input
                       value={editName}
@@ -165,15 +165,15 @@ export function PartiesBlock({
                   </td>
                   <td className="px-2 py-1.5 text-center">
                     <div className="flex justify-center gap-2">
-                      <button type="button" onClick={() => void saveEdit(p.id)} className="text-xs font-medium text-[#6b9b7a] hover:underline">Save</button>
-                      <button type="button" onClick={() => setEditingId(null)} className="text-xs text-[#5c6e62] hover:underline">Cancel</button>
+                      <button type="button" onClick={() => void saveEdit(p.id)} className="text-xs font-medium text-[var(--gs-primary)] hover:underline">Save</button>
+                      <button type="button" onClick={() => setEditingId(null)} className="text-xs text-[var(--gs-text-secondary)] hover:underline">Cancel</button>
                     </div>
                   </td>
                 </tr>
               ) : (
-                <tr key={p.id} className="hover:bg-[#f4f8f5]">
-                  <td className="px-3 py-2 font-medium text-[#2a382f]">{p.name}</td>
-                  <td className="px-3 py-2 text-right text-[#5c6e62]">
+                <tr key={p.id} className="hover:bg-[var(--gs-surface)]">
+                  <td className="px-3 py-2 font-medium text-[var(--gs-text)]">{p.name}</td>
+                  <td className="px-3 py-2 text-right text-[var(--gs-text-secondary)]">
                     {p.phone ?? "—"}
                   </td>
                   <td className="px-3 py-2 text-center">
@@ -181,7 +181,7 @@ export function PartiesBlock({
                       <button
                         type="button"
                         aria-label={`Edit contact ${p.name}`}
-                        className="text-xs text-[#6b9b7a] hover:underline"
+                        className="text-xs text-[var(--gs-primary)] hover:underline"
                         onClick={() => startEdit(p)}
                       >
                         Edit
@@ -189,7 +189,7 @@ export function PartiesBlock({
                       <button
                         type="button"
                         aria-label={`Remove contact ${p.name}`}
-                        className="text-xs text-[#5c6e62] hover:text-[#c5221f]"
+                        className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
                         onClick={() => void onDelete(p.id)}
                       >
                         Remove
@@ -202,7 +202,7 @@ export function PartiesBlock({
           </tbody>
         </table>
         {rows.length === 0 ? (
-          <p className="px-3 py-6 text-center text-sm text-[#5c6e62]">
+          <p className="px-3 py-6 text-center text-sm text-[var(--gs-text-secondary)]">
             No contacts yet.
           </p>
         ) : null}
@@ -251,11 +251,11 @@ export function LedgerBlock({
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-[#2a382f]">Ledger</h2>
-      <div className="overflow-x-auto overflow-hidden rounded-sm border border-[#c5dccf] bg-[#faf9f5]">
+      <h2 className="text-sm font-medium text-[var(--gs-text)]">Ledger</h2>
+      <div className="overflow-x-auto overflow-hidden rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)]">
         <table className="w-full min-w-[560px] text-left text-sm">
           <thead>
-            <tr className="border-b border-[#c5dccf] bg-[#f4f8f5] text-[11px] font-medium uppercase tracking-wide text-[#5c6e62]">
+            <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
               <th className="px-3 py-2">Date</th>
               <th className="px-3 py-2">Type</th>
               <th className="px-3 py-2">Contact</th>
@@ -263,21 +263,23 @@ export function LedgerBlock({
               <th className="w-16 px-3 py-2 text-center"> </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#dce8df]">
+          <tbody className="divide-y divide-[var(--gs-grid)]">
             {rows.map((r) => (
-              <tr key={r.id} className="hover:bg-[#f4f8f5]">
-                <td className="px-3 py-2 font-mono text-xs text-[#5c6e62]">
+              <tr key={r.id} className="hover:bg-[var(--gs-surface)]">
+                <td className="px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)]">
                   {r.entry_date}
                 </td>
-                <td className="px-3 py-2 capitalize text-[#2a382f]">
+                <td className="px-3 py-2 capitalize text-[var(--gs-text)]">
                   {r.entry_type}
                 </td>
-                <td className="px-3 py-2 text-[#2a382f]">
+                <td className="px-3 py-2 text-[var(--gs-text)]">
                   {r.party_name_snapshot ?? "—"}
                 </td>
                 <td
                   className={`px-3 py-2 text-right font-mono tabular-nums ${
-                    r.balance_delta >= 0 ? "text-[#3d6b4f]" : "text-[#5c6e62]"
+                    r.balance_delta >= 0
+                      ? "text-[var(--gs-success)]"
+                      : "text-[var(--gs-text-secondary)]"
                   }`}
                 >
                   {r.balance_delta >= 0 ? "+" : "-"}{formatINR(Math.abs(r.balance_delta))}
@@ -286,7 +288,7 @@ export function LedgerBlock({
                   <button
                     type="button"
                     aria-label={`Remove ledger entry for ${r.party_name_snapshot ?? "contact"} on ${r.entry_date}`}
-                    className="text-xs text-[#5c6e62] hover:text-[#c5221f]"
+                    className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
                     onClick={() => void onDelete(r.id)}
                   >
                     Remove
@@ -297,7 +299,7 @@ export function LedgerBlock({
           </tbody>
         </table>
         {rows.length === 0 ? (
-          <p className="px-3 py-6 text-center text-sm text-[#5c6e62]">
+          <p className="px-3 py-6 text-center text-sm text-[var(--gs-text-secondary)]">
             No ledger entries yet.
           </p>
         ) : null}

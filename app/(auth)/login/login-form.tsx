@@ -63,19 +63,19 @@ export function LoginForm() {
     <div className="relative flex min-h-full flex-1 flex-col items-center justify-center p-6">
       <div className="w-full max-w-[400px] space-y-8">
         <div className="space-y-2 text-center sm:text-left">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded border border-[#c5dccf] bg-[#faf9f5] text-lg font-bold text-[#4d7a5c] shadow-sm sm:mx-0">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] text-lg font-bold text-[var(--gs-primary)] shadow-sm sm:mx-0">
             M
           </div>
-          <h1 className="text-2xl font-medium tracking-tight text-[#2a382f]">
+          <h1 className="text-2xl font-medium tracking-tight text-[var(--gs-text)]">
             Sign in or create your account
           </h1>
-          <p className="text-sm leading-relaxed text-[#5c6e62]">
+          <p className="text-sm leading-relaxed text-[var(--gs-text-secondary)]">
             Google works as one-tap sign-up too. Your first Google login creates
             the account automatically.
           </p>
         </div>
 
-        <div className="rounded-lg border border-[#c5dccf] bg-[#faf9f5] p-6 shadow-[0_1px_2px_rgba(42,56,47,0.08),0_4px_12px_-4px_rgba(42,56,47,0.12)]">
+        <div className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] p-6 shadow-[0_1px_2px_rgba(58,42,31,0.08),0_4px_12px_-4px_rgba(58,42,31,0.12)]">
           <Button
             type="button"
             variant="secondary"
@@ -85,22 +85,22 @@ export function LoginForm() {
           >
             {busy ? "Opening Google…" : "Continue with Google"}
           </Button>
-          <p className="mt-2 text-center text-xs text-[#5c6e62]">
+          <p className="mt-2 text-center text-xs text-[var(--gs-text-secondary)]">
             New users are created automatically after Google approves access.
           </p>
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[#c5dccf]" />
+              <div className="w-full border-t border-[var(--gs-border)]" />
             </div>
-            <div className="relative flex justify-center text-[11px] uppercase tracking-wider text-[#5c6e62]">
-              <span className="bg-[#faf9f5] px-2">or use email</span>
+            <div className="relative flex justify-center text-[11px] uppercase tracking-wider text-[var(--gs-text-secondary)]">
+              <span className="bg-[var(--gs-surface-plain)] px-2">or use email</span>
             </div>
           </div>
 
           <form onSubmit={signInEmail} className="space-y-4">
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium text-[#5c6e62]">Email</span>
+              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">Email</span>
               <Input
                 type="email"
                 required
@@ -111,7 +111,7 @@ export function LoginForm() {
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium text-[#5c6e62]">
+              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
                 Password
               </span>
               <Input
@@ -124,7 +124,7 @@ export function LoginForm() {
               />
             </label>
             {error ? (
-              <p className="rounded border border-[#f0c4c0] bg-[#fcecea] px-3 py-2 text-sm text-[#c44d42]">
+              <p className="rounded border border-[var(--gs-danger)]/30 bg-[var(--gs-danger-soft)] px-3 py-2 text-sm text-[var(--gs-danger)]">
                 {error}
               </p>
             ) : null}
@@ -139,7 +139,7 @@ export function LoginForm() {
           </form>
         </div>
 
-        <p className="text-center text-[11px] text-[#5c6e62]">
+        <p className="text-center text-[11px] text-[var(--gs-text-secondary)]">
           Encrypted in transit to Supabase when you sync.
         </p>
       </div>
