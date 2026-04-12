@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/cn";
 import { icons } from "@/components/layout/nav-icons";
+import { DashboardRailSummary } from "@/components/layout/dashboard-rail-summary";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Inventory", icon: icons.dashboard },
@@ -28,7 +29,7 @@ function NavLinks({
   return (
     <nav
       className={cn(
-        "flex min-h-0 flex-1 flex-col justify-center gap-8 py-6",
+        "flex min-h-0 flex-col justify-start gap-3 py-4",
         className
       )}
     >
@@ -164,6 +165,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <p className="text-sm font-semibold tracking-tight text-[var(--gs-text)]">
                     Vyapar Dashboard
                   </p>
+                  <DashboardRailSummary pathname={pathname} />
                 </div>
               </div>
               <NavLinks onNavigate={() => setMobileOpen(false)} />
@@ -193,8 +195,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <p className="mt-1 text-center text-sm font-semibold tracking-tight text-[var(--gs-text)]">
             Vyapar Dashboard
           </p>
+          <DashboardRailSummary pathname={pathname} />
         </div>
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
           <NavLinks />
         </div>
         <div className="mt-auto shrink-0 pt-6">
