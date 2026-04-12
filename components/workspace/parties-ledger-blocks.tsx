@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { db } from "@/lib/db";
 import { getLocalDateInputValue } from "@/lib/date/local-date";
 import { createParty } from "@/modules/parties/actions";
@@ -34,6 +34,211 @@ const PAYMENT_MODE_OPTIONS: Array<{ value: PaymentMode; label: string }> = [
 function paymentModeLabel(mode: PaymentMode | null | undefined): string {
   if (!mode) return "—";
   return PAYMENT_MODE_OPTIONS.find((opt) => opt.value === mode)?.label ?? "Other";
+}
+
+function compareLedgerAsc(a: LedgerEntryRow, b: LedgerEntryRow): number {
+  if (a.entry_date !== b.entry_date) {
+    return a.entry_date < b.entry_date ? -1 : 1;
+  }
+  if (a.created_at !== b.created_at) {
+    return a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0;
+  }
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
+type LedgerDisplayGroup =
+  | { kind: "document"; parent: LedgerEntryRow; payments: LedgerEntryRow[] }
+  | { kind: "payment-only"; payment: LedgerEntryRow };
+
+/**
+ * Payments are shown under the most recent preceding sale or purchase for the
+ * same contact (chronological). No explicit ref on payment rows yet — this is display-only.
+ */
+function buildLedgerDisplayGroups(rows: LedgerEntryRow[]): LedgerDisplayGroup[] {
+  const sorted = [...rows].sort(compareLedgerAsc);
+  const groups: LedgerDisplayGroup[] = [];
+  const lastDocGroupByParty = new Map<string, Extract<LedgerDisplayGroup, { kind: "document" }>>();
+
+  for (const r of sorted) {
+    if (r.entry_type === "sale" || r.entry_type === "purchase") {
+      const g: Extract<LedgerDisplayGroup, { kind: "document" }> = {
+        kind: "document",
+        parent: r,
+        payments: [],
+      };
+      groups.push(g);
+      lastDocGroupByParty.set(r.party_id, g);
+    } else if (r.entry_type === "payment") {
+      const doc = lastDocGroupByParty.get(r.party_id);
+      if (doc) {
+        doc.payments.push(r);
+      } else {
+        groups.push({ kind: "payment-only", payment: r });
+      }
+    }
+  }
+
+  for (const g of groups) {
+    if (g.kind === "document" && g.payments.length > 0) {
+      g.payments.sort(compareLedgerAsc);
+    }
+  }
+
+  return groups.slice().reverse();
+}
+
+type LedgerRowVisual = "parent" | "child" | "standalone";
+
+function LedgerEntryTr({
+  row,
+  visual,
+  ledgerRowBusyId,
+  onDelete,
+  onPreview,
+  expandToggle,
+}: {
+  row: LedgerEntryRow;
+  visual: LedgerRowVisual;
+  ledgerRowBusyId: string | null;
+  onDelete: (id: string) => void;
+  onPreview: (r: LedgerEntryRow) => void | Promise<void>;
+  expandToggle?: { expanded: boolean; onToggle: () => void; childCount: number };
+}) {
+  const isChild = visual === "child";
+  const showPreviewButton =
+    !isChild &&
+    ((row.entry_type === "sale" && row.ref_bill_id) ||
+      (row.entry_type === "purchase" && row.ref_purchase_id) ||
+      row.entry_type === "payment");
+  const rowExpandable = Boolean(expandToggle && expandToggle.childCount > 0);
+  const isSaleOrPurchase =
+    row.entry_type === "sale" || row.entry_type === "purchase";
+  const showDashBalance = isSaleOrPurchase && row.balance_delta === 0;
+
+  return (
+    <tr
+      className={
+        isChild
+          ? "hover:bg-[var(--gs-surface)] bg-[var(--gs-surface-plain)]/60"
+          : rowExpandable
+            ? "cursor-pointer hover:bg-[var(--gs-surface)]"
+            : "hover:bg-[var(--gs-surface)]"
+      }
+      tabIndex={rowExpandable ? 0 : undefined}
+      aria-expanded={rowExpandable ? expandToggle!.expanded : undefined}
+      onClick={
+        rowExpandable
+          ? () => {
+              expandToggle!.onToggle();
+            }
+          : undefined
+      }
+      onKeyDown={
+        rowExpandable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                expandToggle!.onToggle();
+              }
+            }
+          : undefined
+      }
+    >
+      <td
+        className={`px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)] ${isChild ? "border-l-2 border-l-[var(--gs-primary)]/25 pl-5" : ""}`}
+      >
+        {isChild ? (
+          row.entry_date
+        ) : expandToggle && expandToggle.childCount > 0 ? (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-[10px] font-semibold text-[var(--gs-text-secondary)]" aria-hidden>
+              {expandToggle.expanded ? "▼" : "▶"}
+            </span>
+            <span>{row.entry_date}</span>
+            <span className="font-sans text-[10px] font-semibold text-[var(--gs-text-secondary)]">
+              ↳{expandToggle.childCount}
+            </span>
+          </div>
+        ) : (
+          row.entry_date
+        )}
+      </td>
+      <td
+        className={`px-3 py-2 text-[var(--gs-text)] ${isChild ? "text-[var(--gs-text-secondary)]" : "capitalize"}`}
+      >
+        {isChild ? "↳ Payment" : row.entry_type}
+      </td>
+      <td className={`px-3 py-2 text-[var(--gs-text)] ${isChild ? "text-[var(--gs-text-secondary)]" : ""}`}>
+        {row.party_name_snapshot ?? "—"}
+      </td>
+      <td className="px-3 py-2 text-[var(--gs-text-secondary)]">
+        {row.entry_type === "payment" ? paymentModeLabel(row.payment_mode) : "—"}
+      </td>
+      <td className="px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)]">
+        {row.entry_type === "payment" ? row.payment_reference ?? "—" : "—"}
+      </td>
+      <td
+        className={`px-3 py-2 text-right font-mono tabular-nums ${
+          showDashBalance
+            ? "text-[var(--gs-text-secondary)]"
+            : row.balance_delta >= 0
+              ? "text-[var(--gs-success)]"
+              : "text-[var(--gs-text-secondary)]"
+        }`}
+        title={
+          showDashBalance
+            ? "No change to running balance (cash or paid at invoice)."
+            : undefined
+        }
+      >
+        {showDashBalance ? (
+          "—"
+        ) : (
+          <>
+            {row.balance_delta >= 0 ? "+" : "-"}
+            {formatINR(Math.abs(row.balance_delta))}
+          </>
+        )}
+      </td>
+      <td
+        className="px-2 py-2 text-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+          {showPreviewButton ? (
+            <>
+              <button
+                type="button"
+                aria-label={
+                  row.entry_type === "payment"
+                    ? `Preview payment receipt for ${row.entry_date}`
+                    : row.entry_type === "sale"
+                      ? `Preview bill for ledger entry on ${row.entry_date}`
+                      : `Preview purchase for ledger entry on ${row.entry_date}`
+                }
+                disabled={ledgerRowBusyId === row.id}
+                className="text-xs font-medium text-[var(--gs-primary)] hover:underline disabled:opacity-40"
+                onClick={() => void onPreview(row)}
+              >
+                {ledgerRowBusyId === row.id ? "…" : "Preview"}
+              </button>
+              <span className="select-none text-[var(--gs-border)]" aria-hidden>
+                ·
+              </span>
+            </>
+          ) : null}
+          <button
+            type="button"
+            aria-label={`Remove ledger entry for ${row.party_name_snapshot ?? "contact"} on ${row.entry_date}`}
+            className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
+            onClick={() => void onDelete(row.id)}
+          >
+            Remove
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
 }
 
 export function PartiesBlock({
@@ -303,6 +508,8 @@ export function LedgerBlock({
 }) {
   const lastSyncAt = useAppStore((s) => s.lastSyncAt);
   const [rows, setRows] = useState<LedgerEntryRow[]>([]);
+  /** Bill totals keyed by id — used so cash sales count toward Total sales (ledger balance_delta is 0). */
+  const [billTotalById, setBillTotalById] = useState<Record<string, number>>({});
   const [parties, setParties] = useState<PartyRow[]>([]);
   const [paymentPartyId, setPaymentPartyId] = useState("");
   const [entryDate, setEntryDate] = useState(() => getLocalDateInputValue());
@@ -314,16 +521,22 @@ export function LedgerBlock({
   const [isSaving, setIsSaving] = useState(false);
   const [docPreview, setDocPreview] = useState<TxDocPreview | null>(null);
   const [ledgerRowBusyId, setLedgerRowBusyId] = useState<string | null>(null);
+  /** When true, nested payment rows under that parent id are visible. Default collapsed. */
+  const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
-    const [ledgerEntries, partyRows] = await Promise.all([
+    const [ledgerEntries, partyRows, bills] = await Promise.all([
       db.ledger_entries.where("user_id").equals(userId).toArray(),
       db.parties.where("user_id").equals(userId).toArray(),
+      db.bills.where("user_id").equals(userId).toArray(),
     ]);
     ledgerEntries.sort((a, b) =>
       a.entry_date < b.entry_date ? 1 : a.entry_date > b.entry_date ? -1 : 0
     );
     partyRows.sort((a, b) => a.name.localeCompare(b.name));
+    const totals: Record<string, number> = {};
+    for (const b of bills) totals[b.id] = b.total;
+    setBillTotalById(totals);
     setRows(ledgerEntries);
     setParties(partyRows);
     setPaymentPartyId((prev) => prev || partyRows[0]?.id || "");
@@ -345,6 +558,15 @@ export function LedgerBlock({
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Could not delete");
     }
+  }
+
+  function toggleParentExpand(parentId: string) {
+    setExpandedParents((prev) => ({ ...prev, [parentId]: !prev[parentId] }));
+  }
+
+  function isParentExpanded(parentId: string, childCount: number) {
+    if (childCount === 0) return true;
+    return expandedParents[parentId] === true;
   }
 
   async function openLedgerPreviewDoc(r: LedgerEntryRow) {
@@ -423,16 +645,29 @@ export function LedgerBlock({
     return true;
   });
 
-  const selectionSummary = filteredRows.reduce(
-    (acc, row) => {
-      const amountAbs = Math.abs(row.balance_delta);
-      if (row.entry_type === "sale") acc.totalSales += amountAbs;
-      if (row.balance_delta > 0) acc.totalCredit += row.balance_delta;
-      if (row.entry_type === "payment") acc.totalPayments += amountAbs;
-      return acc;
-    },
-    { totalSales: 0, totalCredit: 0, totalPayments: 0 }
-  );
+  const selectionSummary = useMemo(() => {
+    return filteredRows.reduce(
+      (acc, row) => {
+        const amountAbs = Math.abs(row.balance_delta);
+        if (row.entry_type === "sale") {
+          const inv =
+            row.ref_bill_id != null ? billTotalById[row.ref_bill_id] : undefined;
+          acc.totalSales += inv != null ? inv : amountAbs;
+        }
+        if (row.balance_delta > 0) acc.totalCredit += row.balance_delta;
+        if (row.entry_type === "payment") acc.totalPayments += amountAbs;
+        return acc;
+      },
+      { totalSales: 0, totalCredit: 0, totalPayments: 0 }
+    );
+  }, [filteredRows, billTotalById]);
+
+  const ledgerTableRows = useMemo(() => {
+    if (localFilters.entryType === "payment") {
+      return { mode: "flat" as const, rows: filteredRows };
+    }
+    return { mode: "grouped" as const, groups: buildLedgerDisplayGroups(filteredRows) };
+  }, [filteredRows, localFilters.entryType]);
 
   return (
     <section className="space-y-3">
@@ -644,73 +879,60 @@ export function LedgerBlock({
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--gs-grid)]">
-            {filteredRows.map((r) => (
-              <tr key={r.id} className="hover:bg-[var(--gs-surface)]">
-                <td className="px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)]">
-                  {r.entry_date}
-                </td>
-                <td className="px-3 py-2 capitalize text-[var(--gs-text)]">
-                  {r.entry_type}
-                </td>
-                <td className="px-3 py-2 text-[var(--gs-text)]">
-                  {r.party_name_snapshot ?? "—"}
-                </td>
-                <td className="px-3 py-2 text-[var(--gs-text-secondary)]">
-                  {r.entry_type === "payment" ? paymentModeLabel(r.payment_mode) : "—"}
-                </td>
-                <td className="px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)]">
-                  {r.entry_type === "payment" ? r.payment_reference ?? "—" : "—"}
-                </td>
-                <td
-                  className={`px-3 py-2 text-right font-mono tabular-nums ${
-                    r.balance_delta >= 0
-                      ? "text-[var(--gs-success)]"
-                      : "text-[var(--gs-text-secondary)]"
-                  }`}
-                >
-                  {r.balance_delta >= 0 ? "+" : "-"}{formatINR(Math.abs(r.balance_delta))}
-                </td>
-                <td className="px-2 py-2 text-center">
-                  <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
-                    {(r.entry_type === "sale" && r.ref_bill_id) ||
-                    (r.entry_type === "purchase" && r.ref_purchase_id) ||
-                    r.entry_type === "payment" ? (
-                      <>
-                        <button
-                          type="button"
-                          aria-label={
-                            r.entry_type === "payment"
-                              ? `Preview payment receipt for ${r.entry_date}`
-                              : r.entry_type === "sale"
-                                ? `Preview bill for ledger entry on ${r.entry_date}`
-                                : `Preview purchase for ledger entry on ${r.entry_date}`
-                          }
-                          disabled={ledgerRowBusyId === r.id}
-                          className="text-xs font-medium text-[var(--gs-primary)] hover:underline disabled:opacity-40"
-                          onClick={() => void openLedgerPreviewDoc(r)}
-                        >
-                          {ledgerRowBusyId === r.id ? "…" : "Preview"}
-                        </button>
-                        <span
-                          className="select-none text-[var(--gs-border)]"
-                          aria-hidden
-                        >
-                          ·
-                        </span>
-                      </>
-                    ) : null}
-                    <button
-                      type="button"
-                      aria-label={`Remove ledger entry for ${r.party_name_snapshot ?? "contact"} on ${r.entry_date}`}
-                      className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
-                      onClick={() => void onDelete(r.id)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {ledgerTableRows.mode === "flat"
+              ? ledgerTableRows.rows.map((r) => (
+                  <LedgerEntryTr
+                    key={r.id}
+                    row={r}
+                    visual="standalone"
+                    ledgerRowBusyId={ledgerRowBusyId}
+                    onDelete={onDelete}
+                    onPreview={openLedgerPreviewDoc}
+                  />
+                ))
+              : ledgerTableRows.groups.map((g) =>
+                  g.kind === "payment-only" ? (
+                    <LedgerEntryTr
+                      key={g.payment.id}
+                      row={g.payment}
+                      visual="standalone"
+                      ledgerRowBusyId={ledgerRowBusyId}
+                      onDelete={onDelete}
+                      onPreview={openLedgerPreviewDoc}
+                    />
+                  ) : (
+                    <Fragment key={g.parent.id}>
+                      <LedgerEntryTr
+                        row={g.parent}
+                        visual="parent"
+                        expandToggle={
+                          g.payments.length > 0
+                            ? {
+                                expanded: isParentExpanded(g.parent.id, g.payments.length),
+                                onToggle: () => toggleParentExpand(g.parent.id),
+                                childCount: g.payments.length,
+                              }
+                            : undefined
+                        }
+                        ledgerRowBusyId={ledgerRowBusyId}
+                        onDelete={onDelete}
+                        onPreview={openLedgerPreviewDoc}
+                      />
+                      {isParentExpanded(g.parent.id, g.payments.length)
+                        ? g.payments.map((p) => (
+                            <LedgerEntryTr
+                              key={p.id}
+                              row={p}
+                              visual="child"
+                              ledgerRowBusyId={ledgerRowBusyId}
+                              onDelete={onDelete}
+                              onPreview={openLedgerPreviewDoc}
+                            />
+                          ))
+                        : null}
+                    </Fragment>
+                  )
+                )}
           </tbody>
         </table>
         {rows.length === 0 ? (
