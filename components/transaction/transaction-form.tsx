@@ -625,6 +625,8 @@ export function TransactionForm({
     mode === "billing" ? "Vehicle / Owner" : "Supplier Ref / Bill No.";
   const saveLabel = mode === "billing" ? "Save bill" : "Save purchase";
   const nextNumber = mode === "billing" ? bills.length + 1 : purchases.length + 1;
+  const qtyPlaceholder = (unit?: string | null) =>
+    unit ? `Qty (${unit})` : "Qty";
 
   const modeTablist = (
     <div
@@ -892,6 +894,9 @@ export function TransactionForm({
               const composerLine = lines[composerIndex]!;
               const composerIssue = lineIssues[composerIndex];
               const composerTotal = liveTotals.rowTotals[composerIndex];
+              const composerItem = composerLine.item_id
+                ? itemById.get(composerLine.item_id)
+                : null;
               const composerStock = composerLine.item_id
                 ? stockByItemId.get(composerLine.item_id) ?? 0
                 : null;
@@ -913,6 +918,9 @@ export function TransactionForm({
                       <p className="text-xs font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
                         Item composer
                       </p>
+                      <p className="text-[11px] text-[var(--gs-text-secondary)]">
+                        Enter on rate adds next line.
+                      </p>
                       {composerStock != null ? (
                         <p
                           className={cn(
@@ -923,7 +931,10 @@ export function TransactionForm({
                           )}
                         >
                           Available stock:{" "}
-                          <span className="font-mono">{composerStock}</span>
+                          <span className="font-mono">
+                            {composerStock}
+                            {composerItem?.unit ? ` ${composerItem.unit}` : ""}
+                          </span>
                         </p>
                       ) : null}
                     </div>
@@ -962,7 +973,7 @@ export function TransactionForm({
                         }}
                         type="text"
                         inputMode="decimal"
-                        placeholder="Qty"
+                        placeholder={qtyPlaceholder(composerItem?.unit)}
                         value={composerLine.qty}
                         aria-invalid={composerIssue?.qty || undefined}
                         onChange={(e) => {
@@ -1060,6 +1071,7 @@ export function TransactionForm({
                         const rowIssue = lineIssues[i];
                         const rowTotal = liveTotals.rowTotals[i];
                         const stockWarn = liveTotals.stockWarnings[i] ?? false;
+                        const rowItem = line.item_id ? itemById.get(line.item_id) : null;
                         const stock = line.item_id
                           ? stockByItemId.get(line.item_id) ?? 0
                           : null;
@@ -1083,7 +1095,10 @@ export function TransactionForm({
                                   <>
                                     {" "}
                                     · Available:{" "}
-                                    <span className="font-mono">{stock}</span>
+                                    <span className="font-mono">
+                                      {stock}
+                                      {rowItem?.unit ? ` ${rowItem.unit}` : ""}
+                                    </span>
                                   </>
                                 ) : null}
                               </p>
@@ -1131,7 +1146,7 @@ export function TransactionForm({
                                 }}
                                 type="text"
                                 inputMode="decimal"
-                                placeholder="Qty"
+                                placeholder={qtyPlaceholder(rowItem?.unit)}
                                 value={line.qty}
                                 aria-invalid={rowIssue?.qty || undefined}
                                 onChange={(e) => {
