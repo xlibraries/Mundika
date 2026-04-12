@@ -37,13 +37,11 @@ import {
   paymentModeLabel,
 } from "@/lib/billing/payment-mode-label";
 import {
-  BillDocumentView,
-  type BillPrintLine,
-} from "@/components/billing/bill-document";
-import {
-  PurchaseDocumentView,
-  type PurchasePrintLine,
-} from "@/components/billing/purchase-document";
+  loadBillPrintPayload,
+  loadPurchasePrintPayload,
+  type TxDocPreview,
+} from "@/lib/billing/doc-preview";
+import { PrintableDocModal } from "@/components/billing/printable-doc-modal";
 import { useAppStore } from "@/store/app-store";
 
 // ---------------------------------------------------------------------------
@@ -65,10 +63,6 @@ type TxLine = {
 };
 
 type LineIssue = { qty?: boolean; rate?: boolean };
-
-type TxDocPreview =
-  | { kind: "bill"; bill: BillRow; lines: BillPrintLine[] }
-  | { kind: "purchase"; purchase: PurchaseRow; lines: PurchasePrintLine[] };
 
 function emptyLine(): TxLine {
   return { item_id: "", qty: "1", rate: "", destination: "godown" };
@@ -725,25 +719,12 @@ export function TransactionForm({
     setDocPreviewLoadingId(bill.id);
     setErr(null);
     try {
-      const rows = await db.bill_items
-        .where("bill_id")
-        .equals(bill.id)
-        .toArray();
-      rows.sort((a, b) =>
-        (a.created_at ?? "") < (b.created_at ?? "") ? -1 : 1
-      );
-      const lines: BillPrintLine[] = [];
-      for (const row of rows) {
-        const item = await db.items.get(row.item_id);
-        lines.push({
-          itemName: item?.name ?? "Item",
-          unit: item?.unit ?? null,
-          qty: row.qty,
-          rate: row.rate,
-          line_total: row.line_total,
-        });
+      const data = await loadBillPrintPayload(userId, bill.id);
+      if (!data) {
+        setErr("Bill not found.");
+        return;
       }
-      setDocPreview({ kind: "bill", bill, lines });
+      setDocPreview({ kind: "bill", ...data });
     } catch (er) {
       setErr(er instanceof Error ? er.message : "Could not load bill lines");
     } finally {
@@ -755,26 +736,12 @@ export function TransactionForm({
     setDocPreviewLoadingId(purchase.id);
     setErr(null);
     try {
-      const rows = await db.purchase_items
-        .where("purchase_id")
-        .equals(purchase.id)
-        .toArray();
-      rows.sort((a, b) =>
-        (a.created_at ?? "") < (b.created_at ?? "") ? -1 : 1
-      );
-      const lines: PurchasePrintLine[] = [];
-      for (const row of rows) {
-        const item = await db.items.get(row.item_id);
-        lines.push({
-          itemName: item?.name ?? "Item",
-          unit: item?.unit ?? null,
-          qty: row.qty,
-          unit_cost: row.unit_cost,
-          line_total: row.line_total,
-          destination: row.destination,
-        });
+      const data = await loadPurchasePrintPayload(userId, purchase.id);
+      if (!data) {
+        setErr("Purchase not found.");
+        return;
       }
-      setDocPreview({ kind: "purchase", purchase, lines });
+      setDocPreview({ kind: "purchase", ...data });
     } catch (er) {
       setErr(
         er instanceof Error ? er.message : "Could not load purchase lines"
@@ -783,36 +750,6 @@ export function TransactionForm({
       setDocPreviewLoadingId(null);
     }
   }
-
-  function printDocPreview() {
-    let done = false;
-    const cleanup = () => {
-      if (done) return;
-      done = true;
-      document.documentElement.classList.remove("mundika-printing-doc");
-      window.removeEventListener("afterprint", cleanup);
-    };
-    document.documentElement.classList.add("mundika-printing-doc");
-    window.addEventListener("afterprint", cleanup);
-    requestAnimationFrame(() => {
-      window.print();
-      window.setTimeout(cleanup, 2000);
-    });
-  }
-
-  useEffect(() => {
-    if (!docPreview) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setDocPreview(null);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [docPreview]);
 
   // ---- labels --------------------------------------------------------------
   const partyLabel = mode === "billing" ? "Customer" : "Supplier";
@@ -1705,61 +1642,10 @@ export function TransactionForm({
         </section>
       )}
 
-      {docPreview ? (
-        <div
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-center px-3 py-6 sm:px-5"
-          style={{ backgroundColor: "var(--gs-overlay)" }}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="doc-preview-title"
-          onClick={() => setDocPreview(null)}
-        >
-          <div
-            className="mundika-doc-print-toolbar flex w-full max-w-2xl flex-shrink-0 items-center justify-between gap-3 pb-3"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2
-              id="doc-preview-title"
-              className="text-sm font-semibold text-[var(--gs-surface-plain)] drop-shadow-sm"
-            >
-              {docPreview.kind === "bill" ? "Bill preview" : "Purchase preview"}
-            </h2>
-            <div className="flex flex-shrink-0 gap-2">
-              <Button
-                variant="secondary"
-                className="border-[var(--gs-border)] bg-[var(--gs-surface-plain)] shadow-sm"
-                onClick={printDocPreview}
-              >
-                Print
-              </Button>
-              <Button
-                variant="secondary"
-                className="border-[var(--gs-border)] bg-[var(--gs-surface-plain)] shadow-sm"
-                onClick={() => setDocPreview(null)}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-          <div
-            id="mundika-doc-print-target"
-            className="max-h-[min(78vh,42rem)] w-full max-w-2xl overflow-y-auto rounded-xl shadow-lg ring-1 ring-black/10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {docPreview.kind === "bill" ? (
-              <BillDocumentView
-                bill={docPreview.bill}
-                lines={docPreview.lines}
-              />
-            ) : (
-              <PurchaseDocumentView
-                purchase={docPreview.purchase}
-                lines={docPreview.lines}
-              />
-            )}
-          </div>
-        </div>
-      ) : null}
+      <PrintableDocModal
+        payload={docPreview}
+        onClose={() => setDocPreview(null)}
+      />
     </div>
   );
 }

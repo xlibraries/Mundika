@@ -9,6 +9,12 @@ import { updateParty } from "@/modules/parties/update";
 import { createLedgerPayment } from "@/modules/ledger/actions";
 import { deleteLedgerEntry } from "@/modules/ledger/delete";
 import type { LedgerEntryRow, PartyRow, PaymentMode } from "@/lib/types/domain";
+import {
+  loadBillPrintPayload,
+  loadPurchasePrintPayload,
+  type TxDocPreview,
+} from "@/lib/billing/doc-preview";
+import { PrintableDocModal } from "@/components/billing/printable-doc-modal";
 import { formatINR } from "@/lib/format/inr";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
@@ -306,6 +312,10 @@ export function LedgerBlock({
   const [note, setNote] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [docPreview, setDocPreview] = useState<TxDocPreview | null>(null);
+  const [ledgerPrintLoadingId, setLedgerPrintLoadingId] = useState<
+    string | null
+  >(null);
 
   const load = useCallback(async () => {
     const [ledgerEntries, partyRows] = await Promise.all([
@@ -336,6 +346,33 @@ export function LedgerBlock({
       onChanged?.();
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Could not delete");
+    }
+  }
+
+  async function openLedgerPrintDoc(r: LedgerEntryRow) {
+    setLedgerPrintLoadingId(r.id);
+    try {
+      if (r.entry_type === "sale" && r.ref_bill_id) {
+        const data = await loadBillPrintPayload(userId, r.ref_bill_id);
+        if (!data) {
+          window.alert("Bill not found. It may have been deleted.");
+          return;
+        }
+        setDocPreview({ kind: "bill", ...data });
+      } else if (r.entry_type === "purchase" && r.ref_purchase_id) {
+        const data = await loadPurchasePrintPayload(userId, r.ref_purchase_id);
+        if (!data) {
+          window.alert("Purchase not found. It may have been deleted.");
+          return;
+        }
+        setDocPreview({ kind: "purchase", ...data });
+      }
+    } catch (err) {
+      window.alert(
+        err instanceof Error ? err.message : "Could not load document"
+      );
+    } finally {
+      setLedgerPrintLoadingId(null);
     }
   }
 
@@ -502,7 +539,7 @@ export function LedgerBlock({
         ) : null}
       </form>
       <div className="overflow-x-auto overflow-hidden rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)]">
-        <table className="w-full min-w-[760px] text-left text-sm">
+        <table className="w-full min-w-[860px] text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
               <th className="px-3 py-2">Date</th>
@@ -511,7 +548,9 @@ export function LedgerBlock({
               <th className="px-3 py-2">Medium</th>
               <th className="px-3 py-2">Transaction ID</th>
               <th className="px-3 py-2 text-right" title="Amount added to or removed from the party's outstanding balance">Balance change (₹)</th>
-              <th className="w-16 px-3 py-2 text-center"> </th>
+              <th className="min-w-[132px] px-2 py-2 text-center text-[11px] font-medium uppercase tracking-wide">
+                Actions
+              </th>
             </tr>
             <tr className="border-b border-[var(--gs-grid)] bg-[var(--gs-surface)]/70 text-[11px] text-[var(--gs-text-secondary)]">
               <th className="px-3 py-1.5">
@@ -629,15 +668,41 @@ export function LedgerBlock({
                 >
                   {r.balance_delta >= 0 ? "+" : "-"}{formatINR(Math.abs(r.balance_delta))}
                 </td>
-                <td className="px-3 py-2 text-center">
-                  <button
-                    type="button"
-                    aria-label={`Remove ledger entry for ${r.party_name_snapshot ?? "contact"} on ${r.entry_date}`}
-                    className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
-                    onClick={() => void onDelete(r.id)}
-                  >
-                    Remove
-                  </button>
+                <td className="px-2 py-2 text-center">
+                  <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+                    {(r.entry_type === "sale" && r.ref_bill_id) ||
+                    (r.entry_type === "purchase" && r.ref_purchase_id) ? (
+                      <>
+                        <button
+                          type="button"
+                          aria-label={
+                            r.entry_type === "sale"
+                              ? `Print bill for ledger entry on ${r.entry_date}`
+                              : `Print purchase for ledger entry on ${r.entry_date}`
+                          }
+                          disabled={ledgerPrintLoadingId === r.id}
+                          className="text-xs font-medium text-[var(--gs-primary)] hover:underline disabled:opacity-40"
+                          onClick={() => void openLedgerPrintDoc(r)}
+                        >
+                          {ledgerPrintLoadingId === r.id ? "…" : "Print"}
+                        </button>
+                        <span
+                          className="select-none text-[var(--gs-border)]"
+                          aria-hidden
+                        >
+                          ·
+                        </span>
+                      </>
+                    ) : null}
+                    <button
+                      type="button"
+                      aria-label={`Remove ledger entry for ${r.party_name_snapshot ?? "contact"} on ${r.entry_date}`}
+                      className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
+                      onClick={() => void onDelete(r.id)}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -681,6 +746,11 @@ export function LedgerBlock({
           </div>
         </div>
       ) : null}
+
+      <PrintableDocModal
+        payload={docPreview}
+        onClose={() => setDocPreview(null)}
+      />
     </section>
   );
 }
