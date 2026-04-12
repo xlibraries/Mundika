@@ -135,6 +135,9 @@ export function TransactionForm({
   const [billLineSummaries, setBillLineSummaries] = useState<
     Record<string, string>
   >({});
+  const [purchaseLineSummaries, setPurchaseLineSummaries] = useState<
+    Record<string, string>
+  >({});
   const [purchases, setPurchases] = useState<PurchaseRow[]>([]);
   const [docPreview, setDocPreview] = useState<TxDocPreview | null>(null);
   const [docPreviewLoadingId, setDocPreviewLoadingId] = useState<string | null>(
@@ -259,6 +262,39 @@ export function TransactionForm({
         : 0
     );
     setPurchases(list);
+
+    const allItems = await db.items.where("user_id").equals(userId).toArray();
+    const itemById = new Map(allItems.map((it) => [it.id, it] as const));
+    const allLines = await db.purchase_items
+      .where("user_id")
+      .equals(userId)
+      .toArray();
+    const linesByPurchase = new Map<string, typeof allLines>();
+    for (const line of allLines) {
+      const arr = linesByPurchase.get(line.purchase_id);
+      if (arr) arr.push(line);
+      else linesByPurchase.set(line.purchase_id, [line]);
+    }
+    const summaries: Record<string, string> = {};
+    for (const p of list) {
+      const lines = (linesByPurchase.get(p.id) ?? []).sort((x, y) =>
+        (x.created_at ?? "") < (y.created_at ?? "") ? -1 : 1
+      );
+      const parts: string[] = [];
+      for (const line of lines) {
+        const it = itemById.get(line.item_id);
+        const name = it?.name ?? "Item";
+        const unit = it?.unit?.trim();
+        const dest = line.destination === "shop" ? "Shop" : "Godown";
+        parts.push(
+          unit
+            ? `${name} (${unit}) ×${line.qty} → ${dest}`
+            : `${name} ×${line.qty} → ${dest}`
+        );
+      }
+      summaries[p.id] = parts.length ? parts.join(" · ") : "—";
+    }
+    setPurchaseLineSummaries(summaries);
   }, [userId]);
 
   // ---- initial load --------------------------------------------------------
@@ -1580,12 +1616,13 @@ export function TransactionForm({
             Delete a purchase to reverse stock and remove the ledger entry.
           </p>
           <div className="overflow-x-auto rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)]">
-            <table className="w-full min-w-[620px] text-left text-sm">
+            <table className="w-full min-w-[880px] text-left text-sm">
               <thead>
                 <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
                   <th className="w-12 px-3 py-2">#</th>
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Supplier</th>
+                  <th className="min-w-[220px] px-3 py-2">Received</th>
                   <th className="px-3 py-2">Type</th>
                   <th className="px-3 py-2 text-right">Total</th>
                   <th className="min-w-[148px] px-2 py-2 text-center text-[11px] font-medium uppercase tracking-wide">
@@ -1602,8 +1639,16 @@ export function TransactionForm({
                     <td className="px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)]">
                       {p.purchase_date}
                     </td>
-                    <td className="max-w-[200px] truncate px-3 py-2 text-[var(--gs-text)]">
+                    <td className="max-w-[180px] truncate px-3 py-2 text-[var(--gs-text)]">
                       {p.party_name_snapshot}
+                    </td>
+                    <td
+                      className="max-w-[min(420px,40vw)] px-3 py-2 text-xs leading-snug text-[var(--gs-text)]"
+                      title={purchaseLineSummaries[p.id] ?? ""}
+                    >
+                      <span className="line-clamp-2 whitespace-normal">
+                        {purchaseLineSummaries[p.id] ?? "…"}
+                      </span>
                     </td>
                     <td className="px-3 py-2 capitalize text-[var(--gs-text-secondary)]">
                       {p.payment_type === "cash"
