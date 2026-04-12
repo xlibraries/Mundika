@@ -3,6 +3,22 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 
+function isInvalidRefreshTokenError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const maybe = error as {
+    code?: string;
+    message?: string;
+    status?: number;
+  };
+  const message = (maybe.message ?? "").toLowerCase();
+  return (
+    maybe.code === "refresh_token_not_found" ||
+    maybe.status === 400 ||
+    message.includes("invalid refresh token") ||
+    message.includes("refresh token not found")
+  );
+}
+
 export function useUserId() {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -11,7 +27,14 @@ export function useUserId() {
     const supabase = createClient();
     void (async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          if (isInvalidRefreshTokenError(error)) {
+            await supabase.auth.signOut().catch(() => undefined);
+          }
+          setUserId(null);
+          return;
+        }
         setUserId(data.session?.user?.id ?? null);
       } catch {
         setUserId(null);
