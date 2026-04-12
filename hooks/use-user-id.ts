@@ -9,21 +9,31 @@ export function useUserId() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth
-      .getSession()
-      .then(({ data }) => {
+    void (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
         setUserId(data.session?.user?.id ?? null);
-      })
-      .catch(() => {
+      } catch {
         setUserId(null);
-      })
-      .finally(() => {
+      } finally {
         setLoading(false);
-      });
+      }
+    })();
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUserId(session?.user?.id ?? null);
+    } = supabase.auth.onAuthStateChange((_event: unknown, session: unknown) => {
+      const nextUserId =
+        typeof session === "object" &&
+        session !== null &&
+        "user" in session &&
+        typeof session.user === "object" &&
+        session.user !== null &&
+        "id" in session.user &&
+        typeof session.user.id === "string"
+          ? session.user.id
+          : null;
+
+      setUserId(nextUserId);
     });
     return () => subscription.unsubscribe();
   }, []);
