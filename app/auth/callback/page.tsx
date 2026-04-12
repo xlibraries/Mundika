@@ -9,6 +9,21 @@ function safeNextPath(raw: string | null): string {
   return "/dashboard";
 }
 
+function oauthErrorQuery(searchParams: URLSearchParams): string {
+  const q = new URLSearchParams({
+    error: searchParams.get("error") ?? "oauth_callback",
+    error_description:
+      searchParams.get("error_description") ??
+      "Google sign-in could not be completed. Check the provider setup and try again.",
+  });
+  return q.toString();
+}
+
+/**
+ * PKCE exchange runs inside Supabase client `initialize()` when `detectSessionInUrl`
+ * is true — do not call `exchangeCodeForSession` again here (second call clears the
+ * verifier and throws "PKCE code verifier not found").
+ */
 function AuthCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -16,34 +31,55 @@ function AuthCallbackInner() {
 
   useEffect(() => {
     let cancelled = false;
-    async function run() {
-      const code = searchParams.get("code");
-      const next = safeNextPath(searchParams.get("next"));
+    const supabase = createClient();
 
-      if (!code) {
+    async function complete() {
+      // `getSession` awaits `initializePromise`, so URL / PKCE handling has finished.
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+      if (cancelled) return;
+
+      if (error) {
         const q = new URLSearchParams({
           error: "oauth_callback",
-          error_description:
-            "Google sign-in could not be completed. Check the provider setup and try again.",
+          error_description: error.message,
         });
         router.replace(`/login?${q.toString()}`);
         return;
       }
 
-      const supabase = createClient();
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if (cancelled) return;
-      if (!error) {
-        router.replace(next);
+      if (session) {
+        router.replace(safeNextPath(searchParams.get("next")));
         return;
       }
+
+      const urlError = searchParams.get("error");
+      if (urlError) {
+        router.replace(`/login?${oauthErrorQuery(searchParams)}`);
+        return;
+      }
+
+      if (searchParams.get("code")) {
+        await new Promise((r) => setTimeout(r, 150));
+        if (cancelled) return;
+        const retry = await supabase.auth.getSession();
+        if (retry.data.session) {
+          router.replace(safeNextPath(searchParams.get("next")));
+          return;
+        }
+      }
+
       const q = new URLSearchParams({
         error: "oauth_callback",
-        error_description: error.message,
+        error_description:
+          "Sign-in could not be completed. Start again from the login page.",
       });
       router.replace(`/login?${q.toString()}`);
     }
-    void run().catch(() => {
+
+    void complete().catch(() => {
       if (!cancelled) setMessage("Sign-in failed. Redirecting…");
     });
     return () => {
