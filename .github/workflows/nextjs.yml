@@ -1,9 +1,11 @@
 # Build static Next.js export to `out/` and deploy to GitHub Pages.
 # Repository → Settings → Secrets: add NEXT_PUBLIC_SUPABASE_URL and
 # NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY so the client bundle can embed them.
-# Supabase → Authentication → URL configuration: set Site URL to your Pages origin
-# (e.g. https://xlibraries.github.io) and add Redirect URL
-# https://<user>.github.io/<Repo>/auth/callback (match repo letter case).
+# Supabase → Authentication → URL configuration:
+# - Site URL = app root only, e.g. https://<user>.github.io/<Repo> (NOT /auth/callback).
+# - Redirect URLs = allow https://<user>.github.io/<Repo>/auth/callback and local callback.
+# Google Cloud → OAuth client: JavaScript origins = origins only (e.g. https://xlibraries.github.io).
+# Google redirect URI for Supabase = https://<project-ref>.supabase.co/auth/v1/callback only.
 name: Deploy Next.js site to Pages
 
 on:
