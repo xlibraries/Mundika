@@ -631,10 +631,10 @@ export function TransactionForm({
   const modeTablist = (
     <div
       className={cn(
-        "flex w-full overflow-hidden border border-[var(--gs-border)] bg-[var(--gs-surface)] p-1",
+        "flex w-full overflow-hidden rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-surface)] p-1 shadow-[inset_0_1px_0_rgba(255,248,238,0.72),0_10px_22px_-18px_rgba(58,42,31,0.55)]",
         embedded
-          ? "rounded-none border-x-0 border-t-0 border-b-0 bg-[var(--gs-grid)]"
-          : "rounded-2xl"
+          ? "rounded-none border-x-0 border-t-0 border-b-0 bg-[var(--gs-grid)] shadow-none"
+          : ""
       )}
       role="tablist"
       aria-label="Transaction mode"
@@ -644,10 +644,10 @@ export function TransactionForm({
         role="tab"
         aria-selected={mode === "purchase"}
         onClick={() => switchMode("purchase")}
-        className={`flex min-h-[2.75rem] flex-1 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold tracking-wide transition ${
+        className={`relative z-[1] flex min-h-[2.75rem] flex-1 items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-semibold tracking-wide transition duration-200 ease-out ${
           mode === "purchase"
-            ? "bg-[var(--gs-surface-plain)] text-[var(--gs-text)] shadow-sm"
-            : "text-[var(--gs-text-secondary)] hover:text-[var(--gs-text)]"
+            ? "border-[var(--gs-grid)] bg-[var(--gs-surface-plain)] text-[var(--gs-text)] shadow-[0_6px_14px_-10px_rgba(58,42,31,0.45)]"
+            : "border-[var(--gs-border)]/85 bg-[var(--gs-surface)]/75 text-[var(--gs-text-secondary)] hover:border-[var(--gs-border)] hover:bg-[var(--gs-surface-hover)] hover:text-[var(--gs-text)]"
         }`}
       >
         Purchase
@@ -657,10 +657,10 @@ export function TransactionForm({
         role="tab"
         aria-selected={mode === "billing"}
         onClick={() => switchMode("billing")}
-        className={`flex min-h-[2.75rem] flex-1 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold tracking-wide transition ${
+        className={`relative z-[1] flex min-h-[2.75rem] flex-1 items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-semibold tracking-wide transition duration-200 ease-out ${
           mode === "billing"
-            ? "bg-[var(--gs-surface-plain)] text-[var(--gs-text)] shadow-sm"
-            : "text-[var(--gs-text-secondary)] hover:text-[var(--gs-text)]"
+            ? "border-[var(--gs-grid)] bg-[var(--gs-surface-plain)] text-[var(--gs-text)] shadow-[0_6px_14px_-10px_rgba(58,42,31,0.45)]"
+            : "border-[var(--gs-border)]/85 bg-[var(--gs-surface)]/75 text-[var(--gs-text-secondary)] hover:border-[var(--gs-border)] hover:bg-[var(--gs-surface-hover)] hover:text-[var(--gs-text)]"
         }`}
       >
         Billing
