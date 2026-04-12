@@ -5,6 +5,7 @@ import type { TxDocPreview } from "@/lib/billing/doc-preview";
 import { triggerDocumentPrint } from "@/lib/billing/doc-preview";
 import { BillDocumentView } from "@/components/billing/bill-document";
 import { PurchaseDocumentView } from "@/components/billing/purchase-document";
+import { PaymentReceiptDocumentView } from "@/components/billing/payment-receipt-document";
 import { Button } from "@/components/ui/button";
 
 export function PrintableDocModal({
@@ -31,7 +32,11 @@ export function PrintableDocModal({
   if (!payload) return null;
 
   const title =
-    payload.kind === "bill" ? "Bill preview" : "Purchase preview";
+    payload.kind === "bill"
+      ? "Bill preview"
+      : payload.kind === "purchase"
+        ? "Purchase preview"
+        : "Payment preview";
 
   return (
     <div
@@ -76,11 +81,13 @@ export function PrintableDocModal({
       >
         {payload.kind === "bill" ? (
           <BillDocumentView bill={payload.bill} lines={payload.lines} />
-        ) : (
+        ) : payload.kind === "purchase" ? (
           <PurchaseDocumentView
             purchase={payload.purchase}
             lines={payload.lines}
           />
+        ) : (
+          <PaymentReceiptDocumentView entry={payload.entry} />
         )}
       </div>
     </div>

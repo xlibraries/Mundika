@@ -14,13 +14,6 @@ import {
   loadPurchasePrintPayload,
   type TxDocPreview,
 } from "@/lib/billing/doc-preview";
-import {
-  buildBillDownloadHtml,
-  buildPaymentReceiptDownloadHtml,
-  buildPurchaseDownloadHtml,
-  downloadHtmlFile,
-  safeDownloadBasename,
-} from "@/lib/billing/download-standalone-html";
 import { PrintableDocModal } from "@/components/billing/printable-doc-modal";
 import { formatINR } from "@/lib/format/inr";
 import { Button } from "@/components/ui/button";
@@ -354,9 +347,13 @@ export function LedgerBlock({
     }
   }
 
-  async function openLedgerPrintDoc(r: LedgerEntryRow) {
+  async function openLedgerPreviewDoc(r: LedgerEntryRow) {
     setLedgerRowBusyId(r.id);
     try {
+      if (r.entry_type === "payment") {
+        setDocPreview({ kind: "payment_receipt", entry: r });
+        return;
+      }
       if (r.entry_type === "sale" && r.ref_bill_id) {
         const data = await loadBillPrintPayload(userId, r.ref_bill_id);
         if (!data) {
@@ -375,52 +372,6 @@ export function LedgerBlock({
     } catch (err) {
       window.alert(
         err instanceof Error ? err.message : "Could not load document"
-      );
-    } finally {
-      setLedgerRowBusyId(null);
-    }
-  }
-
-  async function downloadLedgerDoc(r: LedgerEntryRow) {
-    setLedgerRowBusyId(r.id);
-    try {
-      if (r.entry_type === "sale" && r.ref_bill_id) {
-        const data = await loadBillPrintPayload(userId, r.ref_bill_id);
-        if (!data) {
-          window.alert("Bill not found. It may have been deleted.");
-          return;
-        }
-        const n = data.bill.bill_number ?? "draft";
-        const html = buildBillDownloadHtml(data.bill, data.lines);
-        downloadHtmlFile(
-          `bill-${n}-${safeDownloadBasename(data.bill.bill_date, 24)}.html`,
-          html
-        );
-      } else if (r.entry_type === "purchase" && r.ref_purchase_id) {
-        const data = await loadPurchasePrintPayload(userId, r.ref_purchase_id);
-        if (!data) {
-          window.alert("Purchase not found. It may have been deleted.");
-          return;
-        }
-        const html = buildPurchaseDownloadHtml(data.purchase, data.lines);
-        downloadHtmlFile(
-          `purchase-${data.purchase.purchase_number}-${safeDownloadBasename(data.purchase.purchase_date, 24)}.html`,
-          html
-        );
-      } else if (r.entry_type === "payment") {
-        const html = buildPaymentReceiptDownloadHtml(r);
-        const slug = safeDownloadBasename(
-          r.party_name_snapshot ?? "payment",
-          36
-        );
-        downloadHtmlFile(
-          `payment-${slug}-${safeDownloadBasename(r.entry_date, 24)}.html`,
-          html
-        );
-      }
-    } catch (err) {
-      window.alert(
-        err instanceof Error ? err.message : "Could not build download file"
       );
     } finally {
       setLedgerRowBusyId(null);
@@ -502,11 +453,6 @@ export function LedgerBlock({
           Apply to overview
         </Button>
       </div>
-      <p className="text-xs text-[var(--gs-text-secondary)]">
-        Download saves an HTML file. Open it in your browser, then{" "}
-        <span className="whitespace-nowrap">Print → Save as PDF</span> if you
-        need a PDF.
-      </p>
       <form
         onSubmit={onRecordPayment}
         className="grid gap-2 rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface)] p-3 md:grid-cols-6"
@@ -595,7 +541,7 @@ export function LedgerBlock({
         ) : null}
       </form>
       <div className="overflow-x-auto overflow-hidden rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)]">
-        <table className="w-full min-w-[920px] text-left text-sm">
+        <table className="w-full min-w-[860px] text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
               <th className="px-3 py-2">Date</th>
@@ -604,7 +550,7 @@ export function LedgerBlock({
               <th className="px-3 py-2">Medium</th>
               <th className="px-3 py-2">Transaction ID</th>
               <th className="px-3 py-2 text-right" title="Amount added to or removed from the party's outstanding balance">Balance change (₹)</th>
-              <th className="min-w-[200px] px-2 py-2 text-center text-[11px] font-medium uppercase tracking-wide">
+              <th className="min-w-[148px] px-2 py-2 text-center text-[11px] font-medium uppercase tracking-wide">
                 Actions
               </th>
             </tr>
@@ -727,30 +673,6 @@ export function LedgerBlock({
                 <td className="px-2 py-2 text-center">
                   <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
                     {(r.entry_type === "sale" && r.ref_bill_id) ||
-                    (r.entry_type === "purchase" && r.ref_purchase_id) ? (
-                      <>
-                        <button
-                          type="button"
-                          aria-label={
-                            r.entry_type === "sale"
-                              ? `Print bill for ledger entry on ${r.entry_date}`
-                              : `Print purchase for ledger entry on ${r.entry_date}`
-                          }
-                          disabled={ledgerRowBusyId === r.id}
-                          className="text-xs font-medium text-[var(--gs-primary)] hover:underline disabled:opacity-40"
-                          onClick={() => void openLedgerPrintDoc(r)}
-                        >
-                          {ledgerRowBusyId === r.id ? "…" : "Print"}
-                        </button>
-                        <span
-                          className="select-none text-[var(--gs-border)]"
-                          aria-hidden
-                        >
-                          ·
-                        </span>
-                      </>
-                    ) : null}
-                    {(r.entry_type === "sale" && r.ref_bill_id) ||
                     (r.entry_type === "purchase" && r.ref_purchase_id) ||
                     r.entry_type === "payment" ? (
                       <>
@@ -758,16 +680,16 @@ export function LedgerBlock({
                           type="button"
                           aria-label={
                             r.entry_type === "payment"
-                              ? `Download payment receipt for ${r.entry_date}`
+                              ? `Preview payment receipt for ${r.entry_date}`
                               : r.entry_type === "sale"
-                                ? `Download bill HTML for ledger entry on ${r.entry_date}`
-                                : `Download purchase HTML for ledger entry on ${r.entry_date}`
+                                ? `Preview bill for ledger entry on ${r.entry_date}`
+                                : `Preview purchase for ledger entry on ${r.entry_date}`
                           }
                           disabled={ledgerRowBusyId === r.id}
                           className="text-xs font-medium text-[var(--gs-primary)] hover:underline disabled:opacity-40"
-                          onClick={() => void downloadLedgerDoc(r)}
+                          onClick={() => void openLedgerPreviewDoc(r)}
                         >
-                          {ledgerRowBusyId === r.id ? "…" : "Download"}
+                          {ledgerRowBusyId === r.id ? "…" : "Preview"}
                         </button>
                         <span
                           className="select-none text-[var(--gs-border)]"

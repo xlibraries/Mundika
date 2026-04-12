@@ -1,11 +1,12 @@
 import { db } from "@/lib/db";
-import type { BillRow, PurchaseRow } from "@/lib/types/domain";
+import type { BillRow, LedgerEntryRow, PurchaseRow } from "@/lib/types/domain";
 import type { BillPrintLine } from "@/components/billing/bill-document";
 import type { PurchasePrintLine } from "@/components/billing/purchase-document";
 
 export type TxDocPreview =
   | { kind: "bill"; bill: BillRow; lines: BillPrintLine[] }
-  | { kind: "purchase"; purchase: PurchaseRow; lines: PurchasePrintLine[] };
+  | { kind: "purchase"; purchase: PurchaseRow; lines: PurchasePrintLine[] }
+  | { kind: "payment_receipt"; entry: LedgerEntryRow };
 
 export async function loadBillPrintPayload(
   userId: string,
