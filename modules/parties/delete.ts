@@ -16,6 +16,17 @@ export async function deleteParty(userId: string, partyId: string): Promise<void
     throw new Error("Cannot delete: this party has bills. Remove bills first.");
   }
 
+  const purchaseCount = await db.purchases
+    .where("party_id")
+    .equals(partyId)
+    .count();
+
+  if (purchaseCount > 0) {
+    throw new Error(
+      "Cannot delete: this party has purchases. Remove or reassign purchases first."
+    );
+  }
+
   await db.transaction("rw", [db.parties, db.sync_queue], async () => {
     await db.parties.delete(partyId);
     await enqueueSync("parties", "delete", partyId, {});

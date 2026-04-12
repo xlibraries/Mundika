@@ -58,9 +58,8 @@ export async function flushSyncQueue(): Promise<{ ok: number; failed: number }> 
           attempts: row.attempts + 1,
         });
         failed += 1;
-        if (row.attempts > 8) {
-          await db.sync_queue.delete(row.id);
-        }
+        // Never drop queued mutations after N failures: transient RLS/network
+        // issues must not permanently lose local edits. Rows retry until push succeeds.
       }
     }
   } finally {
@@ -74,8 +73,20 @@ export async function flushSyncQueue(): Promise<{ ok: number; failed: number }> 
  * Push local queue to Supabase, then pull server state into IndexedDB (offline cache).
  * Skips pull while the outbound queue still has rows so local-only edits are not dropped.
  */
-export async function syncWithRemote(userId: string): Promise<void> {
-  if (typeof navigator !== "undefined" && !navigator.onLine) return;
+export type SyncRemoteResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: "offline" | "queue_backlog" | "pull_failed";
+      message?: string;
+    };
+
+export async function syncWithRemote(
+  userId: string
+): Promise<SyncRemoteResult> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return { ok: false, reason: "offline" };
+  }
 
   for (let i = 0; i < 60; i++) {
     const before = await db.sync_queue.count();
@@ -85,21 +96,40 @@ export async function syncWithRemote(userId: string): Promise<void> {
     if (after >= before) break;
   }
 
-  if ((await db.sync_queue.count()) > 0) return;
+  if ((await db.sync_queue.count()) > 0) {
+    return { ok: false, reason: "queue_backlog" };
+  }
 
-  await pullRemoteToLocal(userId);
+  try {
+    await pullRemoteToLocal(userId);
+    return { ok: true };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return { ok: false, reason: "pull_failed", message };
+  }
 }
 
 export function startSyncLoop(
   intervalMs = 15_000,
-  getUserId?: () => string | null
+  getUserId?: () => string | null,
+  onRemoteSync?: (result: SyncRemoteResult) => void
 ) {
   if (typeof window === "undefined") return () => {};
 
   const tick = () => {
     const uid = getUserId?.();
     if (uid && navigator.onLine) {
-      void syncWithRemote(uid).catch(() => {});
+      void syncWithRemote(uid)
+        .then((r) => {
+          onRemoteSync?.(r);
+        })
+        .catch((e) => {
+          onRemoteSync?.({
+            ok: false,
+            reason: "pull_failed",
+            message: e instanceof Error ? e.message : String(e),
+          });
+        });
     } else {
       void flushSyncQueue();
     }

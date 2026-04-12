@@ -32,6 +32,18 @@ import {
   type EntityComboboxHandle,
 } from "@/components/billing/entity-combobox";
 import { rememberId, readRecentIds } from "@/lib/billing/recent-ids";
+import {
+  PAYMENT_MODE_OPTIONS,
+  paymentModeLabel,
+} from "@/lib/billing/payment-mode-label";
+import {
+  BillDocumentView,
+  type BillPrintLine,
+} from "@/components/billing/bill-document";
+import {
+  PurchaseDocumentView,
+  type PurchasePrintLine,
+} from "@/components/billing/purchase-document";
 import { useAppStore } from "@/store/app-store";
 
 // ---------------------------------------------------------------------------
@@ -54,21 +66,9 @@ type TxLine = {
 
 type LineIssue = { qty?: boolean; rate?: boolean };
 
-const PAYMENT_MODE_OPTIONS: Array<{ value: PaymentMode; label: string }> = [
-  { value: "cash", label: "Cash" },
-  { value: "upi", label: "UPI" },
-  { value: "imps", label: "IMPS" },
-  { value: "rtgs", label: "RTGS" },
-  { value: "neft", label: "NEFT" },
-  { value: "bank_transfer", label: "Bank transfer" },
-  { value: "cheque", label: "Cheque" },
-  { value: "other", label: "Other" },
-];
-
-function paymentModeLabel(mode: PaymentMode | null | undefined): string {
-  if (!mode) return "—";
-  return PAYMENT_MODE_OPTIONS.find((opt) => opt.value === mode)?.label ?? "Other";
-}
+type TxDocPreview =
+  | { kind: "bill"; bill: BillRow; lines: BillPrintLine[] }
+  | { kind: "purchase"; purchase: PurchaseRow; lines: PurchasePrintLine[] };
 
 function emptyLine(): TxLine {
   return { item_id: "", qty: "1", rate: "", destination: "godown" };
@@ -131,7 +131,15 @@ export function TransactionForm({
 
   // ---- history -------------------------------------------------------------
   const [bills, setBills] = useState<BillRow[]>([]);
+  /** Per-bill human-readable line summary for the saved-bills table. */
+  const [billLineSummaries, setBillLineSummaries] = useState<
+    Record<string, string>
+  >({});
   const [purchases, setPurchases] = useState<PurchaseRow[]>([]);
+  const [docPreview, setDocPreview] = useState<TxDocPreview | null>(null);
+  const [docPreviewLoadingId, setDocPreviewLoadingId] = useState<string | null>(
+    null
+  );
 
   // ---- refs ----------------------------------------------------------------
   const partyRef = useRef<EntityComboboxHandle>(null);
@@ -211,6 +219,34 @@ export function TransactionForm({
       a.bill_date < b.bill_date ? 1 : a.bill_date > b.bill_date ? -1 : 0
     );
     setBills(list);
+
+    const allItems = await db.items.where("user_id").equals(userId).toArray();
+    const itemById = new Map(allItems.map((it) => [it.id, it] as const));
+    const allLines = await db.bill_items
+      .where("user_id")
+      .equals(userId)
+      .toArray();
+    const linesByBill = new Map<string, typeof allLines>();
+    for (const line of allLines) {
+      const arr = linesByBill.get(line.bill_id);
+      if (arr) arr.push(line);
+      else linesByBill.set(line.bill_id, [line]);
+    }
+    const summaries: Record<string, string> = {};
+    for (const b of list) {
+      const lines = (linesByBill.get(b.id) ?? []).sort((x, y) =>
+        (x.created_at ?? "") < (y.created_at ?? "") ? -1 : 1
+      );
+      const parts: string[] = [];
+      for (const line of lines) {
+        const it = itemById.get(line.item_id);
+        const name = it?.name ?? "Item";
+        const unit = it?.unit?.trim();
+        parts.push(unit ? `${name} (${unit}) ×${line.qty}` : `${name} ×${line.qty}`);
+      }
+      summaries[b.id] = parts.length ? parts.join(" · ") : "—";
+    }
+    setBillLineSummaries(summaries);
   }, [userId]);
 
   const loadPurchases = useCallback(async () => {
@@ -649,12 +685,124 @@ export function TransactionForm({
     }
   }
 
+  async function openBillPreview(bill: BillRow) {
+    setDocPreviewLoadingId(bill.id);
+    setErr(null);
+    try {
+      const rows = await db.bill_items
+        .where("bill_id")
+        .equals(bill.id)
+        .toArray();
+      rows.sort((a, b) =>
+        (a.created_at ?? "") < (b.created_at ?? "") ? -1 : 1
+      );
+      const lines: BillPrintLine[] = [];
+      for (const row of rows) {
+        const item = await db.items.get(row.item_id);
+        lines.push({
+          itemName: item?.name ?? "Item",
+          unit: item?.unit ?? null,
+          qty: row.qty,
+          rate: row.rate,
+          line_total: row.line_total,
+        });
+      }
+      setDocPreview({ kind: "bill", bill, lines });
+    } catch (er) {
+      setErr(er instanceof Error ? er.message : "Could not load bill lines");
+    } finally {
+      setDocPreviewLoadingId(null);
+    }
+  }
+
+  async function openPurchasePreview(purchase: PurchaseRow) {
+    setDocPreviewLoadingId(purchase.id);
+    setErr(null);
+    try {
+      const rows = await db.purchase_items
+        .where("purchase_id")
+        .equals(purchase.id)
+        .toArray();
+      rows.sort((a, b) =>
+        (a.created_at ?? "") < (b.created_at ?? "") ? -1 : 1
+      );
+      const lines: PurchasePrintLine[] = [];
+      for (const row of rows) {
+        const item = await db.items.get(row.item_id);
+        lines.push({
+          itemName: item?.name ?? "Item",
+          unit: item?.unit ?? null,
+          qty: row.qty,
+          unit_cost: row.unit_cost,
+          line_total: row.line_total,
+          destination: row.destination,
+        });
+      }
+      setDocPreview({ kind: "purchase", purchase, lines });
+    } catch (er) {
+      setErr(
+        er instanceof Error ? er.message : "Could not load purchase lines"
+      );
+    } finally {
+      setDocPreviewLoadingId(null);
+    }
+  }
+
+  function printDocPreview() {
+    let done = false;
+    const cleanup = () => {
+      if (done) return;
+      done = true;
+      document.documentElement.classList.remove("mundika-printing-doc");
+      window.removeEventListener("afterprint", cleanup);
+    };
+    document.documentElement.classList.add("mundika-printing-doc");
+    window.addEventListener("afterprint", cleanup);
+    requestAnimationFrame(() => {
+      window.print();
+      window.setTimeout(cleanup, 2000);
+    });
+  }
+
+  useEffect(() => {
+    if (!docPreview) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setDocPreview(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [docPreview]);
+
   // ---- labels --------------------------------------------------------------
   const partyLabel = mode === "billing" ? "Customer" : "Supplier";
   const refLabel =
     mode === "billing" ? "Vehicle / Owner" : "Supplier Ref / Bill No.";
   const saveLabel = mode === "billing" ? "Save bill" : "Save purchase";
-  const nextNumber = mode === "billing" ? bills.length + 1 : purchases.length + 1;
+  const nextBillNumber = useMemo(() => {
+    const max = bills.reduce(
+      (m, b) =>
+        b.bill_number != null && b.bill_number > m ? b.bill_number : m,
+      0
+    );
+    return max + 1;
+  }, [bills]);
+  const nextPurchaseNumber = useMemo(() => {
+    const max = purchases.reduce(
+      (m, p) =>
+        p.purchase_number != null && p.purchase_number > m
+          ? p.purchase_number
+          : m,
+      0
+    );
+    return max + 1;
+  }, [purchases]);
+  const nextNumber =
+    mode === "billing" ? nextBillNumber : nextPurchaseNumber;
   const qtyPlaceholder = (unit?: string | null) =>
     unit ? `Qty (${unit})` : "Qty";
 
@@ -1336,15 +1484,18 @@ export function TransactionForm({
             inventory sheet.
           </p>
           <div className="overflow-x-auto rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)]">
-            <table className="w-full min-w-[560px] text-left text-sm">
+            <table className="w-full min-w-[880px] text-left text-sm">
               <thead>
                 <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
                   <th className="w-12 px-3 py-2">#</th>
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Customer</th>
+                  <th className="min-w-[220px] px-3 py-2">Sold</th>
                   <th className="px-3 py-2">Type</th>
                   <th className="px-3 py-2 text-right">Total</th>
-                  <th className="w-24 px-3 py-2 text-center"> </th>
+                  <th className="min-w-[148px] px-2 py-2 text-center text-[11px] font-medium uppercase tracking-wide">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--gs-grid)]">
@@ -1356,8 +1507,16 @@ export function TransactionForm({
                     <td className="px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)]">
                       {b.bill_date}
                     </td>
-                    <td className="max-w-[200px] truncate px-3 py-2 text-[var(--gs-text)]">
+                    <td className="max-w-[180px] truncate px-3 py-2 text-[var(--gs-text)]">
                       {b.party_name_snapshot}
+                    </td>
+                    <td
+                      className="max-w-[min(420px,40vw)] px-3 py-2 text-xs leading-snug text-[var(--gs-text)]"
+                      title={billLineSummaries[b.id] ?? ""}
+                    >
+                      <span className="line-clamp-2 whitespace-normal">
+                        {billLineSummaries[b.id] ?? "…"}
+                      </span>
                     </td>
                     <td className="px-3 py-2 capitalize text-[var(--gs-text-secondary)]">
                       {b.bill_type === "cash"
@@ -1369,15 +1528,32 @@ export function TransactionForm({
                     <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--gs-text)]">
                       {formatINR(b.total)}
                     </td>
-                    <td className="px-3 py-2 text-center">
-                      <button
-                        type="button"
-                        aria-label={`Delete bill for ${b.party_name_snapshot} on ${b.bill_date}`}
-                        className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
-                        onClick={() => void onDeleteBill(b.id)}
-                      >
-                        Delete
-                      </button>
+                    <td className="px-2 py-2 text-center">
+                      <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+                        <button
+                          type="button"
+                          aria-label={`Preview bill for ${b.party_name_snapshot} on ${b.bill_date}`}
+                          disabled={docPreviewLoadingId === b.id}
+                          className="text-xs font-medium text-[var(--gs-primary)] hover:underline disabled:opacity-40"
+                          onClick={() => void openBillPreview(b)}
+                        >
+                          {docPreviewLoadingId === b.id ? "…" : "Preview"}
+                        </button>
+                        <span
+                          className="select-none text-[var(--gs-border)]"
+                          aria-hidden
+                        >
+                          ·
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={`Delete bill for ${b.party_name_snapshot} on ${b.bill_date}`}
+                          className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
+                          onClick={() => void onDeleteBill(b.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1404,7 +1580,7 @@ export function TransactionForm({
             Delete a purchase to reverse stock and remove the ledger entry.
           </p>
           <div className="overflow-x-auto rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)]">
-            <table className="w-full min-w-[560px] text-left text-sm">
+            <table className="w-full min-w-[620px] text-left text-sm">
               <thead>
                 <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
                   <th className="w-12 px-3 py-2">#</th>
@@ -1412,7 +1588,9 @@ export function TransactionForm({
                   <th className="px-3 py-2">Supplier</th>
                   <th className="px-3 py-2">Type</th>
                   <th className="px-3 py-2 text-right">Total</th>
-                  <th className="w-24 px-3 py-2 text-center"> </th>
+                  <th className="min-w-[148px] px-2 py-2 text-center text-[11px] font-medium uppercase tracking-wide">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--gs-grid)]">
@@ -1437,20 +1615,37 @@ export function TransactionForm({
                     <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--gs-text)]">
                       {formatINR(p.total)}
                     </td>
-                    <td className="px-3 py-2 text-center">
-                      <button
-                        type="button"
-                        aria-label={`Delete purchase #${p.purchase_number} from ${p.party_name_snapshot} on ${p.purchase_date}`}
-                        className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
-                        onClick={() =>
-                          void onDeletePurchase(
-                            p.id,
-                            `#${p.purchase_number} from ${p.party_name_snapshot}`
-                          )
-                        }
-                      >
-                        Delete
-                      </button>
+                    <td className="px-2 py-2 text-center">
+                      <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+                        <button
+                          type="button"
+                          aria-label={`Preview purchase #${p.purchase_number} from ${p.party_name_snapshot} on ${p.purchase_date}`}
+                          disabled={docPreviewLoadingId === p.id}
+                          className="text-xs font-medium text-[var(--gs-primary)] hover:underline disabled:opacity-40"
+                          onClick={() => void openPurchasePreview(p)}
+                        >
+                          {docPreviewLoadingId === p.id ? "…" : "Preview"}
+                        </button>
+                        <span
+                          className="select-none text-[var(--gs-border)]"
+                          aria-hidden
+                        >
+                          ·
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={`Delete purchase #${p.purchase_number} from ${p.party_name_snapshot} on ${p.purchase_date}`}
+                          className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
+                          onClick={() =>
+                            void onDeletePurchase(
+                              p.id,
+                              `#${p.purchase_number} from ${p.party_name_snapshot}`
+                            )
+                          }
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1464,6 +1659,62 @@ export function TransactionForm({
           </div>
         </section>
       )}
+
+      {docPreview ? (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center px-3 py-6 sm:px-5"
+          style={{ backgroundColor: "var(--gs-overlay)" }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="doc-preview-title"
+          onClick={() => setDocPreview(null)}
+        >
+          <div
+            className="mundika-doc-print-toolbar flex w-full max-w-2xl flex-shrink-0 items-center justify-between gap-3 pb-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              id="doc-preview-title"
+              className="text-sm font-semibold text-[var(--gs-surface-plain)] drop-shadow-sm"
+            >
+              {docPreview.kind === "bill" ? "Bill preview" : "Purchase preview"}
+            </h2>
+            <div className="flex flex-shrink-0 gap-2">
+              <Button
+                variant="secondary"
+                className="border-[var(--gs-border)] bg-[var(--gs-surface-plain)] shadow-sm"
+                onClick={printDocPreview}
+              >
+                Print
+              </Button>
+              <Button
+                variant="secondary"
+                className="border-[var(--gs-border)] bg-[var(--gs-surface-plain)] shadow-sm"
+                onClick={() => setDocPreview(null)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+          <div
+            id="mundika-doc-print-target"
+            className="max-h-[min(78vh,42rem)] w-full max-w-2xl overflow-y-auto rounded-xl shadow-lg ring-1 ring-black/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {docPreview.kind === "bill" ? (
+              <BillDocumentView
+                bill={docPreview.bill}
+                lines={docPreview.lines}
+              />
+            ) : (
+              <PurchaseDocumentView
+                purchase={docPreview.purchase}
+                lines={docPreview.lines}
+              />
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

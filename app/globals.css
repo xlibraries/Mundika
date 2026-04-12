@@ -109,3 +109,33 @@ body {
   transform: translateY(-3px);
   border-color: var(--mw-border-strong);
 }
+
+/* Bill / purchase preview → system print dialog: only the document sheet prints */
+@media print {
+  html.mundika-printing-doc body * {
+    visibility: hidden;
+  }
+  html.mundika-printing-doc #mundika-doc-print-target,
+  html.mundika-printing-doc #mundika-doc-print-target * {
+    visibility: visible;
+  }
+  html.mundika-printing-doc #mundika-doc-print-target {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none;
+  }
+  html.mundika-printing-doc .mundika-doc-sheet {
+    background: #fff !important;
+    color: #1a1a1a !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  html.mundika-printing-doc .mundika-doc-print-toolbar {
+    display: none !important;
+  }
+}

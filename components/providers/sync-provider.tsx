@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   flushSyncQueue,
   startSyncLoop,
   syncWithRemote,
+  type SyncRemoteResult,
 } from "@/lib/sync/engine";
 import { clearLocalUserData } from "@/lib/sync/clear-local-user";
 import { db } from "@/lib/db";
@@ -18,6 +19,15 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const setSyncState = useAppStore((s) => s.setSyncState);
   const setLastSyncAt = useAppStore((s) => s.setLastSyncAt);
 
+  const onRemoteSync = useCallback(
+    (result: SyncRemoteResult) => {
+      if (result.ok) {
+        setLastSyncAt(new Date().toISOString());
+      }
+    },
+    [setLastSyncAt]
+  );
+
   useEffect(() => {
     const onOnline = () => setOnline(true);
     const onOffline = () => setOnline(false);
@@ -25,14 +35,14 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener("offline", onOffline);
     setOnline(navigator.onLine);
 
-    const stop = startSyncLoop(12_000, () => userId);
+    const stop = startSyncLoop(12_000, () => userId, onRemoteSync);
 
     return () => {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
       stop();
     };
-  }, [setOnline, userId]);
+  }, [onRemoteSync, setOnline, userId]);
 
   useEffect(() => {
     const prev = prevUserIdRef.current;
@@ -49,15 +59,19 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       if (!userId || cancelled) return;
 
       setSyncState("syncing");
+      let remoteResult: SyncRemoteResult = { ok: false, reason: "offline" };
       try {
         if (navigator.onLine) {
-          await syncWithRemote(userId);
+          remoteResult = await syncWithRemote(userId);
         } else {
           await flushSyncQueue();
+          remoteResult = { ok: false, reason: "offline" };
         }
       } finally {
         if (!cancelled) {
-          setLastSyncAt(new Date().toISOString());
+          if (remoteResult.ok) {
+            setLastSyncAt(new Date().toISOString());
+          }
           setSyncState("idle");
         }
       }

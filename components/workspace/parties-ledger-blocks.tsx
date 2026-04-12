@@ -384,6 +384,17 @@ export function LedgerBlock({
     return true;
   });
 
+  const selectionSummary = filteredRows.reduce(
+    (acc, row) => {
+      const amountAbs = Math.abs(row.balance_delta);
+      if (row.entry_type === "sale") acc.totalSales += amountAbs;
+      if (row.balance_delta > 0) acc.totalCredit += row.balance_delta;
+      if (row.entry_type === "payment") acc.totalPayments += amountAbs;
+      return acc;
+    },
+    { totalSales: 0, totalCredit: 0, totalPayments: 0 }
+  );
+
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-2">
@@ -642,6 +653,34 @@ export function LedgerBlock({
           </p>
         ) : null}
       </div>
+      {filteredRows.length > 0 ? (
+        <div className="grid gap-2 sm:grid-cols-3">
+          <div className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
+              Total sales
+            </p>
+            <p className="mt-1 font-mono text-sm text-[var(--gs-text)]">
+              {formatINR(selectionSummary.totalSales)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
+              Total credit
+            </p>
+            <p className="mt-1 font-mono text-sm text-[var(--gs-text)]">
+              {formatINR(selectionSummary.totalCredit)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
+              Total payment
+            </p>
+            <p className="mt-1 font-mono text-sm text-[var(--gs-text)]">
+              {formatINR(selectionSummary.totalPayments)}
+            </p>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

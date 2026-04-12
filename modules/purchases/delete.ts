@@ -44,15 +44,20 @@ export async function deletePurchase(
           )
           .first();
 
-        if (invRow) {
-          const next = {
-            ...invRow,
-            qty: Math.max(0, invRow.qty - item.qty),
-            updated_at: now,
-          };
-          await db.inventory.put(next);
-          await enqueueSync("inventory", "upsert", next.id, { ...next });
+        if (!invRow || invRow.qty < item.qty) {
+          throw new Error(
+            invRow
+              ? `Cannot delete this purchase: only ${invRow.qty} in stock at ${item.destination} for this line, but the purchase added ${item.qty}. Some quantity was likely sold or transferred.`
+              : `Cannot delete this purchase: no inventory row at ${item.destination} for a purchase line.`
+          );
         }
+        const next = {
+          ...invRow,
+          qty: invRow.qty - item.qty,
+          updated_at: now,
+        };
+        await db.inventory.put(next);
+        await enqueueSync("inventory", "upsert", next.id, { ...next });
       }
 
       for (const le of ledgerRows) {

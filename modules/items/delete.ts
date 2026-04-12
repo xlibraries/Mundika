@@ -12,6 +12,24 @@ export async function deleteItem(userId: string, itemId: string): Promise<void> 
     throw new Error("Cannot delete: item appears on bills.");
   }
 
+  const purchaseLineCount = await db.purchase_items
+    .where("item_id")
+    .equals(itemId)
+    .count();
+  if (purchaseLineCount > 0) {
+    throw new Error("Cannot delete: item appears on purchases.");
+  }
+
+  const transferCount = await db.stock_transfers
+    .where("item_id")
+    .equals(itemId)
+    .count();
+  if (transferCount > 0) {
+    throw new Error(
+      "Cannot delete: item has stock transfers. Remove or adjust transfers first."
+    );
+  }
+
   const invRows = await db.inventory
     .where("user_id")
     .equals(userId)
