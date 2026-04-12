@@ -10,9 +10,9 @@ export function useUserId() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth
-      .getUser()
+      .getSession()
       .then(({ data }) => {
-        setUserId(data.user?.id ?? null);
+        setUserId(data.session?.user?.id ?? null);
       })
       .catch(() => {
         setUserId(null);

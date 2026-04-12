@@ -1,11 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+const RATE_LIMIT_COOLDOWN_MS = 30_000;
+
+function isRateLimitedAuthError(err: { message?: string; status?: number; code?: string }) {
+  const message = (err.message ?? "").toLowerCase();
+  return (
+    err.status === 429 ||
+    err.code === "over_request_rate_limit" ||
+    message.includes("rate limit")
+  );
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -26,9 +37,26 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(initialError);
   const [busy, setBusy] = useState(false);
+  const [blockedUntil, setBlockedUntil] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!blockedUntil) return;
+    const id = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [blockedUntil]);
+
+  const isRateLimited = blockedUntil !== null && blockedUntil > now;
+  const secondsLeft = isRateLimited
+    ? Math.max(1, Math.ceil((blockedUntil - now) / 1000))
+    : 0;
+  const disabled = busy || isRateLimited;
 
   async function signInEmail(e: React.FormEvent) {
     e.preventDefault();
+    if (isRateLimited) return;
     setBusy(true);
     setError(null);
     const supabase = createClient();
@@ -38,6 +66,11 @@ export function LoginForm() {
     });
     setBusy(false);
     if (err) {
+      if (isRateLimitedAuthError(err)) {
+        setBlockedUntil(Date.now() + RATE_LIMIT_COOLDOWN_MS);
+        setError("Too many sign-in attempts. Please wait 30 seconds and try again.");
+        return;
+      }
       setError(err.message);
       return;
     }
@@ -46,6 +79,7 @@ export function LoginForm() {
   }
 
   async function signInGoogle() {
+    if (isRateLimited) return;
     setBusy(true);
     setError(null);
     const supabase = createClient();
@@ -56,7 +90,14 @@ export function LoginForm() {
       },
     });
     setBusy(false);
-    if (err) setError(err.message);
+    if (err) {
+      if (isRateLimitedAuthError(err)) {
+        setBlockedUntil(Date.now() + RATE_LIMIT_COOLDOWN_MS);
+        setError("Too many sign-in attempts. Please wait 30 seconds and try again.");
+        return;
+      }
+      setError(err.message);
+    }
   }
 
   return (
@@ -82,11 +123,15 @@ export function LoginForm() {
           <Button
             type="button"
             variant="secondary"
-            disabled={busy}
+            disabled={disabled}
             className="w-full"
             onClick={() => void signInGoogle()}
           >
-            {busy ? "Opening Google…" : "Continue with Google"}
+            {busy
+              ? "Opening Google…"
+              : isRateLimited
+                ? `Try again in ${secondsLeft}s`
+                : "Continue with Google"}
           </Button>
           <p className="mt-2 text-center text-xs text-[var(--gs-text-secondary)]">
             New users are created automatically after Google approves access.
@@ -133,11 +178,15 @@ export function LoginForm() {
             ) : null}
             <Button
               type="submit"
-              disabled={busy}
+              disabled={disabled}
               className="w-full"
               size="lg"
             >
-              {busy ? "Signing in…" : "Continue with email"}
+              {busy
+                ? "Signing in…"
+                : isRateLimited
+                  ? `Try again in ${secondsLeft}s`
+                  : "Continue with email"}
             </Button>
           </form>
         </div>

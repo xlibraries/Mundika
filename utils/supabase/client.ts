@@ -6,10 +6,17 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
 const basePath = normalizeBasePath(process.env.NEXT_PUBLIC_BASE_PATH);
 
-export const createClient = () =>
-  createBrowserClient(supabaseUrl!, supabaseKey!, {
+let browserClient: ReturnType<typeof createBrowserClient> | null = null;
+
+export const createClient = () => {
+  if (browserClient) return browserClient;
+
+  browserClient = createBrowserClient(supabaseUrl!, supabaseKey!, {
     cookieOptions: {
       path: basePath || "/",
       sameSite: "lax",
     },
   });
+
+  return browserClient;
+};
