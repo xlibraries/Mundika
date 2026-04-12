@@ -21,13 +21,12 @@ function AuthCallbackInner() {
       const next = safeNextPath(searchParams.get("next"));
 
       if (!code) {
-        const login = new URL("/login", window.location.origin);
-        login.searchParams.set("error", "oauth_callback");
-        login.searchParams.set(
-          "error_description",
-          "Google sign-in could not be completed. Check the provider setup and try again."
-        );
-        router.replace(login.pathname + login.search);
+        const q = new URLSearchParams({
+          error: "oauth_callback",
+          error_description:
+            "Google sign-in could not be completed. Check the provider setup and try again.",
+        });
+        router.replace(`/login?${q.toString()}`);
         return;
       }
 
@@ -38,10 +37,11 @@ function AuthCallbackInner() {
         router.replace(next);
         return;
       }
-      const login = new URL("/login", window.location.origin);
-      login.searchParams.set("error", "oauth_callback");
-      login.searchParams.set("error_description", error.message);
-      router.replace(login.pathname + login.search);
+      const q = new URLSearchParams({
+        error: "oauth_callback",
+        error_description: error.message,
+      });
+      router.replace(`/login?${q.toString()}`);
     }
     void run().catch(() => {
       if (!cancelled) setMessage("Sign-in failed. Redirecting…");

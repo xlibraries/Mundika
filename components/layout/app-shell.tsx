@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { withBasePath } from "@/lib/auth/site-url";
 import { cn } from "@/lib/cn";
 import { icons } from "@/components/layout/nav-icons";
 import { DashboardRailSummary } from "@/components/layout/dashboard-rail-summary";
@@ -96,7 +97,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     await createClient().auth.signOut();
-    window.location.href = "/login";
+    window.location.href = withBasePath("/login");
   }
 
   return (
