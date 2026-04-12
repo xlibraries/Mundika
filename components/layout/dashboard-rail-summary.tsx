@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getDashboardStats } from "@/lib/dashboard/stats";
+import { getLocalDateInputValue } from "@/lib/date/local-date";
 import { formatINR } from "@/lib/format/inr";
 import { useUserId } from "@/hooks/use-user-id";
 import { useAppStore } from "@/store/app-store";
@@ -10,7 +11,7 @@ export function DashboardRailSummary({ pathname }: { pathname: string }) {
   const isDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
   const { userId } = useUserId();
   const lastSyncAt = useAppStore((s) => s.lastSyncAt);
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useMemo(() => getLocalDateInputValue(), []);
   const [stats, setStats] = useState<Awaited<ReturnType<typeof getDashboardStats>> | null>(
     null
   );

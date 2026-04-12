@@ -6,6 +6,7 @@ import type {
   BillRow,
   BillType,
   LedgerEntryRow,
+  PaymentMode,
 } from "@/lib/types/domain";
 
 export type BillLineInput = {
@@ -21,6 +22,8 @@ export async function createBill(
     party_name_snapshot: string;
     bill_date: string;
     bill_type: BillType;
+    payment_mode?: PaymentMode | null;
+    payment_reference?: string | null;
     vehicle_info?: string | null;
     address?: string | null;
     phone?: string | null;
@@ -66,6 +69,8 @@ export async function createBill(
     bill_date: billDate,
     total,
     bill_type: input.bill_type,
+    payment_mode: input.payment_mode ?? null,
+    payment_reference: input.payment_reference?.trim() || null,
     vehicle_info: input.vehicle_info?.trim() || null,
     address: input.address?.trim() || null,
     phone: input.phone?.trim() || null,
@@ -108,6 +113,8 @@ export async function createBill(
     balance_delta,
     ref_bill_id: billId,
     ref_purchase_id: null,
+    payment_mode: null,
+    payment_reference: null,
     note: null,
     entry_date: billDate,
     created_at: now,

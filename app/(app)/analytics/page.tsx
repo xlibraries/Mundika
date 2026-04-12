@@ -8,18 +8,20 @@ import {
   useState,
 } from "react";
 import { getDashboardStats } from "@/lib/dashboard/stats";
+import { getLocalDateInputValue } from "@/lib/date/local-date";
 import { formatINR } from "@/lib/format/inr";
 import { useUserId } from "@/hooks/use-user-id";
 import { useAppStore } from "@/store/app-store";
 import { Badge } from "@/components/ui/badge";
 import { InventorySheet } from "@/components/workspace/inventory-sheet";
-import { LedgerBlock } from "@/components/workspace/parties-ledger-blocks";
+import { LedgerBlock, PartiesBlock } from "@/components/workspace/parties-ledger-blocks";
 
-type TabId = "overview" | "stock" | "ledger";
+type TabId = "overview" | "stock" | "contacts" | "ledger";
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: "overview", label: "Overview" },
   { id: "stock", label: "Stock" },
+  { id: "contacts", label: "Contacts" },
   { id: "ledger", label: "Ledger" },
 ];
 
@@ -27,6 +29,7 @@ function getInitialTab(): TabId {
   if (typeof window === "undefined") return "overview";
   const raw = window.location.hash.slice(1);
   if (raw === "inventory") return "stock";
+  if (raw === "parties") return "contacts";
   const match = TABS.find((t) => t.id === raw);
   return match ? match.id : "overview";
 }
@@ -86,7 +89,7 @@ function AnalyticsSkeleton() {
 export default function AnalyticsPage() {
   const { userId, loading } = useUserId();
   const lastSyncAt = useAppStore((s) => s.lastSyncAt);
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useMemo(() => getLocalDateInputValue(), []);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
 
   useLayoutEffect(() => {
@@ -117,8 +120,12 @@ export default function AnalyticsPage() {
         setActiveTab("stock");
         return;
       }
+      if (raw === "parties") {
+        setActiveTab("contacts");
+        return;
+      }
       const match = TABS.find((t) => t.id === raw);
-      if (match) setActiveTab(match.id);
+      setActiveTab(match ? match.id : "overview");
     }
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
@@ -197,6 +204,14 @@ export default function AnalyticsPage() {
 
             {activeTab === "stock" && (
               <InventorySheet
+                userId={userId}
+                refreshToken={refreshToken}
+                onChanged={bump}
+              />
+            )}
+
+            {activeTab === "contacts" && (
+              <PartiesBlock
                 userId={userId}
                 refreshToken={refreshToken}
                 onChanged={bump}

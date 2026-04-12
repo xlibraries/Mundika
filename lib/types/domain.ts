@@ -6,6 +6,16 @@ export type BillType = "cash" | "credit";
 
 export type LedgerEntryType = "sale" | "payment" | "purchase";
 
+export type PaymentMode =
+  | "cash"
+  | "upi"
+  | "imps"
+  | "rtgs"
+  | "neft"
+  | "bank_transfer"
+  | "cheque"
+  | "other";
+
 export type SyncOp = "upsert" | "delete";
 
 export interface PartyRow {
@@ -52,6 +62,8 @@ export interface BillRow {
   bill_date: string;
   total: number;
   bill_type: BillType;
+  payment_mode?: PaymentMode | null;
+  payment_reference?: string | null;
   vehicle_info: string | null;
   /** Optional address snapshot for this transaction (not from contacts table). */
   address?: string | null;
@@ -88,6 +100,8 @@ export interface LedgerEntryRow {
   ref_bill_id: string | null;
   /** Reference to a purchase (for purchase-type ledger entries). */
   ref_purchase_id: string | null;
+  payment_mode?: PaymentMode | null;
+  payment_reference?: string | null;
   note: string | null;
   entry_date: string;
   created_at: string;
@@ -106,6 +120,8 @@ export interface PurchaseRow {
   purchase_date: string; // YYYY-MM-DD
   ref_number: string | null; // supplier's bill/invoice number
   payment_type: PurchasePaymentType;
+  payment_mode?: PaymentMode | null;
+  payment_reference?: string | null;
   total: number;
   note: string | null;
   /** Optional address snapshot for this transaction (not from contacts table). */

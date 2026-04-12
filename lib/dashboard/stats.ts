@@ -41,7 +41,7 @@ export async function getDashboardStats(userId: string, day: string) {
   const items = await db.items.where("user_id").equals(userId).toArray();
   const itemName = new Map(items.map((i) => [i.id, i.name] as const));
   for (const [itemId, qty] of qtyByItem) {
-    if (qty > 0 && qty < LOW_STOCK) {
+    if (qty < LOW_STOCK) {
       lowStock.push({
         item_id: itemId,
         name: itemName.get(itemId) ?? "Item",

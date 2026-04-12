@@ -3,6 +3,7 @@ import { enqueueSync } from "@/lib/sync/queue";
 import type {
   InventoryRow,
   LedgerEntryRow,
+  PaymentMode,
   PurchaseItemRow,
   PurchaseRow,
   PurchasePaymentType,
@@ -23,6 +24,8 @@ export async function createPurchase(
     purchase_date: string;
     ref_number?: string | null;
     payment_type: PurchasePaymentType;
+    payment_mode?: PaymentMode | null;
+    payment_reference?: string | null;
     lines: PurchaseLineInput[];
     note?: string | null;
     address?: string | null;
@@ -76,6 +79,8 @@ export async function createPurchase(
     purchase_date: purchaseDate,
     ref_number: input.ref_number?.trim() || null,
     payment_type: input.payment_type,
+    payment_mode: input.payment_mode ?? null,
+    payment_reference: input.payment_reference?.trim() || null,
     total,
     note: input.note?.trim() || null,
     address: input.address?.trim() || null,
@@ -110,6 +115,8 @@ export async function createPurchase(
     balance_delta,
     ref_bill_id: null,
     ref_purchase_id: purchaseId,
+    payment_mode: null,
+    payment_reference: null,
     note: input.note?.trim() || null,
     entry_date: purchaseDate,
     created_at: now,

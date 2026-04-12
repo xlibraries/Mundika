@@ -2,15 +2,33 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { db } from "@/lib/db";
+import { getLocalDateInputValue } from "@/lib/date/local-date";
 import { createParty } from "@/modules/parties/actions";
 import { deleteParty } from "@/modules/parties/delete";
 import { updateParty } from "@/modules/parties/update";
+import { createLedgerPayment } from "@/modules/ledger/actions";
 import { deleteLedgerEntry } from "@/modules/ledger/delete";
-import type { LedgerEntryRow, PartyRow } from "@/lib/types/domain";
+import type { LedgerEntryRow, PartyRow, PaymentMode } from "@/lib/types/domain";
 import { formatINR } from "@/lib/format/inr";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, Select } from "@/components/ui/input";
 import { useAppStore } from "@/store/app-store";
+
+const PAYMENT_MODE_OPTIONS: Array<{ value: PaymentMode; label: string }> = [
+  { value: "cash", label: "Cash" },
+  { value: "upi", label: "UPI" },
+  { value: "imps", label: "IMPS" },
+  { value: "rtgs", label: "RTGS" },
+  { value: "neft", label: "NEFT" },
+  { value: "bank_transfer", label: "Bank transfer" },
+  { value: "cheque", label: "Cheque" },
+  { value: "other", label: "Other" },
+];
+
+function paymentModeLabel(mode: PaymentMode | null | undefined): string {
+  if (!mode) return "—";
+  return PAYMENT_MODE_OPTIONS.find((opt) => opt.value === mode)?.label ?? "Other";
+}
 
 export function PartiesBlock({
   userId,
@@ -222,13 +240,28 @@ export function LedgerBlock({
 }) {
   const lastSyncAt = useAppStore((s) => s.lastSyncAt);
   const [rows, setRows] = useState<LedgerEntryRow[]>([]);
+  const [parties, setParties] = useState<PartyRow[]>([]);
+  const [partyId, setPartyId] = useState("");
+  const [entryDate, setEntryDate] = useState(() => getLocalDateInputValue());
+  const [amount, setAmount] = useState("");
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("cash");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [note, setNote] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const load = useCallback(async () => {
-    const list = await db.ledger_entries.where("user_id").equals(userId).toArray();
-    list.sort((a, b) =>
+    const [ledgerEntries, partyRows] = await Promise.all([
+      db.ledger_entries.where("user_id").equals(userId).toArray(),
+      db.parties.where("user_id").equals(userId).toArray(),
+    ]);
+    ledgerEntries.sort((a, b) =>
       a.entry_date < b.entry_date ? 1 : a.entry_date > b.entry_date ? -1 : 0
     );
-    setRows(list);
+    partyRows.sort((a, b) => a.name.localeCompare(b.name));
+    setRows(ledgerEntries);
+    setParties(partyRows);
+    setPartyId((prev) => prev || partyRows[0]?.id || "");
   }, [userId]);
 
   useEffect(() => {
@@ -249,16 +282,142 @@ export function LedgerBlock({
     }
   }
 
+  async function onRecordPayment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!partyId) {
+      setSaveError("Select a contact");
+      return;
+    }
+    const numericAmount = Number(amount);
+    if (!(numericAmount > 0) || Number.isNaN(numericAmount)) {
+      setSaveError("Enter an amount greater than 0");
+      return;
+    }
+
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      await createLedgerPayment(userId, {
+        party_id: partyId,
+        entry_date: entryDate,
+        amount: numericAmount,
+        payment_mode: paymentMode,
+        payment_reference: paymentReference || null,
+        note: note || null,
+      });
+      setAmount("");
+      setPaymentReference("");
+      setNote("");
+      await load();
+      onChanged?.();
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "Could not record payment"
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
     <section className="space-y-3">
       <h2 className="text-sm font-medium text-[var(--gs-text)]">Ledger</h2>
+      <form
+        onSubmit={onRecordPayment}
+        className="grid gap-2 rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface)] p-3 md:grid-cols-6"
+      >
+        <label className="space-y-1 md:col-span-2">
+          <span className="text-[11px] text-[var(--gs-text-secondary)]">Contact</span>
+          <Select
+            value={partyId}
+            onChange={(e) => {
+              setPartyId(e.target.value);
+              if (saveError) setSaveError(null);
+            }}
+          >
+            <option value="">Select contact</option>
+            {parties.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <label className="space-y-1">
+          <span className="text-[11px] text-[var(--gs-text-secondary)]">Date</span>
+          <Input
+            type="date"
+            value={entryDate}
+            onChange={(e) => setEntryDate(e.target.value)}
+          />
+        </label>
+        <label className="space-y-1">
+          <span className="text-[11px] text-[var(--gs-text-secondary)]">Amount</span>
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder="0.00"
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              if (saveError) setSaveError(null);
+            }}
+          />
+        </label>
+        <label className="space-y-1">
+          <span className="text-[11px] text-[var(--gs-text-secondary)]">Medium</span>
+          <Select
+            value={paymentMode}
+            onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
+          >
+            {PAYMENT_MODE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <label className="space-y-1">
+          <span className="text-[11px] text-[var(--gs-text-secondary)]">Transaction ID</span>
+          <Input
+            value={paymentReference}
+            onChange={(e) => setPaymentReference(e.target.value)}
+            placeholder="Optional"
+          />
+        </label>
+        <label className="space-y-1 md:col-span-5">
+          <span className="text-[11px] text-[var(--gs-text-secondary)]">Note</span>
+          <Input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Optional"
+          />
+        </label>
+        <div className="flex items-end md:col-span-1">
+          <Button type="submit" size="sm" disabled={isSaving} className="w-full">
+            {isSaving ? "Saving…" : "Record payment"}
+          </Button>
+        </div>
+        {saveError ? (
+          <p
+            role="alert"
+            aria-live="polite"
+            className="rounded border border-[var(--gs-danger)]/30 bg-[var(--gs-danger-soft)] px-3 py-2 text-sm text-[var(--gs-danger)] md:col-span-6"
+          >
+            {saveError}
+          </p>
+        ) : null}
+      </form>
       <div className="overflow-x-auto overflow-hidden rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)]">
-        <table className="w-full min-w-[560px] text-left text-sm">
+        <table className="w-full min-w-[760px] text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
               <th className="px-3 py-2">Date</th>
               <th className="px-3 py-2">Type</th>
               <th className="px-3 py-2">Contact</th>
+              <th className="px-3 py-2">Medium</th>
+              <th className="px-3 py-2">Transaction ID</th>
               <th className="px-3 py-2 text-right" title="Amount added to or removed from the party's outstanding balance">Balance change (₹)</th>
               <th className="w-16 px-3 py-2 text-center"> </th>
             </tr>
@@ -274,6 +433,12 @@ export function LedgerBlock({
                 </td>
                 <td className="px-3 py-2 text-[var(--gs-text)]">
                   {r.party_name_snapshot ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-[var(--gs-text-secondary)]">
+                  {r.entry_type === "payment" ? paymentModeLabel(r.payment_mode) : "—"}
+                </td>
+                <td className="px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)]">
+                  {r.entry_type === "payment" ? r.payment_reference ?? "—" : "—"}
                 </td>
                 <td
                   className={`px-3 py-2 text-right font-mono tabular-nums ${

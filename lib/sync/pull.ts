@@ -6,6 +6,7 @@ import type {
   InventoryRow,
   ItemRow,
   LedgerEntryRow,
+  PaymentMode,
   PartyRow,
   PurchaseItemRow,
   PurchaseRow,
@@ -26,6 +27,24 @@ function nnum(v: unknown): number | null {
 
 function str(v: unknown): string {
   return v == null ? "" : String(v);
+}
+
+function paymentMode(v: unknown): PaymentMode | null {
+  const raw = str(v);
+  if (!raw) return null;
+  if (
+    raw === "cash" ||
+    raw === "upi" ||
+    raw === "imps" ||
+    raw === "rtgs" ||
+    raw === "neft" ||
+    raw === "bank_transfer" ||
+    raw === "cheque" ||
+    raw === "other"
+  ) {
+    return raw;
+  }
+  return "other";
 }
 
 function mapParty(r: Record<string, unknown>): PartyRow {
@@ -72,6 +91,11 @@ function mapBill(r: Record<string, unknown>): BillRow {
     bill_date: str(r.bill_date).slice(0, 10),
     total: num(r.total),
     bill_type: r.bill_type === "credit" ? "credit" : "cash",
+    payment_mode: paymentMode(r.payment_mode),
+    payment_reference:
+      r.payment_reference == null || r.payment_reference === ""
+        ? null
+        : str(r.payment_reference),
     vehicle_info: r.vehicle_info == null ? null : str(r.vehicle_info),
     created_at: str(r.created_at),
     updated_at: str(r.updated_at),
@@ -110,6 +134,11 @@ function mapPurchase(r: Record<string, unknown>): PurchaseRow {
     purchase_date: str(r.purchase_date).slice(0, 10),
     ref_number: r.ref_number == null || r.ref_number === "" ? null : str(r.ref_number),
     payment_type: r.payment_type === "credit" ? "credit" : "cash",
+    payment_mode: paymentMode(r.payment_mode),
+    payment_reference:
+      r.payment_reference == null || r.payment_reference === ""
+        ? null
+        : str(r.payment_reference),
     total: num(r.total),
     note: r.note == null || r.note === "" ? null : str(r.note),
     created_at: str(r.created_at),
@@ -154,6 +183,11 @@ function mapLedger(r: Record<string, unknown>): LedgerEntryRow {
       r.ref_purchase_id == null || r.ref_purchase_id === ""
         ? null
         : str(r.ref_purchase_id),
+    payment_mode: paymentMode(r.payment_mode),
+    payment_reference:
+      r.payment_reference == null || r.payment_reference === ""
+        ? null
+        : str(r.payment_reference),
     note: r.note == null || r.note === "" ? null : str(r.note),
     entry_date: str(r.entry_date).slice(0, 10),
     created_at: str(r.created_at),

@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { db } from "@/lib/db";
+import { getLocalDateInputValue } from "@/lib/date/local-date";
 import { createBill } from "@/modules/billing/actions";
 import { deleteBill } from "@/modules/billing/delete";
 import { createPurchase } from "@/modules/purchases/actions";
@@ -18,11 +19,12 @@ import type {
   BillRow,
   InventoryRow,
   ItemRow,
+  PaymentMode,
   PartyRow,
   PurchaseRow,
 } from "@/lib/types/domain";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, Select } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
 import { formatINR } from "@/lib/format/inr";
 import {
@@ -51,6 +53,22 @@ type TxLine = {
 };
 
 type LineIssue = { qty?: boolean; rate?: boolean };
+
+const PAYMENT_MODE_OPTIONS: Array<{ value: PaymentMode; label: string }> = [
+  { value: "cash", label: "Cash" },
+  { value: "upi", label: "UPI" },
+  { value: "imps", label: "IMPS" },
+  { value: "rtgs", label: "RTGS" },
+  { value: "neft", label: "NEFT" },
+  { value: "bank_transfer", label: "Bank transfer" },
+  { value: "cheque", label: "Cheque" },
+  { value: "other", label: "Other" },
+];
+
+function paymentModeLabel(mode: PaymentMode | null | undefined): string {
+  if (!mode) return "—";
+  return PAYMENT_MODE_OPTIONS.find((opt) => opt.value === mode)?.label ?? "Other";
+}
 
 function emptyLine(): TxLine {
   return { item_id: "", qty: "1", rate: "", destination: "godown" };
@@ -92,8 +110,10 @@ export function TransactionForm({
 
   // ---- form fields ---------------------------------------------------------
   const [partyId, setPartyId] = useState("");
-  const [txDate, setTxDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [txDate, setTxDate] = useState(() => getLocalDateInputValue());
   const [paymentType, setPaymentType] = useState<"cash" | "credit">("cash");
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("cash");
+  const [paymentReference, setPaymentReference] = useState("");
   const [refNumber, setRefNumber] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
@@ -483,6 +503,9 @@ export function TransactionForm({
           party_name_snapshot: party.name,
           bill_date: txDate,
           bill_type: paymentType,
+          payment_mode: paymentType === "cash" ? paymentMode : null,
+          payment_reference:
+            paymentType === "cash" ? paymentReference || null : null,
           vehicle_info: refNumber || null,
           address: address || null,
           phone: phone || null,
@@ -494,6 +517,7 @@ export function TransactionForm({
         setRefNumber("");
         setAddress("");
         setPhone("");
+        setPaymentReference("");
         await loadBills();
       } else {
         const parsed = filledLines.map((l) => ({
@@ -509,6 +533,9 @@ export function TransactionForm({
           purchase_date: txDate,
           ref_number: refNumber || null,
           payment_type: paymentType,
+          payment_mode: paymentType === "cash" ? paymentMode : null,
+          payment_reference:
+            paymentType === "cash" ? paymentReference || null : null,
           lines: parsed,
           note: note || null,
           address: address || null,
@@ -522,6 +549,7 @@ export function TransactionForm({
         setRefNumber("");
         setAddress("");
         setPhone("");
+        setPaymentReference("");
         setNote("");
         await loadPurchases();
       }
@@ -545,6 +573,8 @@ export function TransactionForm({
     userId,
     txDate,
     paymentType,
+    paymentMode,
+    paymentReference,
     refNumber,
     address,
     phone,
@@ -749,7 +779,7 @@ export function TransactionForm({
                 variant="secondary"
                 size="sm"
                 className="shrink-0 self-stretch px-3"
-                onClick={() => setTxDate(new Date().toISOString().slice(0, 10))}
+                onClick={() => setTxDate(getLocalDateInputValue())}
               >
                 Today
               </Button>
@@ -811,7 +841,7 @@ export function TransactionForm({
 
           <div className="space-y-1.5">
             <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
-              Payment (Cash / Credit)
+              Settlement (Paid now / Credit)
             </span>
             <div
               className="flex rounded border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] p-0.5"
@@ -835,7 +865,7 @@ export function TransactionForm({
                   itemRefs.current[0]?.focus();
                 }}
               >
-                Cash
+                Paid now
               </button>
               <button
                 type="button"
@@ -857,11 +887,40 @@ export function TransactionForm({
               </button>
             </div>
             <p className="text-[11px] text-[var(--gs-text-secondary)]">
-              Press <kbd className="font-mono">C</kbd> or{" "}
-              <kbd className="font-mono">U</kbd> when focus is not in a text field.
+              Credit transactions stay open and should be settled later from Ledger.
             </p>
           </div>
         </div>
+
+        {paymentType === "cash" ? (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="space-y-1.5">
+              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
+                Payment mode
+              </span>
+              <Select
+                value={paymentMode}
+                onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
+              >
+                {PAYMENT_MODE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="space-y-1.5 sm:col-span-2">
+              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
+                Transaction ID / reference (optional)
+              </span>
+              <Input
+                placeholder="UPI ref, cheque no., bank txn id…"
+                value={paymentReference}
+                onChange={(e) => setPaymentReference(e.target.value)}
+              />
+            </label>
+          </div>
+        ) : null}
 
         {/* Purchase-only: note */}
         {mode === "purchase" ? (
@@ -1301,7 +1360,11 @@ export function TransactionForm({
                       {b.party_name_snapshot}
                     </td>
                     <td className="px-3 py-2 capitalize text-[var(--gs-text-secondary)]">
-                      {b.bill_type}
+                      {b.bill_type === "cash"
+                        ? `paid · ${paymentModeLabel(b.payment_mode)}${
+                            b.payment_reference ? ` · ${b.payment_reference}` : ""
+                          }`
+                        : "credit"}
                     </td>
                     <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--gs-text)]">
                       {formatINR(b.total)}
@@ -1365,7 +1428,11 @@ export function TransactionForm({
                       {p.party_name_snapshot}
                     </td>
                     <td className="px-3 py-2 capitalize text-[var(--gs-text-secondary)]">
-                      {p.payment_type}
+                      {p.payment_type === "cash"
+                        ? `paid · ${paymentModeLabel(p.payment_mode)}${
+                            p.payment_reference ? ` · ${p.payment_reference}` : ""
+                          }`
+                        : "credit"}
                     </td>
                     <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--gs-text)]">
                       {formatINR(p.total)}

@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/lib/db";
+import { getLocalDateInputValue } from "@/lib/date/local-date";
 import { createStockTransfer } from "@/modules/inventory/transfer";
 import { formatINR } from "@/lib/format/inr";
 import type { InventoryRow, ItemRow } from "@/lib/types/domain";
@@ -30,9 +31,7 @@ export function InventorySheet({
   const [transferTo, setTransferTo] = useState<"shop" | "godown">("godown");
   const [transferQty, setTransferQty] = useState("1");
   const [transferNote, setTransferNote] = useState("");
-  const [transferDate, setTransferDate] = useState(() =>
-    new Date().toISOString().slice(0, 10)
-  );
+  const [transferDate, setTransferDate] = useState(() => getLocalDateInputValue());
   const [transferErr, setTransferErr] = useState<string | null>(null);
   const [isTransferring, setIsTransferring] = useState(false);
 
@@ -90,7 +89,7 @@ export function InventorySheet({
     setTransferTo(to);
     setTransferQty("1");
     setTransferNote("");
-    setTransferDate(new Date().toISOString().slice(0, 10));
+    setTransferDate(getLocalDateInputValue());
     setTransferErr(null);
     setTransferItemId(item.id);
   }
