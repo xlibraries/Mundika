@@ -7,12 +7,16 @@ import {
   useMemo,
   useState,
 } from "react";
-import { getDashboardStats } from "@/lib/dashboard/stats";
+import {
+  getAnalyticsSummary,
+  type AnalyticsSummaryFilters,
+} from "@/lib/analytics/summary";
 import { getLocalDateInputValue } from "@/lib/date/local-date";
 import { formatINR } from "@/lib/format/inr";
 import { useUserId } from "@/hooks/use-user-id";
 import { useAppStore } from "@/store/app-store";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { InventorySheet } from "@/components/workspace/inventory-sheet";
 import { LedgerBlock, PartiesBlock } from "@/components/workspace/parties-ledger-blocks";
 
@@ -86,18 +90,50 @@ function AnalyticsSkeleton() {
   );
 }
 
+function shiftDays(base: string, daysBack: number): string {
+  const d = new Date(`${base}T00:00:00`);
+  d.setDate(d.getDate() - daysBack);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function AnalyticsPage() {
   const { userId, loading } = useUserId();
   const lastSyncAt = useAppStore((s) => s.lastSyncAt);
   const today = useMemo(() => getLocalDateInputValue(), []);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [globalOverviewFilters, setGlobalOverviewFilters] = useState<AnalyticsSummaryFilters>(
+    () => ({
+      fromDate: today,
+      toDate: today,
+      partyId: "",
+      itemId: "",
+    })
+  );
+  const [stockLocalFilters, setStockLocalFilters] = useState({
+    itemId: "",
+    minTotalQty: "",
+  });
+  const [ledgerLocalFilters, setLedgerLocalFilters] = useState<{
+    fromDate: string;
+    toDate: string;
+    partyId: string;
+    entryType: "" | "sale" | "purchase" | "payment";
+  }>({
+    fromDate: today,
+    toDate: today,
+    partyId: "",
+    entryType: "",
+  });
 
   useLayoutEffect(() => {
     const id = getInitialTab();
     queueMicrotask(() => setActiveTab(id));
   }, []);
-  const [stats, setStats] = useState<Awaited<
-    ReturnType<typeof getDashboardStats>
+  const [summary, setSummary] = useState<Awaited<
+    ReturnType<typeof getAnalyticsSummary>
   > | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
 
@@ -105,8 +141,33 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     if (!userId) return;
-    void getDashboardStats(userId, today).then(setStats);
-  }, [userId, today, refreshToken, lastSyncAt]);
+    void getAnalyticsSummary(userId, globalOverviewFilters).then(setSummary);
+  }, [userId, globalOverviewFilters, refreshToken, lastSyncAt]);
+
+  function resetGlobalFilters() {
+    setGlobalOverviewFilters({
+      fromDate: today,
+      toDate: today,
+      partyId: "",
+      itemId: "",
+    });
+  }
+
+  function applyDatePreset(days: 0 | 6 | 29) {
+    if (days === 0) {
+      setGlobalOverviewFilters((prev) => ({
+        ...prev,
+        fromDate: today,
+        toDate: today,
+      }));
+      return;
+    }
+    setGlobalOverviewFilters((prev) => ({
+      ...prev,
+      fromDate: shiftDays(today, days),
+      toDate: today,
+    }));
+  }
 
   function handleTabChange(id: TabId) {
     setActiveTab(id);
@@ -167,24 +228,150 @@ export default function AnalyticsPage() {
           <div className="min-h-0 rounded-2xl border border-[var(--gs-border)]/80 bg-[var(--gs-surface-plain)] p-4 shadow-sm md:p-6">
             {activeTab === "overview" && (
               <div className="space-y-6">
-                {!stats ? (
+                <section className="space-y-3 rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-surface)] p-3 md:p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-sm font-medium text-[var(--gs-text)]">
+                      Overview window
+                    </h2>
+                    <button
+                      type="button"
+                      className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-text)]"
+                      onClick={resetGlobalFilters}
+                    >
+                      Reset global filters
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => applyDatePreset(0)}
+                      className="rounded-full border border-[var(--gs-border)] px-3 py-1 text-xs text-[var(--gs-text-secondary)] hover:bg-[var(--gs-surface-hover)]"
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyDatePreset(6)}
+                      className="rounded-full border border-[var(--gs-border)] px-3 py-1 text-xs text-[var(--gs-text-secondary)] hover:bg-[var(--gs-surface-hover)]"
+                    >
+                      7D
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyDatePreset(29)}
+                      className="rounded-full border border-[var(--gs-border)] px-3 py-1 text-xs text-[var(--gs-text-secondary)] hover:bg-[var(--gs-surface-hover)]"
+                    >
+                      30D
+                    </button>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="space-y-1">
+                      <span className="text-[11px] text-[var(--gs-text-secondary)]">
+                        From date
+                      </span>
+                      <Input
+                        type="date"
+                        value={globalOverviewFilters.fromDate}
+                        onChange={(e) =>
+                          setGlobalOverviewFilters((prev) => ({
+                            ...prev,
+                            fromDate: e.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[11px] text-[var(--gs-text-secondary)]">
+                        To date
+                      </span>
+                      <Input
+                        type="date"
+                        value={globalOverviewFilters.toDate}
+                        onChange={(e) =>
+                          setGlobalOverviewFilters((prev) => ({
+                            ...prev,
+                            toDate: e.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs text-[var(--gs-text-secondary)]">
+                    <span className="rounded-full border border-[var(--gs-border)] px-3 py-1">
+                      Date: {globalOverviewFilters.fromDate} to {globalOverviewFilters.toDate}
+                    </span>
+                    {globalOverviewFilters.partyId ? (
+                      <button
+                        type="button"
+                        className="rounded-full border border-[var(--gs-border)] px-3 py-1 hover:bg-[var(--gs-surface-hover)]"
+                        onClick={() =>
+                          setGlobalOverviewFilters((prev) => ({ ...prev, partyId: "" }))
+                        }
+                      >
+                        Contact filter active - clear
+                      </button>
+                    ) : null}
+                    {globalOverviewFilters.itemId ? (
+                      <button
+                        type="button"
+                        className="rounded-full border border-[var(--gs-border)] px-3 py-1 hover:bg-[var(--gs-surface-hover)]"
+                        onClick={() =>
+                          setGlobalOverviewFilters((prev) => ({ ...prev, itemId: "" }))
+                        }
+                      >
+                        Item filter active - clear
+                      </button>
+                    ) : null}
+                  </div>
+                </section>
+
+                {!summary ? (
                   <div className="h-24 animate-pulse rounded-2xl border border-[var(--gs-grid)] bg-[var(--gs-surface)]" />
                 ) : (
-                  <div className="grid overflow-hidden rounded-2xl border border-[var(--gs-grid)] bg-[var(--gs-surface)] sm:grid-cols-2 lg:grid-cols-4">
-                    <Stat label="Sales" value={formatINR(stats.salesTotal)} />
-                    <Stat label="Cash" value={formatINR(stats.cashTotal)} />
-                    <Stat label="Credit" value={formatINR(stats.creditTotal)} />
+                  <div className="grid overflow-hidden rounded-2xl border border-[var(--gs-grid)] bg-[var(--gs-surface)] sm:grid-cols-2 lg:grid-cols-3">
+                    <Stat label="Sales" value={formatINR(summary.totals.sales)} />
                     <Stat
                       label="Purchases"
-                      value={formatINR(stats.purchasesTotal)}
+                      value={formatINR(summary.totals.purchases)}
+                    />
+                    <Stat
+                      label="Payments logged"
+                      value={formatINR(summary.totals.paymentsLogged)}
+                    />
+                    <Stat
+                      label="Cash sales"
+                      value={formatINR(summary.totals.cashSales)}
+                    />
+                    <Stat
+                      label="Credit sales"
+                      value={formatINR(summary.totals.creditSales)}
+                    />
+                    <Stat
+                      label="Credit purchases"
+                      value={formatINR(summary.totals.creditPurchases)}
                     />
                   </div>
                 )}
-                {stats && stats.lowStock.length > 0 ? (
+
+                {summary ? (
+                  <p className="text-sm text-[var(--gs-text-secondary)]">
+                    {summary.totals.billsCount} bills, {summary.totals.purchasesCount} purchases
+                    , and {summary.totals.paymentsCount} settlement entries in the selected
+                    range.
+                  </p>
+                ) : null}
+
+                {summary?.itemFilterNote ? (
+                  <p className="rounded-xl border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2 text-sm text-[var(--gs-text-secondary)]">
+                    {summary.itemFilterNote}
+                  </p>
+                ) : null}
+
+                {summary && summary.lowStock.length > 0 ? (
                   <p className="rounded-xl border border-[var(--gs-warning)]/40 bg-[var(--gs-warning-soft)] px-3 py-2 text-sm text-[var(--gs-warning)]">
                     Low stock:{" "}
-                    {stats.lowStock
-                      .map((s) => `${s.name} (${s.qty})`)
+                    {summary.lowStock
+                      .map((s) => `${s.itemName} (${s.qty}${s.unit ? ` ${s.unit}` : ""})`)
                       .join(" · ")}
                   </p>
                 ) : (
@@ -192,13 +379,66 @@ export default function AnalyticsPage() {
                     No low-stock items.
                   </p>
                 )}
-                <p className="text-sm text-[var(--gs-text-secondary)]">
-                  Billing and purchases live under{" "}
-                  <strong className="text-[var(--gs-text)]">Inventory</strong>. Use{" "}
-                  <strong className="text-[var(--gs-text)]">Stock</strong> here for the
-                  grid and <strong className="text-[var(--gs-text)]">Ledger</strong>{" "}
-                  for running entries.
-                </p>
+
+                {summary ? (
+                  <section className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-surface)] p-3">
+                      <h3 className="text-sm font-medium text-[var(--gs-text)]">
+                        Contact summary
+                      </h3>
+                      {summary.topContacts.length === 0 ? (
+                        <p className="mt-2 text-sm text-[var(--gs-text-secondary)]">
+                          No contact activity for this filter.
+                        </p>
+                      ) : (
+                        <div className="mt-2 space-y-2">
+                          {summary.topContacts.map((row) => (
+                            <div
+                              key={row.partyId}
+                              className="flex items-center justify-between gap-3 border-b border-[var(--gs-grid)] pb-2 last:border-b-0 last:pb-0"
+                            >
+                              <p className="truncate text-sm text-[var(--gs-text)]">
+                                {row.partyName}
+                              </p>
+                              <p className="whitespace-nowrap font-mono text-xs text-[var(--gs-text-secondary)]">
+                                {formatINR(row.sales)} sale · {formatINR(row.purchases)} buy
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-surface)] p-3">
+                      <h3 className="text-sm font-medium text-[var(--gs-text)]">
+                        Item summary
+                      </h3>
+                      {summary.topItems.length === 0 ? (
+                        <p className="mt-2 text-sm text-[var(--gs-text-secondary)]">
+                          No item movement for this filter.
+                        </p>
+                      ) : (
+                        <div className="mt-2 space-y-2">
+                          {summary.topItems.map((row) => (
+                            <div
+                              key={row.itemId}
+                              className="flex items-center justify-between gap-3 border-b border-[var(--gs-grid)] pb-2 last:border-b-0 last:pb-0"
+                            >
+                              <p className="truncate text-sm text-[var(--gs-text)]">
+                                {row.itemName}
+                              </p>
+                              <p className="whitespace-nowrap font-mono text-xs text-[var(--gs-text-secondary)]">
+                                Sold {row.soldQty}
+                                {row.unit ? ` ${row.unit}` : ""} · Bought {row.boughtQty}
+                                {row.unit ? ` ${row.unit}` : ""}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                ) : null}
               </div>
             )}
 
@@ -207,6 +447,14 @@ export default function AnalyticsPage() {
                 userId={userId}
                 refreshToken={refreshToken}
                 onChanged={bump}
+                localFilters={stockLocalFilters}
+                onLocalFiltersChange={setStockLocalFilters}
+                onApplyToOverview={(payload) =>
+                  setGlobalOverviewFilters((prev) => ({
+                    ...prev,
+                    itemId: payload.itemId ?? "",
+                  }))
+                }
               />
             )}
 
@@ -223,6 +471,16 @@ export default function AnalyticsPage() {
                 userId={userId}
                 refreshToken={refreshToken}
                 onChanged={bump}
+                localFilters={ledgerLocalFilters}
+                onLocalFiltersChange={setLedgerLocalFilters}
+                onApplyToOverview={(payload) =>
+                  setGlobalOverviewFilters((prev) => ({
+                    ...prev,
+                    fromDate: payload.fromDate ?? prev.fromDate,
+                    toDate: payload.toDate ?? prev.toDate,
+                    partyId: payload.partyId ?? "",
+                  }))
+                }
               />
             )}
           </div>

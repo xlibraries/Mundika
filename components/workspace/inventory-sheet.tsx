@@ -1,29 +1,36 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { db } from "@/lib/db";
 import { getLocalDateInputValue } from "@/lib/date/local-date";
 import { createStockTransfer } from "@/modules/inventory/transfer";
 import { formatINR } from "@/lib/format/inr";
 import type { InventoryRow, ItemRow } from "@/lib/types/domain";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, Select } from "@/components/ui/input";
 import { useAppStore } from "@/store/app-store";
 
 export function InventorySheet({
   userId,
   refreshToken,
   onChanged,
+  localFilters,
+  onLocalFiltersChange,
+  onApplyToOverview,
 }: {
   userId: string;
   refreshToken: number;
   onChanged?: () => void;
+  localFilters: {
+    itemId: string;
+    minTotalQty: string;
+  };
+  onLocalFiltersChange: (next: { itemId: string; minTotalQty: string }) => void;
+  onApplyToOverview?: (payload: { itemId?: string }) => void;
 }) {
   const lastSyncAt = useAppStore((s) => s.lastSyncAt);
   const [items, setItems] = useState<ItemRow[]>([]);
   const [inv, setInv] = useState<InventoryRow[]>([]);
-  const [filter, setFilter] = useState("");
-  const filterRef = useRef<HTMLInputElement>(null);
 
   // Transfer panel state
   const [transferItemId, setTransferItemId] = useState<string | null>(null);
@@ -52,23 +59,19 @@ export function InventorySheet({
     return () => window.clearTimeout(t);
   }, [load, refreshToken, lastSyncAt]);
 
-  useEffect(() => {
-    function onWinKey(e: KeyboardEvent) {
-      if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
-      const t = e.target as HTMLElement;
-      if (t.closest("input, textarea, select, [role='combobox']")) return;
-      e.preventDefault();
-      filterRef.current?.focus();
-    }
-    window.addEventListener("keydown", onWinKey);
-    return () => window.removeEventListener("keydown", onWinKey);
-  }, []);
-
   const filteredItems = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((it) => it.name.toLowerCase().includes(q));
-  }, [items, filter]);
+    const minQty = Number(localFilters.minTotalQty);
+    return items.filter((it) => {
+      if (localFilters.itemId && it.id !== localFilters.itemId) return false;
+      const shop = inv.find((r) => r.item_id === it.id && r.location === "shop");
+      const godown = inv.find((r) => r.item_id === it.id && r.location === "godown");
+      const totalQty = (shop?.qty ?? 0) + (godown?.qty ?? 0);
+      if (!Number.isNaN(minQty) && localFilters.minTotalQty !== "" && totalQty < minQty) {
+        return false;
+      }
+      return true;
+    });
+  }, [items, localFilters.itemId, localFilters.minTotalQty, inv]);
 
   function invRow(itemId: string, loc: InventoryRow["location"]) {
     return inv.find((r) => r.item_id === itemId && r.location === loc);
@@ -128,19 +131,24 @@ export function InventorySheet({
         <div>
           <h2 className="text-sm font-medium text-[var(--gs-text)]">Inventory</h2>
           <p className="text-[11px] text-[var(--gs-text-secondary)]">
-            Read-only view · <kbd className="font-mono">/</kbd> focuses filter ·
-            use Inventory → Transactions (Purchase) to add stock
+            Read-only view with local header filters. Use Inventory → Transactions
+            (Purchase) to add stock.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Input
-            ref={filterRef}
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filter items…"
-            className="h-8 w-44 text-xs"
-            aria-label="Filter inventory rows"
-          />
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={!localFilters.itemId}
+            onClick={() =>
+              onApplyToOverview?.({
+                itemId: localFilters.itemId || undefined,
+              })
+            }
+          >
+            Apply item to overview
+          </Button>
         </div>
       </div>
 
@@ -171,6 +179,64 @@ export function InventorySheet({
               </th>
               <th className="sticky top-0 z-10 w-24 px-2 py-2 text-center">
                 {" "}
+              </th>
+            </tr>
+            <tr className="border-b border-[var(--gs-grid)] bg-[var(--gs-surface)]/70 text-[11px] text-[var(--gs-text-secondary)]">
+              <th className="px-1 py-1.5" />
+              <th className="border-r border-[var(--gs-grid)] px-2 py-1.5">
+                <Select
+                  value={localFilters.itemId}
+                  onChange={(e) =>
+                    onLocalFiltersChange({
+                      ...localFilters,
+                      itemId: e.target.value,
+                    })
+                  }
+                  className="h-7 text-xs"
+                >
+                  <option value="">All items</option>
+                  {items.map((it) => (
+                    <option key={it.id} value={it.id}>
+                      {it.name}
+                    </option>
+                  ))}
+                </Select>
+              </th>
+              <th className="border-r border-[var(--gs-grid)] px-2 py-1.5" />
+              <th className="border-r border-[var(--gs-grid)] px-2 py-1.5" />
+              <th className="border-r border-[var(--gs-grid)] px-2 py-1.5" />
+              <th className="border-r border-[var(--gs-grid)] px-2 py-1.5">
+                <Input
+                  type="number"
+                  min={0}
+                  step={1}
+                  placeholder="Min qty"
+                  value={localFilters.minTotalQty}
+                  onChange={(e) =>
+                    onLocalFiltersChange({
+                      ...localFilters,
+                      minTotalQty: e.target.value,
+                    })
+                  }
+                  className="h-7 text-xs"
+                />
+              </th>
+              <th className="border-r border-[var(--gs-grid)] px-2 py-1.5" />
+              <th className="px-2 py-1.5 text-center">
+                {localFilters.itemId || localFilters.minTotalQty ? (
+                  <button
+                    type="button"
+                    className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-text)]"
+                    onClick={() =>
+                      onLocalFiltersChange({
+                        itemId: "",
+                        minTotalQty: "",
+                      })
+                    }
+                  >
+                    Clear
+                  </button>
+                ) : null}
               </th>
             </tr>
           </thead>
@@ -346,7 +412,7 @@ export function InventorySheet({
           </p>
         ) : filteredItems.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-[var(--gs-text-secondary)]">
-            No items match this filter.
+            No items match these header filters.
           </p>
         ) : null}
       </div>

@@ -48,6 +48,7 @@ export function PartiesBlock({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [nameFilter, setNameFilter] = useState("");
 
   const load = useCallback(async () => {
     const list = await db.parties.where("user_id").equals(userId).toArray();
@@ -152,9 +153,37 @@ export function PartiesBlock({
               <th className="px-3 py-2 text-right">Phone</th>
               <th className="w-36 px-3 py-2 text-center"> </th>
             </tr>
+            <tr className="border-b border-[var(--gs-grid)] bg-[var(--gs-surface)]/70">
+              <th className="px-3 py-1.5">
+                <Input
+                  value={nameFilter}
+                  onChange={(e) => setNameFilter(e.target.value)}
+                  placeholder="Filter by name"
+                  className="h-7 text-xs"
+                />
+              </th>
+              <th className="px-3 py-1.5" />
+              <th className="px-3 py-1.5 text-center">
+                {nameFilter ? (
+                  <button
+                    type="button"
+                    className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-text)]"
+                    onClick={() => setNameFilter("")}
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </th>
+            </tr>
           </thead>
           <tbody className="divide-y divide-[var(--gs-grid)]">
-            {rows.map((p) =>
+            {rows
+              .filter((p) =>
+                nameFilter.trim()
+                  ? p.name.toLowerCase().includes(nameFilter.trim().toLowerCase())
+                  : true
+              )
+              .map((p) =>
               editingId === p.id ? (
                 <tr key={p.id} className="bg-[var(--gs-selection)]">
                   <td className="px-2 py-1.5">
@@ -223,6 +252,14 @@ export function PartiesBlock({
           <p className="px-3 py-6 text-center text-sm text-[var(--gs-text-secondary)]">
             No contacts yet.
           </p>
+        ) : rows.filter((p) =>
+            nameFilter.trim()
+              ? p.name.toLowerCase().includes(nameFilter.trim().toLowerCase())
+              : true
+          ).length === 0 ? (
+          <p className="px-3 py-6 text-center text-sm text-[var(--gs-text-secondary)]">
+            No contacts match this header filter.
+          </p>
         ) : null}
       </div>
     </section>
@@ -233,15 +270,35 @@ export function LedgerBlock({
   userId,
   refreshToken,
   onChanged,
+  localFilters,
+  onLocalFiltersChange,
+  onApplyToOverview,
 }: {
   userId: string;
   refreshToken: number;
   onChanged?: () => void;
+  localFilters: {
+    fromDate: string;
+    toDate: string;
+    partyId: string;
+    entryType: "" | "sale" | "purchase" | "payment";
+  };
+  onLocalFiltersChange: (next: {
+    fromDate: string;
+    toDate: string;
+    partyId: string;
+    entryType: "" | "sale" | "purchase" | "payment";
+  }) => void;
+  onApplyToOverview?: (payload: {
+    fromDate?: string;
+    toDate?: string;
+    partyId?: string;
+  }) => void;
 }) {
   const lastSyncAt = useAppStore((s) => s.lastSyncAt);
   const [rows, setRows] = useState<LedgerEntryRow[]>([]);
   const [parties, setParties] = useState<PartyRow[]>([]);
-  const [partyId, setPartyId] = useState("");
+  const [paymentPartyId, setPaymentPartyId] = useState("");
   const [entryDate, setEntryDate] = useState(() => getLocalDateInputValue());
   const [amount, setAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("cash");
@@ -261,7 +318,7 @@ export function LedgerBlock({
     partyRows.sort((a, b) => a.name.localeCompare(b.name));
     setRows(ledgerEntries);
     setParties(partyRows);
-    setPartyId((prev) => prev || partyRows[0]?.id || "");
+    setPaymentPartyId((prev) => prev || partyRows[0]?.id || "");
   }, [userId]);
 
   useEffect(() => {
@@ -284,7 +341,7 @@ export function LedgerBlock({
 
   async function onRecordPayment(e: React.FormEvent) {
     e.preventDefault();
-    if (!partyId) {
+    if (!paymentPartyId) {
       setSaveError("Select a contact");
       return;
     }
@@ -298,7 +355,7 @@ export function LedgerBlock({
     setIsSaving(true);
     try {
       await createLedgerPayment(userId, {
-        party_id: partyId,
+        party_id: paymentPartyId,
         entry_date: entryDate,
         amount: numericAmount,
         payment_mode: paymentMode,
@@ -319,9 +376,33 @@ export function LedgerBlock({
     }
   }
 
+  const filteredRows = rows.filter((r) => {
+    if (localFilters.fromDate && r.entry_date < localFilters.fromDate) return false;
+    if (localFilters.toDate && r.entry_date > localFilters.toDate) return false;
+    if (localFilters.partyId && r.party_id !== localFilters.partyId) return false;
+    if (localFilters.entryType && r.entry_type !== localFilters.entryType) return false;
+    return true;
+  });
+
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-[var(--gs-text)]">Ledger</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-medium text-[var(--gs-text)]">Ledger</h2>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          onClick={() =>
+            onApplyToOverview?.({
+              fromDate: localFilters.fromDate || undefined,
+              toDate: localFilters.toDate || undefined,
+              partyId: localFilters.partyId || undefined,
+            })
+          }
+        >
+          Apply to overview
+        </Button>
+      </div>
       <form
         onSubmit={onRecordPayment}
         className="grid gap-2 rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface)] p-3 md:grid-cols-6"
@@ -329,9 +410,9 @@ export function LedgerBlock({
         <label className="space-y-1 md:col-span-2">
           <span className="text-[11px] text-[var(--gs-text-secondary)]">Contact</span>
           <Select
-            value={partyId}
+            value={paymentPartyId}
             onChange={(e) => {
-              setPartyId(e.target.value);
+              setPaymentPartyId(e.target.value);
               if (saveError) setSaveError(null);
             }}
           >
@@ -421,9 +502,97 @@ export function LedgerBlock({
               <th className="px-3 py-2 text-right" title="Amount added to or removed from the party's outstanding balance">Balance change (₹)</th>
               <th className="w-16 px-3 py-2 text-center"> </th>
             </tr>
+            <tr className="border-b border-[var(--gs-grid)] bg-[var(--gs-surface)]/70 text-[11px] text-[var(--gs-text-secondary)]">
+              <th className="px-3 py-1.5">
+                <div className="grid grid-cols-2 gap-1">
+                  <Input
+                    type="date"
+                    value={localFilters.fromDate}
+                    onChange={(e) =>
+                      onLocalFiltersChange({
+                        ...localFilters,
+                        fromDate: e.target.value,
+                      })
+                    }
+                    className="h-7 text-xs"
+                  />
+                  <Input
+                    type="date"
+                    value={localFilters.toDate}
+                    onChange={(e) =>
+                      onLocalFiltersChange({
+                        ...localFilters,
+                        toDate: e.target.value,
+                      })
+                    }
+                    className="h-7 text-xs"
+                  />
+                </div>
+              </th>
+              <th className="px-3 py-1.5">
+                <Select
+                  value={localFilters.entryType}
+                  onChange={(e) =>
+                    onLocalFiltersChange({
+                      ...localFilters,
+                      entryType: e.target.value as "" | "sale" | "purchase" | "payment",
+                    })
+                  }
+                  className="h-7 text-xs"
+                >
+                  <option value="">All</option>
+                  <option value="sale">Sale</option>
+                  <option value="purchase">Purchase</option>
+                  <option value="payment">Payment</option>
+                </Select>
+              </th>
+              <th className="px-3 py-1.5">
+                <Select
+                  value={localFilters.partyId}
+                  onChange={(e) =>
+                    onLocalFiltersChange({
+                      ...localFilters,
+                      partyId: e.target.value,
+                    })
+                  }
+                  className="h-7 text-xs"
+                >
+                  <option value="">All contacts</option>
+                  {parties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
+              </th>
+              <th className="px-3 py-1.5" />
+              <th className="px-3 py-1.5" />
+              <th className="px-3 py-1.5 text-right" />
+              <th className="px-3 py-1.5 text-center">
+                {localFilters.fromDate ||
+                localFilters.toDate ||
+                localFilters.partyId ||
+                localFilters.entryType ? (
+                  <button
+                    type="button"
+                    className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-text)]"
+                    onClick={() =>
+                      onLocalFiltersChange({
+                        fromDate: "",
+                        toDate: "",
+                        partyId: "",
+                        entryType: "",
+                      })
+                    }
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </th>
+            </tr>
           </thead>
           <tbody className="divide-y divide-[var(--gs-grid)]">
-            {rows.map((r) => (
+            {filteredRows.map((r) => (
               <tr key={r.id} className="hover:bg-[var(--gs-surface)]">
                 <td className="px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)]">
                   {r.entry_date}
@@ -466,6 +635,10 @@ export function LedgerBlock({
         {rows.length === 0 ? (
           <p className="px-3 py-6 text-center text-sm text-[var(--gs-text-secondary)]">
             No ledger entries yet.
+          </p>
+        ) : filteredRows.length === 0 ? (
+          <p className="px-3 py-6 text-center text-sm text-[var(--gs-text-secondary)]">
+            No ledger rows match these header filters.
           </p>
         ) : null}
       </div>
