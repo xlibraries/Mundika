@@ -688,7 +688,8 @@ export function TransactionForm({
     <div
       className={cn(
         !embedded && "space-y-8",
-        embedded && "flex min-h-0 flex-1 flex-col overflow-hidden bg-white"
+        embedded &&
+          "flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--gs-panel)]"
       )}
     >
       {embedded ? (
