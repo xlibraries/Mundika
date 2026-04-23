@@ -1074,6 +1074,21 @@ export function LedgerBlock({
     return true;
   });
 
+  /** Table filter wins; else Record payment contact — drives khata notebook. */
+  const notebookPartyId = localFilters.partyId || paymentPartyId;
+  const notebookMode = Boolean(notebookPartyId);
+
+  const notebookFilteredRows = useMemo(() => {
+    if (!notebookMode) return [];
+    return rows.filter((r) => {
+      if (localFilters.fromDate && r.entry_date < localFilters.fromDate) return false;
+      if (localFilters.toDate && r.entry_date > localFilters.toDate) return false;
+      if (notebookPartyId && r.party_id !== notebookPartyId) return false;
+      if (localFilters.entryType && r.entry_type !== localFilters.entryType) return false;
+      return true;
+    });
+  }, [rows, notebookMode, notebookPartyId, localFilters]);
+
   const selectionSummary = useMemo(() => {
     return filteredRows.reduce(
       (acc, row) => {
@@ -1098,22 +1113,21 @@ export function LedgerBlock({
     return { mode: "grouped" as const, groups: buildLedgerDisplayGroups(filteredRows) };
   }, [filteredRows, localFilters.entryType]);
 
-  const notebookMode = Boolean(localFilters.partyId);
   const selectedPartyName =
-    parties.find((p) => p.id === localFilters.partyId)?.name ?? "Contact";
+    parties.find((p) => p.id === notebookPartyId)?.name ?? "Contact";
 
   const notebookGroups = useMemo(() => {
     if (!notebookMode) return null;
     return ledgerGroupsForNotebookView(
-      filteredRows,
+      notebookFilteredRows,
       localFilters.entryType
     );
-  }, [notebookMode, filteredRows, localFilters.entryType]);
+  }, [notebookMode, notebookFilteredRows, localFilters.entryType]);
 
   const notebookPartition = useMemo(() => {
     if (!notebookGroups) return null;
-    return partitionNotebookGroups(notebookGroups, filteredRows);
-  }, [notebookGroups, filteredRows]);
+    return partitionNotebookGroups(notebookGroups, notebookFilteredRows);
+  }, [notebookGroups, notebookFilteredRows]);
 
   const notebookExpenseTotal = useMemo(() => {
     if (!notebookPartition) return 0;
@@ -1375,12 +1389,13 @@ export function LedgerBlock({
                 variant="secondary"
                 size="sm"
                 className="w-full sm:w-auto"
-                onClick={() =>
+                onClick={() => {
                   onLocalFiltersChange({
                     ...localFilters,
                     partyId: "",
-                  })
-                }
+                  });
+                  setPaymentPartyId("");
+                }}
               >
                 All contacts
               </Button>
@@ -1420,9 +1435,11 @@ export function LedgerBlock({
       ) : (
         <div className="space-y-3">
           <p className="text-[11px] leading-relaxed text-[var(--gs-text-secondary)]">
-            Choose a contact in the ledger filter (desktop table or mobile
-            filters) to open the two-page khata: expense on the left, income on
-            the right.
+            Pick a contact under <span className="font-medium">Record payment</span>{" "}
+            or set <span className="font-medium">Contact</span> in the filters
+            below to open the split khata. Use{" "}
+            <span className="font-medium">All contacts</span> in the notebook to
+            come back here.
           </p>
           <div className="hidden overflow-x-auto rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] md:block">
             <table className="w-full min-w-[720px] text-left text-sm lg:min-w-[860px]">
