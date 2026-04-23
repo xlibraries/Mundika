@@ -34,9 +34,9 @@ type TabId = "overview" | "stock" | "contacts" | "ledger";
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: "overview", label: "Overview" },
+  { id: "ledger", label: "Ledger" },
   { id: "stock", label: "Stock" },
   { id: "contacts", label: "Contacts" },
-  { id: "ledger", label: "Ledger" },
 ];
 
 function getInitialTab(): TabId {
