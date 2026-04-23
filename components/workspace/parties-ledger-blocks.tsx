@@ -1305,6 +1305,11 @@ export function LedgerBlock({
     [notebookGroups, filteredRows]
   );
 
+  const notebookShowExpenseColumn = notebookPartition.expense.length > 0;
+  const notebookShowIncomeColumn = notebookPartition.income.length > 0;
+  const notebookShowSplitKhata =
+    notebookShowExpenseColumn && notebookShowIncomeColumn;
+
   const notebookExpenseTotal = useMemo(() => {
     return sumNotebookGroups(
       notebookPartition.expense,
@@ -1552,68 +1557,82 @@ export function LedgerBlock({
               {ledgerEmptyMessage(rows.length, filteredRows.length)}
             </div>
           ) : (
-            <div className="grid grid-cols-1 bg-[var(--gs-surface)] lg:grid-cols-2 lg:divide-x lg:divide-[var(--gs-border)]/60">
-              <div className="min-h-[10rem] px-2 py-2 lg:min-h-[14rem] lg:px-3 lg:py-2.5">
-                <p className="mb-1.5 border-b border-[var(--gs-border)]/50 pb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gs-text-secondary)]">
-                  Expense · buys & pay-out
-                </p>
-                <div className="space-y-2.5">
-                  {notebookPartition.expense.length === 0 ? (
-                    <p className="py-6 text-center text-[12px] text-[var(--gs-text-secondary)]">
-                      Nothing on this side for this filter.
-                    </p>
-                  ) : (
-                    notebookPartition.expense.map((g) =>
+            <div
+              className={cn(
+                "grid grid-cols-1 bg-[var(--gs-surface)]",
+                notebookShowSplitKhata &&
+                  "lg:grid-cols-2 lg:divide-x lg:divide-[var(--gs-border)]/60"
+              )}
+            >
+              {notebookShowExpenseColumn ? (
+                <div className="min-h-[10rem] px-2 py-2 lg:min-h-[14rem] lg:px-3 lg:py-2.5">
+                  <p className="mb-1.5 border-b border-[var(--gs-border)]/50 pb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gs-text-secondary)]">
+                    Expense · buys & pay-out
+                  </p>
+                  <div className="space-y-2.5">
+                    {notebookPartition.expense.map((g) =>
                       renderNotebookGroup(g, "expense")
-                    )
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="min-h-[10rem] border-t border-[var(--gs-border)]/50 px-2 py-2 lg:border-t-0 lg:min-h-[14rem] lg:px-3 lg:py-2.5">
-                <p className="mb-1.5 border-b border-[var(--gs-border)]/50 pb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gs-success)]">
-                  Income · sales & receipts
-                </p>
-                <div className="space-y-2.5">
-                  {notebookPartition.income.length === 0 ? (
-                    <p className="py-6 text-center text-[12px] text-[var(--gs-text-secondary)]">
-                      Nothing on this side for this filter.
-                    </p>
-                  ) : (
-                    notebookPartition.income.map((g) =>
+              ) : null}
+              {notebookShowIncomeColumn ? (
+                <div
+                  className={cn(
+                    "min-h-[10rem] px-2 py-2 lg:min-h-[14rem] lg:px-3 lg:py-2.5",
+                    notebookShowSplitKhata &&
+                      "border-t border-[var(--gs-border)]/50 lg:border-t-0"
+                  )}
+                >
+                  <p className="mb-1.5 border-b border-[var(--gs-border)]/50 pb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gs-success)]">
+                    Income · sales & receipts
+                  </p>
+                  <div className="space-y-2.5">
+                    {notebookPartition.income.map((g) =>
                       renderNotebookGroup(g, "income")
-                    )
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </div>
           )}
         </div>
       )}
 
       {rows.length > 0 ? (
-        <div className="grid grid-cols-1 divide-y divide-[var(--gs-border)]/60 rounded-lg border border-[var(--gs-border)]/70 bg-[var(--gs-surface-plain)]/40 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-          <div className="px-3 py-2.5 sm:px-4">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
-              Total expense · filter
-            </p>
-            <p className="text-[10px] text-[var(--gs-text-secondary)]">
-              {filterPeriodHint}
-            </p>
-            <p className="mt-0.5 font-mono text-base tabular-nums text-[var(--gs-text)]">
-              {formatINR(notebookExpenseTotal)}
-            </p>
-          </div>
-          <div className="px-3 py-2.5 sm:px-4">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
-              Total income · filter
-            </p>
-            <p className="text-[10px] text-[var(--gs-text-secondary)]">
-              {filterPeriodHint}
-            </p>
-            <p className="mt-0.5 font-mono text-base tabular-nums text-[var(--gs-text)]">
-              {formatINR(notebookIncomeTotal)}
-            </p>
-          </div>
+        <div
+          className={cn(
+            "grid grid-cols-1 rounded-lg border border-[var(--gs-border)]/70 bg-[var(--gs-surface-plain)]/40",
+            notebookShowSplitKhata &&
+              "divide-y divide-[var(--gs-border)]/60 sm:grid-cols-2 sm:divide-x sm:divide-y-0 sm:divide-[var(--gs-border)]/60"
+          )}
+        >
+          {notebookShowExpenseColumn ? (
+            <div className="px-3 py-2.5 sm:px-4">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
+                Total expense · filter
+              </p>
+              <p className="text-[10px] text-[var(--gs-text-secondary)]">
+                {filterPeriodHint}
+              </p>
+              <p className="mt-0.5 font-mono text-base tabular-nums text-[var(--gs-text)]">
+                {formatINR(notebookExpenseTotal)}
+              </p>
+            </div>
+          ) : null}
+          {notebookShowIncomeColumn ? (
+            <div className="px-3 py-2.5 sm:px-4">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
+                Total income · filter
+              </p>
+              <p className="text-[10px] text-[var(--gs-text-secondary)]">
+                {filterPeriodHint}
+              </p>
+              <p className="mt-0.5 font-mono text-base tabular-nums text-[var(--gs-text)]">
+                {formatINR(notebookIncomeTotal)}
+              </p>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
