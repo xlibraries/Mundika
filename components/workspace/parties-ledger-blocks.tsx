@@ -9,7 +9,13 @@ import { deleteParty } from "@/modules/parties/delete";
 import { updateParty } from "@/modules/parties/update";
 import { createLedgerPayment } from "@/modules/ledger/actions";
 import { deleteLedgerEntry } from "@/modules/ledger/delete";
-import type { LedgerEntryRow, PartyRow, PaymentMode } from "@/lib/types/domain";
+import type {
+  BillItemRow,
+  LedgerEntryRow,
+  PartyRow,
+  PaymentMode,
+  PurchaseItemRow,
+} from "@/lib/types/domain";
 import {
   loadBillPrintPayload,
   loadPurchasePrintPayload,
@@ -32,11 +38,6 @@ const PAYMENT_MODE_OPTIONS: Array<{ value: PaymentMode; label: string }> = [
   { value: "cheque", label: "Cheque" },
   { value: "other", label: "Other" },
 ];
-
-function paymentModeLabel(mode: PaymentMode | null | undefined): string {
-  if (!mode) return "—";
-  return PAYMENT_MODE_OPTIONS.find((opt) => opt.value === mode)?.label ?? "Other";
-}
 
 function compareLedgerAsc(a: LedgerEntryRow, b: LedgerEntryRow): number {
   if (a.entry_date !== b.entry_date) {
@@ -143,6 +144,56 @@ function paymentDisplayAmount(row: LedgerEntryRow): number {
   return Math.round(Math.abs(row.balance_delta) * 100) / 100;
 }
 
+type DocLineSummary = { productLabel: string; totalQty: number };
+
+function summarizeBillLinesByBillId(
+  lines: BillItemRow[],
+  itemNameById: Map<string, string>
+): Record<string, DocLineSummary> {
+  const byBill = new Map<string, BillItemRow[]>();
+  for (const l of lines) {
+    const arr = byBill.get(l.bill_id) ?? [];
+    arr.push(l);
+    byBill.set(l.bill_id, arr);
+  }
+  const out: Record<string, DocLineSummary> = {};
+  for (const [billId, arr] of byBill) {
+    arr.sort((a, b) => a.id.localeCompare(b.id));
+    const totalQty = arr.reduce((s, x) => s + x.qty, 0);
+    const names = arr.map((x) => itemNameById.get(x.item_id) ?? "Item");
+    let productLabel: string;
+    if (names.length === 0) productLabel = "—";
+    else if (names.length === 1) productLabel = names[0];
+    else productLabel = `${names[0]} +${names.length - 1} more`;
+    out[billId] = { productLabel, totalQty };
+  }
+  return out;
+}
+
+function summarizePurchaseLinesByPurchaseId(
+  lines: PurchaseItemRow[],
+  itemNameById: Map<string, string>
+): Record<string, DocLineSummary> {
+  const byPurchase = new Map<string, PurchaseItemRow[]>();
+  for (const l of lines) {
+    const arr = byPurchase.get(l.purchase_id) ?? [];
+    arr.push(l);
+    byPurchase.set(l.purchase_id, arr);
+  }
+  const out: Record<string, DocLineSummary> = {};
+  for (const [purchaseId, arr] of byPurchase) {
+    arr.sort((a, b) => a.id.localeCompare(b.id));
+    const totalQty = arr.reduce((s, x) => s + x.qty, 0);
+    const names = arr.map((x) => itemNameById.get(x.item_id) ?? "Item");
+    let productLabel: string;
+    if (names.length === 0) productLabel = "—";
+    else if (names.length === 1) productLabel = names[0];
+    else productLabel = `${names[0]} +${names.length - 1} more`;
+    out[purchaseId] = { productLabel, totalQty };
+  }
+  return out;
+}
+
 /** Payment-only row: supplier khata vs customer receipt (no ref on row). */
 function classifyPaymentOnlySide(
   payment: LedgerEntryRow,
@@ -234,6 +285,8 @@ function LedgerNotebookEntry({
   expandToggle,
   billTotalById,
   purchaseTotalById,
+  billLineSummaryById,
+  purchaseLineSummaryById,
   showParty,
 }: {
   row: LedgerEntryRow;
@@ -246,6 +299,8 @@ function LedgerNotebookEntry({
   expandToggle?: { expanded: boolean; onToggle: () => void; childCount: number };
   billTotalById: Record<string, number>;
   purchaseTotalById: Record<string, number>;
+  billLineSummaryById: Record<string, DocLineSummary>;
+  purchaseLineSummaryById: Record<string, DocLineSummary>;
   /** When true, show contact name (all-contacts khata). */
   showParty?: boolean;
 }) {
@@ -263,26 +318,47 @@ function LedgerNotebookEntry({
   const isSaleOrPurchase =
     row.entry_type === "sale" || row.entry_type === "purchase";
   const showDashBalance = isSaleOrPurchase && row.balance_delta === 0;
+  const isPayment = row.entry_type === "payment";
 
-  let docLabel = "Document";
-  let docAmount: string = "—";
+  let totalAmountStr = "—";
   if (row.entry_type === "sale") {
-    docLabel = "Bill total";
-    const v = saleDisplayAmount(row, billTotalById);
-    docAmount = formatINR(v);
+    totalAmountStr = formatINR(saleDisplayAmount(row, billTotalById));
   } else if (row.entry_type === "purchase") {
-    docLabel = "Purchase total";
-    const v = purchaseDisplayAmount(row, purchaseTotalById);
-    docAmount = formatINR(v);
+    totalAmountStr = formatINR(purchaseDisplayAmount(row, purchaseTotalById));
   } else if (row.entry_type === "payment") {
-    docLabel = "Paid";
-    docAmount = formatINR(paymentDisplayAmount(row));
+    totalAmountStr = formatINR(paymentDisplayAmount(row));
   }
 
   const balanceLabel =
     showDashBalance
       ? "—"
       : `${row.balance_delta >= 0 ? "+" : "-"}${formatINR(Math.abs(row.balance_delta))}`;
+
+  const docSummary =
+    row.entry_type === "sale" && row.ref_bill_id
+      ? billLineSummaryById[row.ref_bill_id]
+      : row.entry_type === "purchase" && row.ref_purchase_id
+        ? purchaseLineSummaryById[row.ref_purchase_id]
+        : row.entry_type === "payment" && row.ref_bill_id
+          ? billLineSummaryById[row.ref_bill_id]
+          : row.entry_type === "payment" && row.ref_purchase_id
+            ? purchaseLineSummaryById[row.ref_purchase_id]
+            : undefined;
+  const productLine = docSummary?.productLabel ?? "—";
+  const qtyLine =
+    docSummary != null ? String(docSummary.totalQty) : "—";
+
+  const partyProductLine = isPayment
+    ? docSummary
+      ? showParty && row.party_name_snapshot
+        ? `${row.party_name_snapshot} · ${productLine}`
+        : productLine
+      : (row.party_name_snapshot ?? "—")
+    : showParty && row.party_name_snapshot
+      ? `${row.party_name_snapshot} · ${productLine}`
+      : productLine !== "—"
+        ? productLine
+        : (row.party_name_snapshot ?? "—");
 
   return (
     <div
@@ -311,91 +387,98 @@ function LedgerNotebookEntry({
           : undefined
       }
     >
-      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px] text-[var(--gs-text-secondary)]">
-            {expandToggle && expandToggle.childCount > 0 ? (
-              <>
-                <span aria-hidden className="select-none text-[10px]">
-                  {expandToggle.expanded ? "▼" : "▶"}
-                </span>
-                <span>{row.entry_date}</span>
-                <span className="font-sans text-[10px] font-medium text-[var(--gs-text-secondary)]">
-                  {expandToggle.childCount} pymt
-                </span>
-              </>
-            ) : (
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px] text-[var(--gs-text-secondary)]">
+          {expandToggle && expandToggle.childCount > 0 ? (
+            <>
+              <span aria-hidden className="select-none text-[10px]">
+                {expandToggle.expanded ? "▼" : "▶"}
+              </span>
               <span>{row.entry_date}</span>
-            )}
-            <span className="font-sans text-[11px] font-semibold capitalize text-[var(--gs-text)]">
-              {isChild ? "↳ payment" : row.entry_type}
-            </span>
-          </div>
-          {showParty && !isChild && row.party_name_snapshot ? (
-            <p className="mt-0.5 truncate text-[11px] font-medium text-[var(--gs-text)]">
-              {row.party_name_snapshot}
-            </p>
-          ) : null}
-          {row.note ? (
-            <p className="mt-0.5 line-clamp-2 text-[11px] text-[var(--gs-text-secondary)]">
-              {row.note}
-            </p>
-          ) : null}
+              <span className="font-sans text-[10px] font-medium text-[var(--gs-text-secondary)]">
+                {expandToggle.childCount} pymt
+              </span>
+            </>
+          ) : (
+            <span>{row.entry_date}</span>
+          )}
+          <span className="font-sans text-[11px] font-semibold capitalize text-[var(--gs-text)]">
+            {isChild ? "↳ payment" : row.entry_type}
+          </span>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-0.5 text-right">
+        <p className="mt-1 line-clamp-2 text-[12px] font-medium leading-snug text-[var(--gs-text)]">
+          {partyProductLine}
+        </p>
+        <div className="mt-1">
           <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
-            Balance Δ
+            Qty
           </span>
-          <span
-            className={cn(
-              "font-mono text-xs tabular-nums",
-              showDashBalance
-                ? "text-[var(--gs-text-secondary)]"
-                : row.balance_delta >= 0
-                  ? "text-[var(--gs-success)]"
-                  : "text-[var(--gs-text-secondary)]"
-            )}
-            title={
-              showDashBalance
-                ? "No change to running balance (cash or paid on bill)."
-                : undefined
-            }
-          >
-            {balanceLabel}
-          </span>
+          <p className="font-mono text-[11px] tabular-nums text-[var(--gs-text)]">
+            {qtyLine}
+          </p>
         </div>
       </div>
-      <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] sm:grid-cols-4">
-        <div>
-          <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
-            {docLabel}
-          </span>
-          <p className="font-mono text-[var(--gs-text)]">{docAmount}</p>
-        </div>
-        <div>
-          <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
-            Medium
-          </span>
-          <p className="truncate font-medium text-[var(--gs-text)]">
-            {row.entry_type === "payment"
-              ? paymentModeLabel(row.payment_mode)
-              : "—"}
-          </p>
-        </div>
-        <div className="min-w-0 sm:col-span-2">
-          <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
-            Txn ID / ref
-          </span>
-          <p className="truncate font-mono text-[var(--gs-text)]">
-            {row.entry_type === "payment"
-              ? row.payment_reference ?? "—"
-              : row.entry_type === "sale" && row.ref_bill_id
-                ? `Bill · ${row.ref_bill_id.slice(0, 8)}…`
-                : row.entry_type === "purchase" && row.ref_purchase_id
-                  ? `PO · ${row.ref_purchase_id.slice(0, 8)}…`
-                  : "—"}
-          </p>
-        </div>
+      <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+        {isPayment ? (
+          <>
+            <div>
+              <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
+                Paid
+              </span>
+              <p className="font-mono tabular-nums text-[var(--gs-text)]">
+                {totalAmountStr}
+              </p>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
+                Balance Δ
+              </span>
+              <p
+                className={cn(
+                  "font-mono tabular-nums",
+                  row.balance_delta >= 0
+                    ? "text-[var(--gs-success)]"
+                    : "text-[var(--gs-text-secondary)]"
+                )}
+              >
+                {balanceLabel}
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
+                Balance Δ
+              </span>
+              <p
+                className={cn(
+                  "font-mono tabular-nums",
+                  showDashBalance
+                    ? "text-[var(--gs-text-secondary)]"
+                    : row.balance_delta >= 0
+                      ? "text-[var(--gs-success)]"
+                      : "text-[var(--gs-text-secondary)]"
+                )}
+                title={
+                  showDashBalance
+                    ? "No change to running balance (cash or paid on bill)."
+                    : undefined
+                }
+              >
+                {balanceLabel}
+              </p>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
+                Total
+              </span>
+              <p className="font-mono tabular-nums text-[var(--gs-text)]">
+                {totalAmountStr}
+              </p>
+            </div>
+          </>
+        )}
       </div>
       <div
         className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-dashed border-[var(--gs-border)]/60 pt-1.5"
@@ -923,6 +1006,12 @@ export function LedgerBlock({
   const [purchaseTotalById, setPurchaseTotalById] = useState<
     Record<string, number>
   >({});
+  const [billLineSummaryById, setBillLineSummaryById] = useState<
+    Record<string, DocLineSummary>
+  >({});
+  const [purchaseLineSummaryById, setPurchaseLineSummaryById] = useState<
+    Record<string, DocLineSummary>
+  >({});
   const [parties, setParties] = useState<PartyRow[]>([]);
   const [paymentPartyId, setPaymentPartyId] = useState("");
   const [entryDate, setEntryDate] = useState(() => getLocalDateInputValue());
@@ -940,11 +1029,22 @@ export function LedgerBlock({
   const [followUpParent, setFollowUpParent] = useState<LedgerEntryRow | null>(null);
 
   const load = useCallback(async () => {
-    const [ledgerEntries, partyRows, bills, purchases] = await Promise.all([
+    const [
+      ledgerEntries,
+      partyRows,
+      bills,
+      purchases,
+      billItems,
+      purchaseItems,
+      itemRows,
+    ] = await Promise.all([
       db.ledger_entries.where("user_id").equals(userId).toArray(),
       db.parties.where("user_id").equals(userId).toArray(),
       db.bills.where("user_id").equals(userId).toArray(),
       db.purchases.where("user_id").equals(userId).toArray(),
+      db.bill_items.where("user_id").equals(userId).toArray(),
+      db.purchase_items.where("user_id").equals(userId).toArray(),
+      db.items.where("user_id").equals(userId).toArray(),
     ]);
     ledgerEntries.sort((a, b) =>
       a.entry_date < b.entry_date ? 1 : a.entry_date > b.entry_date ? -1 : 0
@@ -956,6 +1056,11 @@ export function LedgerBlock({
     const pTotals: Record<string, number> = {};
     for (const p of purchases) pTotals[p.id] = p.total;
     setPurchaseTotalById(pTotals);
+    const itemNameById = new Map(itemRows.map((i) => [i.id, i.name]));
+    setBillLineSummaryById(summarizeBillLinesByBillId(billItems, itemNameById));
+    setPurchaseLineSummaryById(
+      summarizePurchaseLinesByPurchaseId(purchaseItems, itemNameById)
+    );
     setRows(ledgerEntries);
     setParties(partyRows);
     setPaymentPartyId((prev) => prev || partyRows[0]?.id || "");
@@ -1136,6 +1241,8 @@ export function LedgerBlock({
           onPreview={openLedgerPreviewDoc}
           billTotalById={billTotalById}
           purchaseTotalById={purchaseTotalById}
+          billLineSummaryById={billLineSummaryById}
+          purchaseLineSummaryById={purchaseLineSummaryById}
           showParty={showPartyOnNotebookLine}
         />
       );
@@ -1160,6 +1267,8 @@ export function LedgerBlock({
           onAddFollowUp={setFollowUpParent}
           billTotalById={billTotalById}
           purchaseTotalById={purchaseTotalById}
+          billLineSummaryById={billLineSummaryById}
+          purchaseLineSummaryById={purchaseLineSummaryById}
           showParty={showPartyOnNotebookLine}
         />
         {isParentExpanded(g.parent.id, g.payments.length)
@@ -1173,6 +1282,8 @@ export function LedgerBlock({
                 onPreview={openLedgerPreviewDoc}
                 billTotalById={billTotalById}
                 purchaseTotalById={purchaseTotalById}
+                billLineSummaryById={billLineSummaryById}
+                purchaseLineSummaryById={purchaseLineSummaryById}
                 showParty={showPartyOnNotebookLine}
               />
             ))
