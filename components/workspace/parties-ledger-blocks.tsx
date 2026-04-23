@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { db } from "@/lib/db";
 import { getLocalDateInputValue } from "@/lib/date/local-date";
@@ -16,6 +17,7 @@ import {
 } from "@/lib/billing/doc-preview";
 import { PrintableDocModal } from "@/components/billing/printable-doc-modal";
 import { formatINR } from "@/lib/format/inr";
+import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { useAppStore } from "@/store/app-store";
@@ -239,6 +241,312 @@ function LedgerEntryTr({
       </td>
     </tr>
   );
+}
+
+function LedgerFiltersMobile({
+  localFilters,
+  onLocalFiltersChange,
+  parties,
+}: {
+  localFilters: {
+    fromDate: string;
+    toDate: string;
+    partyId: string;
+    entryType: "" | "sale" | "purchase" | "payment";
+  };
+  onLocalFiltersChange: (next: {
+    fromDate: string;
+    toDate: string;
+    partyId: string;
+    entryType: "" | "sale" | "purchase" | "payment";
+  }) => void;
+  parties: PartyRow[];
+}) {
+  const hasActiveFilters = Boolean(
+    localFilters.fromDate ||
+      localFilters.toDate ||
+      localFilters.partyId ||
+      localFilters.entryType
+  );
+
+  return (
+    <div className="space-y-2.5 rounded-xl border border-[var(--gs-border)] bg-[var(--gs-surface)] p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--gs-text-secondary)]">
+        Filters
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="min-w-0 space-y-1">
+          <span className="text-[10px] text-[var(--gs-text-secondary)]">From</span>
+          <Input
+            type="date"
+            value={localFilters.fromDate}
+            onChange={(e) =>
+              onLocalFiltersChange({
+                ...localFilters,
+                fromDate: e.target.value,
+              })
+            }
+            className="h-9 min-w-0 text-xs"
+          />
+        </label>
+        <label className="min-w-0 space-y-1">
+          <span className="text-[10px] text-[var(--gs-text-secondary)]">To</span>
+          <Input
+            type="date"
+            value={localFilters.toDate}
+            onChange={(e) =>
+              onLocalFiltersChange({
+                ...localFilters,
+                toDate: e.target.value,
+              })
+            }
+            className="h-9 min-w-0 text-xs"
+          />
+        </label>
+      </div>
+      <label className="block space-y-1">
+        <span className="text-[10px] text-[var(--gs-text-secondary)]">Entry type</span>
+        <Select
+          value={localFilters.entryType}
+          onChange={(e) =>
+            onLocalFiltersChange({
+              ...localFilters,
+              entryType: e.target.value as "" | "sale" | "purchase" | "payment",
+            })
+          }
+          className="h-9 text-xs"
+        >
+          <option value="">All</option>
+          <option value="sale">Sale</option>
+          <option value="purchase">Purchase</option>
+          <option value="payment">Payment</option>
+        </Select>
+      </label>
+      <label className="block space-y-1">
+        <span className="text-[10px] text-[var(--gs-text-secondary)]">Contact</span>
+        <Select
+          value={localFilters.partyId}
+          onChange={(e) =>
+            onLocalFiltersChange({
+              ...localFilters,
+              partyId: e.target.value,
+            })
+          }
+          className="h-9 text-xs"
+        >
+          <option value="">All contacts</option>
+          {parties.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </Select>
+      </label>
+      {hasActiveFilters ? (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="w-full"
+          onClick={() =>
+            onLocalFiltersChange({
+              fromDate: "",
+              toDate: "",
+              partyId: "",
+              entryType: "",
+            })
+          }
+        >
+          Clear filters
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function LedgerEntryMobileCard({
+  row,
+  visual,
+  ledgerRowBusyId,
+  onDelete,
+  onPreview,
+  expandToggle,
+}: {
+  row: LedgerEntryRow;
+  visual: LedgerRowVisual;
+  ledgerRowBusyId: string | null;
+  onDelete: (id: string) => void;
+  onPreview: (r: LedgerEntryRow) => void | Promise<void>;
+  expandToggle?: { expanded: boolean; onToggle: () => void; childCount: number };
+}) {
+  const isChild = visual === "child";
+  const showPreviewButton =
+    !isChild &&
+    ((row.entry_type === "sale" && row.ref_bill_id) ||
+      (row.entry_type === "purchase" && row.ref_purchase_id) ||
+      row.entry_type === "payment");
+  const rowExpandable = Boolean(expandToggle && expandToggle.childCount > 0);
+  const isSaleOrPurchase =
+    row.entry_type === "sale" || row.entry_type === "purchase";
+  const showDashBalance = isSaleOrPurchase && row.balance_delta === 0;
+
+  return (
+    <article
+      className={cn(
+        "rounded-xl border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] p-3 shadow-sm",
+        isChild && "ml-1.5 border-l-[3px] border-l-[var(--gs-primary)]/35 pl-3",
+        rowExpandable && "cursor-pointer transition-colors hover:bg-[var(--gs-surface)]"
+      )}
+      tabIndex={rowExpandable ? 0 : undefined}
+      aria-expanded={rowExpandable ? expandToggle!.expanded : undefined}
+      onClick={
+        rowExpandable
+          ? () => {
+              expandToggle!.onToggle();
+            }
+          : undefined
+      }
+      onKeyDown={
+        rowExpandable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                expandToggle!.onToggle();
+              }
+            }
+          : undefined
+      }
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          {isChild ? (
+            <p className="font-mono text-xs text-[var(--gs-text-secondary)]">
+              {row.entry_date}
+            </p>
+          ) : expandToggle && expandToggle.childCount > 0 ? (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span
+                className="text-[10px] font-semibold text-[var(--gs-text-secondary)]"
+                aria-hidden
+              >
+                {expandToggle.expanded ? "▼" : "▶"}
+              </span>
+              <span className="font-mono text-xs text-[var(--gs-text-secondary)]">
+                {row.entry_date}
+              </span>
+              <span className="font-sans text-[10px] font-semibold text-[var(--gs-text-secondary)]">
+                ↳{expandToggle.childCount} payment
+                {expandToggle.childCount === 1 ? "" : "s"}
+              </span>
+            </div>
+          ) : (
+            <p className="font-mono text-xs text-[var(--gs-text-secondary)]">
+              {row.entry_date}
+            </p>
+          )}
+          <p
+            className={cn(
+              "mt-1 text-sm font-medium capitalize",
+              isChild ? "text-[var(--gs-text-secondary)]" : "text-[var(--gs-text)]"
+            )}
+          >
+            {isChild ? "↳ Payment" : row.entry_type}
+          </p>
+        </div>
+        <div
+          className={cn(
+            "shrink-0 text-right font-mono text-sm tabular-nums",
+            showDashBalance
+              ? "text-[var(--gs-text-secondary)]"
+              : row.balance_delta >= 0
+                ? "text-[var(--gs-success)]"
+                : "text-[var(--gs-text-secondary)]"
+          )}
+          title={
+            showDashBalance
+              ? "No change to running balance (cash or paid on bill)."
+              : undefined
+          }
+        >
+          {showDashBalance ? (
+            "—"
+          ) : (
+            <>
+              {row.balance_delta >= 0 ? "+" : "-"}
+              {formatINR(Math.abs(row.balance_delta))}
+            </>
+          )}
+        </div>
+      </div>
+      <p className="mt-2 truncate text-sm text-[var(--gs-text)]">
+        {row.party_name_snapshot ?? "—"}
+      </p>
+      {row.entry_type === "payment" ? (
+        <dl className="mt-2 grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <dt className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
+              Medium
+            </dt>
+            <dd className="mt-0.5 font-medium text-[var(--gs-text)]">
+              {paymentModeLabel(row.payment_mode)}
+            </dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
+              Txn ID
+            </dt>
+            <dd className="mt-0.5 truncate font-mono text-[var(--gs-text)]">
+              {row.payment_reference ?? "—"}
+            </dd>
+          </div>
+        </dl>
+      ) : null}
+      <div
+        className="mt-3 flex flex-wrap gap-2 border-t border-[var(--gs-border)]/70 pt-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {showPreviewButton ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={ledgerRowBusyId === row.id}
+            className="min-h-9 flex-1 sm:flex-none"
+            onClick={() => void onPreview(row)}
+          >
+            {ledgerRowBusyId === row.id ? "…" : "Preview"}
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="min-h-9 flex-1 border-[var(--gs-border)] text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)] sm:flex-none"
+          onClick={() => void onDelete(row.id)}
+        >
+          Remove
+        </Button>
+      </div>
+    </article>
+  );
+}
+
+function ledgerEmptyMessage(rowsLen: number, filteredLen: number): ReactNode {
+  if (rowsLen === 0) {
+    return (
+      <p className="px-1 py-8 text-center text-sm text-[var(--gs-text-secondary)]">
+        No ledger entries yet.
+      </p>
+    );
+  }
+  if (filteredLen === 0) {
+    return (
+      <p className="px-1 py-8 text-center text-sm text-[var(--gs-text-secondary)]">
+        No ledger rows match these filters.
+      </p>
+    );
+  }
+  return null;
 }
 
 export function PartiesBlock({
@@ -671,12 +979,13 @@ export function LedgerBlock({
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-sm font-medium text-[var(--gs-text)]">Ledger</h2>
         <Button
           type="button"
           size="sm"
           variant="secondary"
+          className="w-full shrink-0 sm:w-auto"
           onClick={() =>
             onApplyToOverview?.({
               fromDate: localFilters.fromDate || undefined,
@@ -775,8 +1084,8 @@ export function LedgerBlock({
           </p>
         ) : null}
       </form>
-      <div className="overflow-x-auto overflow-hidden rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)]">
-        <table className="w-full min-w-[860px] text-left text-sm">
+      <div className="hidden overflow-x-auto rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] md:block">
+        <table className="w-full min-w-[720px] text-left text-sm lg:min-w-[860px]">
           <thead>
             <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
               <th className="px-3 py-2">Date</th>
@@ -935,18 +1244,82 @@ export function LedgerBlock({
                 )}
           </tbody>
         </table>
-        {rows.length === 0 ? (
-          <p className="px-3 py-6 text-center text-sm text-[var(--gs-text-secondary)]">
-            No ledger entries yet.
-          </p>
-        ) : filteredRows.length === 0 ? (
-          <p className="px-3 py-6 text-center text-sm text-[var(--gs-text-secondary)]">
-            No ledger rows match these header filters.
-          </p>
-        ) : null}
+        {ledgerEmptyMessage(rows.length, filteredRows.length)}
       </div>
+
+      <div className="space-y-2 rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] p-2 md:hidden">
+        <LedgerFiltersMobile
+          localFilters={localFilters}
+          onLocalFiltersChange={onLocalFiltersChange}
+          parties={parties}
+        />
+        {rows.length === 0 || filteredRows.length === 0 ? (
+          ledgerEmptyMessage(rows.length, filteredRows.length)
+        ) : (
+          <div className="space-y-2">
+            {ledgerTableRows.mode === "flat"
+              ? ledgerTableRows.rows.map((r) => (
+                  <LedgerEntryMobileCard
+                    key={r.id}
+                    row={r}
+                    visual="standalone"
+                    ledgerRowBusyId={ledgerRowBusyId}
+                    onDelete={onDelete}
+                    onPreview={openLedgerPreviewDoc}
+                  />
+                ))
+              : ledgerTableRows.groups.map((g) =>
+                  g.kind === "payment-only" ? (
+                    <LedgerEntryMobileCard
+                      key={g.payment.id}
+                      row={g.payment}
+                      visual="standalone"
+                      ledgerRowBusyId={ledgerRowBusyId}
+                      onDelete={onDelete}
+                      onPreview={openLedgerPreviewDoc}
+                    />
+                  ) : (
+                    <Fragment key={g.parent.id}>
+                      <LedgerEntryMobileCard
+                        row={g.parent}
+                        visual="parent"
+                        expandToggle={
+                          g.payments.length > 0
+                            ? {
+                                expanded: isParentExpanded(
+                                  g.parent.id,
+                                  g.payments.length
+                                ),
+                                onToggle: () => toggleParentExpand(g.parent.id),
+                                childCount: g.payments.length,
+                              }
+                            : undefined
+                        }
+                        ledgerRowBusyId={ledgerRowBusyId}
+                        onDelete={onDelete}
+                        onPreview={openLedgerPreviewDoc}
+                      />
+                      {isParentExpanded(g.parent.id, g.payments.length)
+                        ? g.payments.map((p) => (
+                            <LedgerEntryMobileCard
+                              key={p.id}
+                              row={p}
+                              visual="child"
+                              ledgerRowBusyId={ledgerRowBusyId}
+                              onDelete={onDelete}
+                              onPreview={openLedgerPreviewDoc}
+                            />
+                          ))
+                        : null}
+                    </Fragment>
+                  )
+                )}
+          </div>
+        )}
+      </div>
+
       {filteredRows.length > 0 ? (
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <div className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2">
             <p className="text-[11px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
               Total sales
