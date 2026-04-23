@@ -29,7 +29,9 @@ function SubscribeInner() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const planParam = searchParams.get("plan")?.toLowerCase() ?? "";
+  const rawPlan = searchParams.get("plan")?.toLowerCase() ?? "";
+  // Common typo from shared links / manual entry
+  const planParam = rawPlan === "starte" ? "starter" : rawPlan;
   const plan = getPublicPlanById(planParam);
 
   const { userId, loading: authLoading } = useUserId();
@@ -78,7 +80,7 @@ function SubscribeInner() {
       setError(state.message);
       return;
     }
-    if (state.row?.plan_id === "starter") {
+    if (state.status === "ready" && state.row?.plan_id === "starter") {
       setMessage("You already have Starter.");
       setError(null);
       return;
@@ -112,8 +114,11 @@ function SubscribeInner() {
     userId,
     plan,
     state.status,
-    state.row?.plan_id,
-    state.message,
+    state.status === "ready"
+      ? state.row?.plan_id ?? "__null__"
+      : state.status === "error"
+        ? state.message
+        : state.status,
     router,
     refresh,
   ]);
