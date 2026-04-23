@@ -21,6 +21,8 @@ import { Input } from "@/components/ui/input";
 import { InventorySheet } from "@/components/workspace/inventory-sheet";
 import { LedgerBlock, PartiesBlock } from "@/components/workspace/parties-ledger-blocks";
 import { workspacePurchaseFlowEnabled } from "@/lib/features/workspace";
+import { TransactionSeedPanel } from "@/components/dev/transaction-seed-panel";
+import { isTransactionDemoSeedEnabled } from "@/lib/dev/transaction-demo-seed";
 
 type TabId = "overview" | "stock" | "contacts" | "ledger";
 
@@ -101,6 +103,8 @@ function shiftDays(base: string, daysBack: number): string {
   return `${y}-${m}-${day}`;
 }
 
+const transactionDemoSeedEnabled = isTransactionDemoSeedEnabled();
+
 export default function AnalyticsPage() {
   const { userId, loading } = useUserId();
   const lastSyncAt = useAppStore((s) => s.lastSyncAt);
@@ -124,8 +128,8 @@ export default function AnalyticsPage() {
     partyId: string;
     entryType: "" | "sale" | "purchase" | "payment";
   }>({
-    fromDate: today,
-    toDate: today,
+    fromDate: "",
+    toDate: "",
     partyId: "",
     entryType: "",
   });
@@ -503,6 +507,10 @@ export default function AnalyticsPage() {
           </div>
         </div>
       </section>
+
+      {transactionDemoSeedEnabled ? (
+        <TransactionSeedPanel userId={userId} onDone={bump} />
+      ) : null}
     </div>
   );
 }
