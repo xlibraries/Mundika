@@ -78,6 +78,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/analytics/") ||
     pathname === "/account" ||
     pathname.startsWith("/account/") ||
+    pathname === "/subscribe" ||
+    pathname.startsWith("/subscribe/") ||
     pathname === "/settings/shop" ||
     pathname.startsWith("/settings/");
 

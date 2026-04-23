@@ -78,6 +78,13 @@ export function getPublicPlanById(
   return isPublicPlanId(normalized) ? byId.get(normalized)! : null;
 }
 
+/**
+ * Marketing pricing CTAs. Starter opens the subscribe funnel (sign-in then payment);
+ * Free / Business stay on login or contact flow.
+ */
 export function loginUrlForPlan(planId: PublicPlanId): string {
+  if (planId === "starter") {
+    return "/subscribe?plan=starter";
+  }
   return `/login?plan=${planId}`;
 }

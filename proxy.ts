@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { safeNextPath } from "@/lib/auth/safe-next-path";
 import { createMiddlewareClient } from "@/utils/supabase/middleware";
 
 const isProtected = (path: string) =>
@@ -46,7 +47,11 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/login") && user) {
-    const redirect = NextResponse.redirect(new URL("/dashboard", request.url));
+    const nextPath = safeNextPath(
+      request.nextUrl.searchParams.get("next"),
+      "/dashboard"
+    );
+    const redirect = NextResponse.redirect(new URL(nextPath, request.url));
     if (shouldClearAuthCookies) {
       clearStaleAuthCookies(request, redirect);
     }

@@ -6,6 +6,7 @@ describe("safeNextPath", () => {
     expect(safeNextPath("/dashboard")).toBe("/dashboard");
     expect(safeNextPath("/analytics#stock")).toBe("/analytics#stock");
     expect(safeNextPath("/dashboard?tx=purchase")).toBe("/dashboard?tx=purchase");
+    expect(safeNextPath("/subscribe?plan=starter")).toBe("/subscribe?plan=starter");
   });
 
   it("rejects external and protocol-relative paths", () => {

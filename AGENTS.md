@@ -15,7 +15,7 @@ Use these when you want structured founder workflow, multi-role reviews, or agen
 | [HKUDS/OpenSpace](https://github.com/HKUDS/OpenSpace) | Self-evolving skills + MCP for agents | Python `pip install -e .`; wire `openspace-mcp` into MCP config with `OPENSPACE_HOST_SKILL_DIRS` pointing at this project’s skill folders (see OpenSpace README). |
 | [xlibraries/rover](https://github.com/xlibraries/rover) | DOM-native site automation + agent task protocol | npm SDK for embeds; see rover README for `POST /v1/tasks` and site discovery. Relevant if Mundika gets an in-app agent surface. |
 
-**Mundika pricing source of truth:** `lib/pricing/plans.ts` (marketing grid + `?plan=` on `/login` + session hint `mundika.selectedPlanId` after OAuth).
+**Mundika pricing source of truth:** `lib/pricing/plans.ts` (marketing grid; **Starter** CTA → `/subscribe?plan=starter` → sign-in if needed → Stripe or Razorpay checkout). Free/Business CTAs still use `/login?plan=…`. Session hint `mundika.selectedPlanId` is set after OAuth when `plan` is present on `/auth/callback`.
 
 **Functional backlog (GitHub):** issues [#24](https://github.com/xlibraries/Mundika/issues/24)–[#33](https://github.com/xlibraries/Mundika/issues/33) (auth, shop profile, org, onboarding, billing per shop, audit, branches, export, sync UX, marketing).
 

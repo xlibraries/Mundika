@@ -25,8 +25,10 @@ type EmailMode = "signin" | "signup";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = safeNextPath(searchParams.get("next"));
   const selectedPlan = getPublicPlanById(searchParams.get("plan"));
+  const defaultNext =
+    selectedPlan?.id === "starter" ? "/subscribe?plan=starter" : "/dashboard";
+  const next = safeNextPath(searchParams.get("next"), defaultNext);
   const oauthError = searchParams.get("error");
   const oauthErrorDescription = searchParams.get("error_description");
 

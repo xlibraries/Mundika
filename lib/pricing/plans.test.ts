@@ -24,7 +24,11 @@ describe("public pricing plans", () => {
     const x = "starter";
     expect(isPublicPlanId(x)).toBe(true);
     if (isPublicPlanId(x)) {
-      expect(loginUrlForPlan(x)).toBe("/login?plan=starter");
+      expect(loginUrlForPlan(x)).toBe("/subscribe?plan=starter");
     }
+  });
+
+  it("sends free plan to login", () => {
+    expect(loginUrlForPlan("free")).toBe("/login?plan=free");
   });
 });
