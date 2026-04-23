@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { db } from "@/lib/db";
 import { getLocalDateInputValue } from "@/lib/date/local-date";
 import { createParty } from "@/modules/parties/actions";
@@ -213,30 +213,34 @@ function computePendingByPurchaseId(
   return out;
 }
 
-function ledgerEntryStatusLabel(
+type LedgerEntryStatusModel =
+  | { kind: "paid" }
+  | { kind: "pending"; amount: number };
+
+function ledgerEntryStatusModel(
   row: LedgerEntryRow,
   billTypeById: Record<string, BillType>,
   purchasePaymentTypeById: Record<string, PurchasePaymentType>,
   pendingByBillId: Record<string, number>,
   pendingByPurchaseId: Record<string, number>
-): string {
+): LedgerEntryStatusModel {
   if (row.entry_type === "payment") {
-    return "Paid";
+    return { kind: "paid" };
   }
   if (row.entry_type === "sale" && row.ref_bill_id) {
     const t = billTypeById[row.ref_bill_id];
-    if (t !== "credit") return "Paid";
+    if (t !== "credit") return { kind: "paid" };
     const pending = pendingByBillId[row.ref_bill_id] ?? 0;
-    return pending > 0 ? `Pending amt · ${formatINR(pending)}` : "Paid";
+    return pending > 0 ? { kind: "pending", amount: pending } : { kind: "paid" };
   }
   if (row.entry_type === "purchase" && row.ref_purchase_id) {
     const t = purchasePaymentTypeById[row.ref_purchase_id];
-    if (t !== "credit") return "Paid";
+    if (t !== "credit") return { kind: "paid" };
     const pending = pendingByPurchaseId[row.ref_purchase_id] ?? 0;
-    return pending > 0 ? `Pending amt · ${formatINR(pending)}` : "Paid";
+    return pending > 0 ? { kind: "pending", amount: pending } : { kind: "paid" };
   }
-  if (row.balance_delta === 0) return "Paid";
-  return `Pending amt · ${formatINR(Math.abs(row.balance_delta))}`;
+  if (row.balance_delta === 0) return { kind: "paid" };
+  return { kind: "pending", amount: Math.abs(row.balance_delta) };
 }
 
 type DocLineSummary = { productLabel: string; totalQty: number };
@@ -369,7 +373,7 @@ function sumNotebookGroups(
 
 type LedgerRowVisual = "parent" | "child" | "standalone";
 
-/** Ruled-row khata line: more fields than mobile cards, less box chrome. */
+/** Ruled-row khata line: more fields than mobile cards; shell chrome lives on group wrapper. */
 function LedgerNotebookEntry({
   row,
   visual,
@@ -425,7 +429,7 @@ function LedgerNotebookEntry({
     billTotalById,
     purchaseTotalById
   );
-  const statusLabel = ledgerEntryStatusLabel(
+  const statusModel = ledgerEntryStatusModel(
     row,
     billTypeById,
     purchasePaymentTypeById,
@@ -467,9 +471,11 @@ function LedgerNotebookEntry({
   return (
     <div
       className={cn(
-        "py-2.5 text-sm",
-        isChild && "border-l-2 border-l-[var(--gs-primary)]/25 pl-2.5",
-        rowExpandable && "cursor-pointer hover:bg-[var(--gs-surface-plain)]/80"
+        "py-2 text-[13px] leading-snug",
+        isChild &&
+          "relative z-[1] rounded-lg border border-[var(--gs-border)]/45 border-l-[3px] border-l-[var(--gs-primary)]/35 bg-[var(--gs-surface)]/55 py-2 pl-3 pr-2 shadow-sm ring-1 ring-[var(--gs-border)]/15 ring-inset",
+        rowExpandable &&
+          "cursor-pointer rounded-md hover:bg-[var(--gs-surface-plain)]/70"
       )}
       tabIndex={rowExpandable ? 0 : undefined}
       aria-expanded={rowExpandable ? expandToggle!.expanded : undefined}
@@ -491,61 +497,57 @@ function LedgerNotebookEntry({
           : undefined
       }
     >
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          {expandToggle && expandToggle.childCount > 0 ? (
-            <>
-              <span
-                aria-hidden
-                className="select-none text-[10px] text-[var(--gs-text-secondary)]"
-              >
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-1.5 items-start">
+        <div className="min-w-0 space-y-0.5 text-[var(--gs-text-secondary)]">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0">
+            {expandToggle && expandToggle.childCount > 0 ? (
+              <span aria-hidden className="select-none text-[11px]">
                 {expandToggle.expanded ? "▼" : "▶"}
               </span>
-              <span className="font-mono text-[11px] text-[var(--gs-text-secondary)]">
-                {row.entry_date}
-              </span>
-              <span className="font-sans text-[10px] font-medium text-[var(--gs-text-secondary)]">
-                {expandToggle.childCount} pymt
-              </span>
-            </>
-          ) : (
-            <span className="font-mono text-[11px] text-[var(--gs-text-secondary)]">
-              {row.entry_date}
-            </span>
-          )}
-          <span className="font-sans text-[12px] font-semibold capitalize tracking-tight text-[var(--gs-text)]">
+            ) : null}
+            <span className="font-mono text-[12px]">{row.entry_date}</span>
+          </div>
+          {expandToggle && expandToggle.childCount > 0 ? (
+            <div className="font-sans text-[11px] font-medium">
+              {expandToggle.childCount} pymt
+            </div>
+          ) : null}
+          <div className="font-sans text-[13px] font-semibold capitalize tracking-tight text-[var(--gs-text)]">
             {isChild ? "↳ payment" : row.entry_type}
+          </div>
+        </div>
+        <div className="self-start pt-0.5 text-right">
+          <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--gs-text-secondary)]">
+            Qty
           </span>
         </div>
-        <div className="flex shrink-0 items-start gap-8 text-right">
-          <div>
-            <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--gs-text-secondary)]">
-              Qty
+        <div className="min-w-[5.5rem] max-w-[9rem] shrink-0 self-start pt-0.5 text-right">
+          {statusModel.kind === "pending" ? (
+            <span className="text-[11px] font-semibold text-[var(--gs-text)]">
+              Pending Amt
             </span>
-            <p className="mt-0.5 font-mono text-[12px] tabular-nums text-[var(--gs-text)]">
-              {qtyLine}
-            </p>
-          </div>
-          <div className="min-w-0 max-w-[11rem] shrink-0 text-right">
-            <span
-              className="select-none text-[10px] font-medium uppercase tracking-[0.12em] text-transparent"
-              aria-hidden
-            >
-              ·
-            </span>
-            <p className="mt-0.5 text-[11px] font-medium leading-snug text-[var(--gs-text)]">
-              {statusLabel}
-            </p>
-          </div>
+          ) : (
+            <span className="text-[12px] font-medium text-[var(--gs-text)]">Paid</span>
+          )}
+        </div>
+
+        <p className="min-w-0 line-clamp-3 text-[13px] font-medium leading-snug text-[var(--gs-text)]">
+          {detailLine}
+        </p>
+        <div className="text-right font-mono text-[13px] tabular-nums leading-tight text-[var(--gs-text)]">
+          {qtyLine}
+        </div>
+        <div className="min-w-[5.5rem] max-w-[9rem] shrink-0 text-right font-mono text-[13px] tabular-nums leading-tight text-[var(--gs-text)]">
+          {statusModel.kind === "pending" ? (
+            formatINR(statusModel.amount)
+          ) : (
+            <span className="text-[var(--gs-text-secondary)]">—</span>
+          )}
         </div>
       </div>
 
-      <p className="mt-1 line-clamp-2 text-[12px] font-medium leading-snug text-[var(--gs-text)]">
-        {detailLine}
-      </p>
-
       <div
-        className="mt-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-t border-dashed border-[var(--gs-border)]/60 pt-2"
+        className="mt-2.5 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-t border-dashed border-[var(--gs-border)]/60 pt-2"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -553,7 +555,7 @@ function LedgerNotebookEntry({
             <button
               type="button"
               disabled={ledgerRowBusyId === row.id}
-              className="text-xs font-medium text-[var(--gs-primary)] hover:underline disabled:opacity-40"
+              className="text-[13px] font-medium text-[var(--gs-primary)] hover:underline disabled:opacity-40"
               onClick={() => void onPreview(row)}
             >
               {ledgerRowBusyId === row.id ? "…" : "Preview"}
@@ -562,7 +564,7 @@ function LedgerNotebookEntry({
           {showFollowUpEdit ? (
             <button
               type="button"
-              className="text-xs font-medium text-[var(--gs-primary)] hover:underline"
+              className="text-[13px] font-medium text-[var(--gs-primary)] hover:underline"
               onClick={() => onAddFollowUp(row)}
             >
               Edit
@@ -570,19 +572,19 @@ function LedgerNotebookEntry({
           ) : null}
           <button
             type="button"
-            className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
+            className="text-[13px] text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
             onClick={() => void onDelete(row.id)}
           >
             Remove
           </button>
         </div>
         <div className="text-right">
-          <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--gs-text-secondary)]">
+          <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--gs-text-secondary)]">
             Total
           </span>
           <p
             className={cn(
-              "mt-0.5 font-mono text-sm tabular-nums tracking-tight",
+              "mt-0.5 font-mono text-[15px] tabular-nums leading-tight tracking-tight",
               signedTotal.isNegative
                 ? "text-[var(--gs-text-secondary)]"
                 : "text-[var(--gs-text)]"
@@ -1329,58 +1331,77 @@ export function LedgerBlock({
 
   const showPartyOnNotebookLine = !localFilters.partyId;
 
-  function renderNotebookGroup(g: LedgerDisplayGroup) {
+  function notebookGroupShellClass(tone: "expense" | "income") {
+    return cn(
+      "relative isolate z-0 overflow-hidden rounded-xl border border-[var(--gs-border)]/85 bg-[var(--gs-surface-plain)]/95 shadow-sm ring-1 ring-inset ring-black/[0.04]",
+      tone === "expense"
+        ? "border-l-[3px] border-l-[var(--gs-text-secondary)]"
+        : "border-l-[3px] border-l-[var(--gs-success)]"
+    );
+  }
+
+  function renderNotebookGroup(
+    g: LedgerDisplayGroup,
+    tone: "expense" | "income"
+  ) {
     if (g.kind === "payment-only") {
       return (
-        <LedgerNotebookEntry
-          key={g.payment.id}
-          row={g.payment}
-          visual="standalone"
-          ledgerRowBusyId={ledgerRowBusyId}
-          onDelete={onDelete}
-          onPreview={openLedgerPreviewDoc}
-          billTotalById={billTotalById}
-          purchaseTotalById={purchaseTotalById}
-          billLineSummaryById={billLineSummaryById}
-          purchaseLineSummaryById={purchaseLineSummaryById}
-          billTypeById={billTypeById}
-          purchasePaymentTypeById={purchasePaymentTypeById}
-          pendingByBillId={pendingByBillId}
-          pendingByPurchaseId={pendingByPurchaseId}
-          showParty={showPartyOnNotebookLine}
-        />
+        <div key={g.payment.id} className={notebookGroupShellClass(tone)}>
+          <div className="relative z-[2] px-2.5 py-1">
+            <LedgerNotebookEntry
+              row={g.payment}
+              visual="standalone"
+              ledgerRowBusyId={ledgerRowBusyId}
+              onDelete={onDelete}
+              onPreview={openLedgerPreviewDoc}
+              billTotalById={billTotalById}
+              purchaseTotalById={purchaseTotalById}
+              billLineSummaryById={billLineSummaryById}
+              purchaseLineSummaryById={purchaseLineSummaryById}
+              billTypeById={billTypeById}
+              purchasePaymentTypeById={purchasePaymentTypeById}
+              pendingByBillId={pendingByBillId}
+              pendingByPurchaseId={pendingByPurchaseId}
+              showParty={showPartyOnNotebookLine}
+            />
+          </div>
+        </div>
       );
     }
+    const expanded = isParentExpanded(g.parent.id, g.payments.length);
     return (
-      <Fragment key={g.parent.id}>
-        <LedgerNotebookEntry
-          row={g.parent}
-          visual="parent"
-          expandToggle={
-            g.payments.length > 0
-              ? {
-                  expanded: isParentExpanded(g.parent.id, g.payments.length),
-                  onToggle: () => toggleParentExpand(g.parent.id),
-                  childCount: g.payments.length,
-                }
-              : undefined
-          }
-          ledgerRowBusyId={ledgerRowBusyId}
-          onDelete={onDelete}
-          onPreview={openLedgerPreviewDoc}
-          onAddFollowUp={setFollowUpParent}
-          billTotalById={billTotalById}
-          purchaseTotalById={purchaseTotalById}
-          billLineSummaryById={billLineSummaryById}
-          purchaseLineSummaryById={purchaseLineSummaryById}
-          billTypeById={billTypeById}
-          purchasePaymentTypeById={purchasePaymentTypeById}
-          pendingByBillId={pendingByBillId}
-          pendingByPurchaseId={pendingByPurchaseId}
-          showParty={showPartyOnNotebookLine}
-        />
-        {isParentExpanded(g.parent.id, g.payments.length)
-          ? g.payments.map((p) => (
+      <div key={g.parent.id} className={notebookGroupShellClass(tone)}>
+        <div className="relative z-[2] px-2.5 pt-2 pb-1">
+          <LedgerNotebookEntry
+            row={g.parent}
+            visual="parent"
+            expandToggle={
+              g.payments.length > 0
+                ? {
+                    expanded,
+                    onToggle: () => toggleParentExpand(g.parent.id),
+                    childCount: g.payments.length,
+                  }
+                : undefined
+            }
+            ledgerRowBusyId={ledgerRowBusyId}
+            onDelete={onDelete}
+            onPreview={openLedgerPreviewDoc}
+            onAddFollowUp={setFollowUpParent}
+            billTotalById={billTotalById}
+            purchaseTotalById={purchaseTotalById}
+            billLineSummaryById={billLineSummaryById}
+            purchaseLineSummaryById={purchaseLineSummaryById}
+            billTypeById={billTypeById}
+            purchasePaymentTypeById={purchasePaymentTypeById}
+            pendingByBillId={pendingByBillId}
+            pendingByPurchaseId={pendingByPurchaseId}
+            showParty={showPartyOnNotebookLine}
+          />
+        </div>
+        {expanded && g.payments.length > 0 ? (
+          <div className="relative z-[1] space-y-2 border-t border-dashed border-[var(--gs-border)]/55 bg-[var(--gs-surface)]/20 px-2.5 py-2.5">
+            {g.payments.map((p) => (
               <LedgerNotebookEntry
                 key={p.id}
                 row={p}
@@ -1398,9 +1419,10 @@ export function LedgerBlock({
                 pendingByPurchaseId={pendingByPurchaseId}
                 showParty={showPartyOnNotebookLine}
               />
-            ))
-          : null}
-      </Fragment>
+            ))}
+          </div>
+        ) : null}
+      </div>
     );
   }
 
@@ -1535,13 +1557,15 @@ export function LedgerBlock({
                 <p className="mb-1.5 border-b border-[var(--gs-border)]/50 pb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gs-text-secondary)]">
                   Expense · buys & pay-out
                 </p>
-                <div className="divide-y divide-[var(--gs-border)]/45">
+                <div className="space-y-2.5">
                   {notebookPartition.expense.length === 0 ? (
-                    <p className="py-6 text-center text-[11px] text-[var(--gs-text-secondary)]">
+                    <p className="py-6 text-center text-[12px] text-[var(--gs-text-secondary)]">
                       Nothing on this side for this filter.
                     </p>
                   ) : (
-                    notebookPartition.expense.map((g) => renderNotebookGroup(g))
+                    notebookPartition.expense.map((g) =>
+                      renderNotebookGroup(g, "expense")
+                    )
                   )}
                 </div>
               </div>
@@ -1549,13 +1573,15 @@ export function LedgerBlock({
                 <p className="mb-1.5 border-b border-[var(--gs-border)]/50 pb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gs-success)]">
                   Income · sales & receipts
                 </p>
-                <div className="divide-y divide-[var(--gs-border)]/45">
+                <div className="space-y-2.5">
                   {notebookPartition.income.length === 0 ? (
-                    <p className="py-6 text-center text-[11px] text-[var(--gs-text-secondary)]">
+                    <p className="py-6 text-center text-[12px] text-[var(--gs-text-secondary)]">
                       Nothing on this side for this filter.
                     </p>
                   ) : (
-                    notebookPartition.income.map((g) => renderNotebookGroup(g))
+                    notebookPartition.income.map((g) =>
+                      renderNotebookGroup(g, "income")
+                    )
                   )}
                 </div>
               </div>
