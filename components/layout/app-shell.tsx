@@ -8,11 +8,11 @@ import { withBasePath } from "@/lib/auth/site-url";
 import { cn } from "@/lib/cn";
 import { icons } from "@/components/layout/nav-icons";
 import { DashboardRailSummary } from "@/components/layout/dashboard-rail-summary";
+import { usePrimaryShopName } from "@/hooks/use-primary-shop-name";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Inventory", icon: icons.dashboard },
   { href: "/analytics", label: "Analytics", icon: icons.analytics },
-  { href: "/settings/shop", label: "Shop", icon: icons.shopSettings },
   { href: "/account", label: "Account", icon: icons.account },
 ] as const;
 
@@ -71,6 +71,17 @@ function NavLinks({
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  const { shopName, loading: shopNameLoading } = usePrimaryShopName();
+  const shopTitle =
+    shopNameLoading || !shopName || shopName.length === 0
+      ? shopNameLoading
+        ? "…"
+        : "Dukan"
+      : shopName;
+  const badgeLetter =
+    shopName && shopName.length > 0
+      ? shopName.charAt(0).toLocaleUpperCase()
+      : "M";
   const useWorkspaceMain =
     pathname === "/dashboard" ||
     pathname.startsWith("/dashboard/") ||
@@ -121,15 +132,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           {icons.menu}
         </button>
-        <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--gs-grid)] bg-[var(--gs-surface-plain)] text-xs font-bold text-[var(--gs-primary)]">
-            M
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-1">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[var(--gs-grid)] bg-[var(--gs-surface-plain)] text-xs font-bold text-[var(--gs-primary)]">
+            {shopNameLoading ? "…" : badgeLetter}
           </span>
-          <div className="leading-none">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gs-primary)]">
-              MUNDIKA
+          <div className="min-w-0 leading-none">
+            <p
+              className="truncate text-sm font-semibold tracking-tight text-[var(--gs-text)]"
+              title={shopTitle}
+            >
+              {shopTitle}
             </p>
-            <p className="mt-1 text-xs font-medium text-[var(--gs-text)]">Dashboard</p>
+            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gs-primary)]">
+              Mundika
+            </p>
           </div>
         </div>
         <span className="w-10" aria-hidden />
@@ -169,12 +185,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex flex-1 flex-col overflow-y-auto p-3">
               <div className="mb-4 flex min-h-[var(--shell-ribbon-min)] items-center justify-center rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-3">
-                <div className="space-y-1 text-center">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--gs-primary)]">
-                    MUNDIKA
+                <div className="w-full space-y-1 text-center">
+                  <p
+                    className="truncate text-sm font-semibold tracking-tight text-[var(--gs-text)]"
+                    title={shopTitle}
+                  >
+                    {shopTitle}
                   </p>
-                  <p className="text-sm font-semibold tracking-tight text-[var(--gs-text)]">
-                    Vyapar Dashboard
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gs-primary)]">
+                    Mundika
                   </p>
                   <DashboardRailSummary pathname={pathname} />
                 </div>
@@ -198,13 +217,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="hidden min-h-0 w-[220px] shrink-0 flex-col border-r border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-6 md:flex md:min-h-screen">
         <div
           className="mb-4 flex min-h-[var(--shell-ribbon-min)] shrink-0 flex-col items-center justify-center rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-4"
-          aria-label="Mundika"
+          aria-label={`${shopTitle}, Mundika`}
         >
-          <p className="text-center text-xs font-semibold uppercase tracking-[0.16em] text-[var(--gs-primary)]">
-            MUNDIKA
+          <p
+            className="w-full truncate text-center text-sm font-semibold tracking-tight text-[var(--gs-text)]"
+            title={shopTitle}
+          >
+            {shopTitle}
           </p>
-          <p className="mt-1 text-center text-sm font-semibold tracking-tight text-[var(--gs-text)]">
-            Vyapar Dashboard
+          <p className="mt-1 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gs-primary)]">
+            Mundika
           </p>
           <DashboardRailSummary pathname={pathname} />
         </div>

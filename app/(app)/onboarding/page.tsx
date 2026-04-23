@@ -241,7 +241,7 @@ function OnboardingInner() {
           Tell us about your dukan
         </h1>
         <p className="text-sm leading-relaxed text-[var(--gs-text-secondary)]">
-          After this you will see inventory, shop settings, and billing. Mobile
+          After this you will see inventory and the Account page (dukan + billing). Mobile
           is required; SMS verification only if this account has no email.
         </p>
       </div>

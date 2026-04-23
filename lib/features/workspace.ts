@@ -1,5 +1,6 @@
 /**
- * Stock-in from suppliers (“Purchase” mode on Inventory). Off until we ship a
- * complete purchase experience; billing-only matches current product scope.
+ * Stock-in from suppliers (“Purchase” mode on Inventory / dashboard workspace).
+ * Toggle off with `NEXT_PUBLIC_WORKSPACE_PURCHASE_ENABLED=false` if needed.
  */
-export const workspacePurchaseFlowEnabled = false;
+export const workspacePurchaseFlowEnabled =
+  process.env.NEXT_PUBLIC_WORKSPACE_PURCHASE_ENABLED !== "false";

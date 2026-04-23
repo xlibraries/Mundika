@@ -9,6 +9,12 @@ import {
   fetchUserProfilePhone,
   upsertUserProfilePhone,
 } from "@/lib/user-profile/user-profiles";
+import {
+  ensureDefaultShopForUser,
+  updateShopProfile,
+} from "@/lib/shops/queries";
+import type { ShopRow } from "@/lib/shops/types";
+import { notifyShopProfileUpdated } from "@/hooks/use-primary-shop-name";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,6 +28,18 @@ import {
 } from "@/lib/billing/payment-provider";
 import { getPublicPlanById } from "@/lib/pricing/plans";
 import { createClient } from "@/utils/supabase/client";
+
+function emptyToNull(s: string): string | null {
+  const t = s.trim();
+  return t === "" ? null : t;
+}
+
+function digitsForIndiaDraftFromShopPhone(raw: string | null): string {
+  if (!raw) return "";
+  const t = raw.trim();
+  if (t.startsWith("+91") && t.length === 13) return t.slice(3);
+  return t.replace(/\D/g, "").replace(/^91/, "").slice(0, 10);
+}
 
 function AccountSkeleton() {
   return (
@@ -42,8 +60,16 @@ function AccountInner() {
 
   const [phoneDraft, setPhoneDraft] = useState("");
   const [phoneLoading, setPhoneLoading] = useState(false);
-  const [phoneSaveBusy, setPhoneSaveBusy] = useState(false);
-  const [phoneMessage, setPhoneMessage] = useState<string | null>(null);
+  const [profileSaveBusy, setProfileSaveBusy] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [profileMessageKind, setProfileMessageKind] = useState<
+    "success" | "error" | null
+  >(null);
+
+  const [shopLoading, setShopLoading] = useState(true);
+  const [shop, setShop] = useState<ShopRow | null>(null);
+  const [draft, setDraft] = useState<Partial<ShopRow>>({});
+  const [shopLoadError, setShopLoadError] = useState<string | null>(null);
 
   const [billingBanner, setBillingBanner] = useState<"success" | "canceled" | null>(
     null
@@ -71,50 +97,105 @@ function AccountInner() {
     if (!userId) return;
     let cancelled = false;
     setPhoneLoading(true);
-    setPhoneMessage(null);
+    setShopLoading(true);
+    setShopLoadError(null);
+    setProfileMessage(null);
+    setProfileMessageKind(null);
     void (async () => {
       const supabase = createClient();
-      const p = await fetchUserProfilePhone(supabase, userId);
-      if (cancelled) return;
-      if (p?.startsWith("+91") && p.length === 13) {
-        setPhoneDraft(p.slice(3));
-      } else if (p) {
-        setPhoneDraft(p);
-      } else {
-        setPhoneDraft("");
+      try {
+        const { shop: row } = await ensureDefaultShopForUser(supabase, userId);
+        if (cancelled) return;
+        setShop(row);
+        setDraft(row);
+        const userPhone = await fetchUserProfilePhone(supabase, userId);
+        if (cancelled) return;
+        if (userPhone?.startsWith("+91") && userPhone.length === 13) {
+          setPhoneDraft(userPhone.slice(3));
+        } else if (userPhone) {
+          setPhoneDraft(userPhone);
+        } else {
+          setPhoneDraft(digitsForIndiaDraftFromShopPhone(row.phone));
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setShopLoadError(e instanceof Error ? e.message : "Could not load shop");
+        }
+      } finally {
+        if (!cancelled) {
+          setPhoneLoading(false);
+          setShopLoading(false);
+        }
       }
-      setPhoneLoading(false);
     })();
     return () => {
       cancelled = true;
     };
   }, [userId]);
 
-  async function onSavePhone() {
-    if (!userId) return;
-    setPhoneMessage(null);
-    const trimmed = phoneDraft.trim();
-    const normalized = trimmed ? normalizeIndiaMobileE164(trimmed) : null;
-    if (trimmed && !normalized) {
-      setPhoneMessage("Enter a valid India mobile (10 digits, starting 6–9).");
+  async function onSaveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    if (!shop || !userId) return;
+    setProfileMessage(null);
+    setProfileMessageKind(null);
+    const trimmedPhone = phoneDraft.trim();
+    const normalizedPhone = trimmedPhone
+      ? normalizeIndiaMobileE164(trimmedPhone)
+      : null;
+    if (trimmedPhone && !normalizedPhone) {
+      setProfileMessageKind("error");
+      setProfileMessage("Enter a valid India mobile (10 digits, starting 6–9).");
       return;
     }
-    setPhoneSaveBusy(true);
+    setProfileSaveBusy(true);
     const supabase = createClient();
-    const { error } = await upsertUserProfilePhone(supabase, userId, normalized);
-    setPhoneSaveBusy(false);
-    if (error) {
-      const msg = error.message.toLowerCase().includes("duplicate")
-        ? "That number is already linked to another account."
-        : error.message;
-      setPhoneMessage(msg);
-      return;
+    try {
+      await updateShopProfile(supabase, shop.id, {
+        name: (draft.name ?? "").trim() || shop.name,
+        address_line1: emptyToNull(String(draft.address_line1 ?? "")),
+        city: emptyToNull(String(draft.city ?? "")),
+        state_region: emptyToNull(String(draft.state_region ?? "")),
+        country: "IN",
+        phone: normalizedPhone,
+      });
+      const { error: phoneErr } = await upsertUserProfilePhone(
+        supabase,
+        userId,
+        normalizedPhone
+      );
+      if (phoneErr) {
+        const msg = phoneErr.message.toLowerCase().includes("duplicate")
+          ? "That number is already linked to another account."
+          : phoneErr.message;
+        setProfileMessageKind("error");
+        setProfileMessage(msg);
+        return;
+      }
+      const { data, error: reloadErr } = await supabase
+        .from("shops")
+        .select("*")
+        .eq("id", shop.id)
+        .single();
+      if (reloadErr || !data) throw reloadErr ?? new Error("Reload failed");
+      const next = data as ShopRow;
+      setShop(next);
+      setDraft(next);
+      if (normalizedPhone) {
+        setPhoneDraft(normalizedPhone.slice(3));
+      } else {
+        setPhoneDraft("");
+      }
+      notifyShopProfileUpdated();
+      setProfileMessageKind("success");
+      setProfileMessage(
+        "Dukan profile saved. Mobile is used for Razorpay pre-fill and chit header."
+      );
+    } catch (err) {
+      setProfileMessageKind("error");
+      setProfileMessage(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setProfileSaveBusy(false);
     }
-    setPhoneMessage(
-      normalized
-        ? "Saved. Razorpay checkout can pre-fill this mobile when you pay."
-        : "Cleared saved mobile."
-    );
   }
 
   async function onSubscribe() {
@@ -161,12 +242,11 @@ function AccountInner() {
           Account
         </p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--gs-text)]">
-          Plan and billing
+          Dukan aur billing
         </h1>
         <p className="mt-2 text-sm text-[var(--gs-text-secondary)]">
-          Plan updates after a successful {providerName} payment (Stripe
-          subscription or Razorpay order). Operational shop data stays
-          local-first.
+          Ek hi jagah: dukan ka naam, mobile, pata, aur plan. Operational stock
+          local-first; sync baad mein (GitHub #26).
         </p>
       </div>
 
@@ -182,15 +262,139 @@ function AccountInner() {
         </p>
       ) : null}
 
+      {shopLoading || !shop ? (
+        <p className="text-sm text-[var(--gs-text-secondary)]">
+          {shopLoadError ?? "Loading dukan profile…"}
+        </p>
+      ) : (
+        <form
+          onSubmit={onSaveProfile}
+          className="space-y-4 rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-panel)] p-5 shadow-[0_18px_42px_-28px_rgba(58,42,31,0.34)]"
+        >
+          <div>
+            <h2 className="text-sm font-semibold text-[var(--gs-text)]">
+              Dukan profile
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--gs-text-secondary)]">
+              Dukan ka naam aur pata — bill / chit par. GST nahi. Ten-digit
+              mobile: +91 database mein; Razorpay pre-fill aur chit header dono
+              ke liye.
+            </p>
+          </div>
+
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
+              Dukan ka naam
+            </span>
+            <Input
+              required
+              value={draft.name ?? ""}
+              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+            />
+          </label>
+
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
+              Mobile number (India)
+            </span>
+            {phoneLoading ? (
+              <p className="text-sm text-[var(--gs-text-secondary)]">Loading…</p>
+            ) : (
+              <div className="flex gap-2">
+                <span className="flex w-14 shrink-0 items-center justify-center rounded-md border border-[var(--gs-border)] bg-[var(--gs-surface)] text-xs text-[var(--gs-text-secondary)]">
+                  +91
+                </span>
+                <Input
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  placeholder="9876543210"
+                  value={phoneDraft}
+                  onChange={(e) => setPhoneDraft(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
+            )}
+          </label>
+
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
+              Pata (optional)
+            </span>
+            <Input
+              placeholder="Gali, bazar, landmark…"
+              value={draft.address_line1 ?? ""}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, address_line1: e.target.value }))
+              }
+            />
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
+                Gaon / shehar
+              </span>
+              <Input
+                value={draft.city ?? ""}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, city: e.target.value }))
+                }
+              />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
+                Rajya
+              </span>
+              <Input
+                value={draft.state_region ?? ""}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, state_region: e.target.value }))
+                }
+              />
+            </label>
+          </div>
+
+          {profileMessage ? (
+            <p
+              className={
+                profileMessageKind === "success"
+                  ? "rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-2 text-xs text-[var(--gs-text)]"
+                  : "rounded-lg border border-[var(--gs-danger)]/30 bg-[var(--gs-danger-soft)] px-3 py-2 text-xs text-[var(--gs-danger)]"
+              }
+            >
+              {profileMessage}
+            </p>
+          ) : null}
+
+          <Button
+            type="submit"
+            variant="secondary"
+            disabled={profileSaveBusy || phoneLoading}
+            className="w-full sm:w-auto"
+          >
+            {profileSaveBusy ? "Saving…" : "Save dukan profile"}
+          </Button>
+        </form>
+      )}
+
       <section className="rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-panel)] p-5 shadow-[0_18px_42px_-28px_rgba(58,42,31,0.34)]">
+        <h2 className="text-sm font-semibold text-[var(--gs-text)]">
+          Plan and billing
+        </h2>
+        <p className="mt-1 text-xs text-[var(--gs-text-secondary)]">
+          Plan updates after a successful {providerName} payment (Stripe
+          subscription or Razorpay order).
+        </p>
         {state.status === "loading" || state.status === "idle" ? (
-          <p className="text-sm text-[var(--gs-text-secondary)]">Loading plan…</p>
+          <p className="mt-3 text-sm text-[var(--gs-text-secondary)]">
+            Loading plan…
+          </p>
         ) : state.status === "error" ? (
-          <p className="text-sm text-[var(--gs-danger)]">
+          <p className="mt-3 text-sm text-[var(--gs-danger)]">
             Could not load plan: {state.message}
           </p>
         ) : state.status === "ready" ? (
-          <div className="space-y-3 text-sm">
+          <div className="mt-3 space-y-3 text-sm">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-[var(--gs-text-secondary)]">Current plan</span>
               <span className="font-medium capitalize text-[var(--gs-text)]">
@@ -272,53 +476,6 @@ function AccountInner() {
             after Edge deploy (see AGENTS.md).
           </p>
         ) : null}
-      </section>
-
-      <section className="rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-panel)] p-5 shadow-[0_18px_42px_-28px_rgba(58,42,31,0.34)]">
-        <h2 className="text-sm font-semibold text-[var(--gs-text)]">Mobile (India)</h2>
-        <p className="mt-1 text-xs leading-relaxed text-[var(--gs-text-secondary)]">
-          Optional. Used to pre-fill Razorpay so you do not have to type it each
-          time. Ten digits; we store +91 in the database.
-        </p>
-        {phoneLoading ? (
-          <p className="mt-3 text-sm text-[var(--gs-text-secondary)]">Loading…</p>
-        ) : (
-          <div className="mt-4 space-y-3">
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
-                Mobile number
-              </span>
-              <div className="flex gap-2">
-                <span className="flex w-14 shrink-0 items-center justify-center rounded-md border border-[var(--gs-border)] bg-[var(--gs-surface)] text-xs text-[var(--gs-text-secondary)]">
-                  +91
-                </span>
-                <Input
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel-national"
-                  placeholder="9876543210"
-                  value={phoneDraft}
-                  onChange={(e) => setPhoneDraft(e.target.value)}
-                  className="flex-1"
-                />
-              </div>
-            </label>
-            {phoneMessage ? (
-              <p className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-2 text-xs text-[var(--gs-text)]">
-                {phoneMessage}
-              </p>
-            ) : null}
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={phoneSaveBusy}
-              className="w-full sm:w-auto"
-              onClick={() => void onSavePhone()}
-            >
-              {phoneSaveBusy ? "Saving…" : "Save mobile"}
-            </Button>
-          </div>
-        )}
       </section>
     </div>
   );
