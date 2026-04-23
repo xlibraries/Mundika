@@ -1418,14 +1418,14 @@ export function LedgerBlock({
           </div>
         </div>
       ) : (
-        <>
+        <div className="space-y-3">
           <p className="text-[11px] leading-relaxed text-[var(--gs-text-secondary)]">
             Choose a contact in the ledger filter (desktop table or mobile
             filters) to open the two-page khata: expense on the left, income on
             the right.
           </p>
           <div className="hidden overflow-x-auto rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] md:block">
-        <table className="w-full min-w-[720px] text-left text-sm lg:min-w-[860px]">
+            <table className="w-full min-w-[720px] text-left text-sm lg:min-w-[860px]">
           <thead>
             <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
               <th className="px-3 py-2">Date</th>
@@ -1657,7 +1657,7 @@ export function LedgerBlock({
           </div>
         )}
       </div>
-        </>
+        </div>
       )}
 
       {rows.length > 0 && notebookMode && notebookPartition ? (
