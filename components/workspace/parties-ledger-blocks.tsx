@@ -11,10 +11,12 @@ import { createLedgerPayment } from "@/modules/ledger/actions";
 import { deleteLedgerEntry } from "@/modules/ledger/delete";
 import type {
   BillItemRow,
+  BillType,
   LedgerEntryRow,
   PartyRow,
   PaymentMode,
   PurchaseItemRow,
+  PurchasePaymentType,
 } from "@/lib/types/domain";
 import {
   loadBillPrintPayload,
@@ -142,6 +144,48 @@ function purchaseDisplayAmount(
 
 function paymentDisplayAmount(row: LedgerEntryRow): number {
   return Math.round(Math.abs(row.balance_delta) * 100) / 100;
+}
+
+function ledgerSignedTotalMeta(
+  row: LedgerEntryRow,
+  billTotalById: Record<string, number>,
+  purchaseTotalById: Record<string, number>
+): { text: string; isNegative: boolean } {
+  let mag: number;
+  if (row.entry_type === "sale") {
+    mag = saleDisplayAmount(row, billTotalById);
+  } else if (row.entry_type === "purchase") {
+    mag = purchaseDisplayAmount(row, purchaseTotalById);
+  } else {
+    mag = paymentDisplayAmount(row);
+  }
+  const sign =
+    row.entry_type === "payment"
+      ? Math.sign(row.balance_delta) || -1
+      : row.balance_delta === 0
+        ? 1
+        : Math.sign(row.balance_delta);
+  const value = sign * mag;
+  return { text: formatINR(value), isNegative: value < 0 };
+}
+
+function ledgerEntryStatusLabel(
+  row: LedgerEntryRow,
+  billTypeById: Record<string, BillType>,
+  purchasePaymentTypeById: Record<string, PurchasePaymentType>
+): string {
+  if (row.entry_type === "payment") {
+    return "Paid";
+  }
+  if (row.entry_type === "sale" && row.ref_bill_id) {
+    const t = billTypeById[row.ref_bill_id];
+    return t === "credit" ? "Pending" : "Paid";
+  }
+  if (row.entry_type === "purchase" && row.ref_purchase_id) {
+    const t = purchasePaymentTypeById[row.ref_purchase_id];
+    return t === "credit" ? "Pending" : "Paid";
+  }
+  return row.balance_delta === 0 ? "Paid" : "Pending";
 }
 
 type DocLineSummary = { productLabel: string; totalQty: number };
@@ -287,6 +331,8 @@ function LedgerNotebookEntry({
   purchaseTotalById,
   billLineSummaryById,
   purchaseLineSummaryById,
+  billTypeById,
+  purchasePaymentTypeById,
   showParty,
 }: {
   row: LedgerEntryRow;
@@ -301,6 +347,8 @@ function LedgerNotebookEntry({
   purchaseTotalById: Record<string, number>;
   billLineSummaryById: Record<string, DocLineSummary>;
   purchaseLineSummaryById: Record<string, DocLineSummary>;
+  billTypeById: Record<string, BillType>;
+  purchasePaymentTypeById: Record<string, PurchasePaymentType>;
   /** When true, show contact name (all-contacts khata). */
   showParty?: boolean;
 }) {
@@ -315,24 +363,18 @@ function LedgerNotebookEntry({
       (row.entry_type === "purchase" && row.ref_purchase_id) ||
       row.entry_type === "payment");
   const rowExpandable = Boolean(expandToggle && expandToggle.childCount > 0);
-  const isSaleOrPurchase =
-    row.entry_type === "sale" || row.entry_type === "purchase";
-  const showDashBalance = isSaleOrPurchase && row.balance_delta === 0;
   const isPayment = row.entry_type === "payment";
 
-  let totalAmountStr = "—";
-  if (row.entry_type === "sale") {
-    totalAmountStr = formatINR(saleDisplayAmount(row, billTotalById));
-  } else if (row.entry_type === "purchase") {
-    totalAmountStr = formatINR(purchaseDisplayAmount(row, purchaseTotalById));
-  } else if (row.entry_type === "payment") {
-    totalAmountStr = formatINR(paymentDisplayAmount(row));
-  }
-
-  const balanceLabel =
-    showDashBalance
-      ? "—"
-      : `${row.balance_delta >= 0 ? "+" : "-"}${formatINR(Math.abs(row.balance_delta))}`;
+  const signedTotal = ledgerSignedTotalMeta(
+    row,
+    billTotalById,
+    purchaseTotalById
+  );
+  const statusLabel = ledgerEntryStatusLabel(
+    row,
+    billTypeById,
+    purchasePaymentTypeById
+  );
 
   const docSummary =
     row.entry_type === "sale" && row.ref_bill_id
@@ -360,11 +402,16 @@ function LedgerNotebookEntry({
         ? productLine
         : (row.party_name_snapshot ?? "—");
 
+  const detailLine =
+    row.party_name_snapshot && productLine !== "—"
+      ? `${row.party_name_snapshot} / ${productLine}`
+      : partyProductLine;
+
   return (
     <div
       className={cn(
         "py-2.5 text-sm",
-        isChild && "border-l-2 border-[var(--gs-primary)]/25 pl-2.5",
+        isChild && "border-l-2 border-l-[var(--gs-primary)]/25 pl-2.5",
         rowExpandable && "cursor-pointer hover:bg-[var(--gs-surface-plain)]/80"
       )}
       tabIndex={rowExpandable ? 0 : undefined}
@@ -387,129 +434,106 @@ function LedgerNotebookEntry({
           : undefined
       }
     >
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px] text-[var(--gs-text-secondary)]">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
           {expandToggle && expandToggle.childCount > 0 ? (
             <>
-              <span aria-hidden className="select-none text-[10px]">
+              <span
+                aria-hidden
+                className="select-none text-[10px] text-[var(--gs-text-secondary)]"
+              >
                 {expandToggle.expanded ? "▼" : "▶"}
               </span>
-              <span>{row.entry_date}</span>
+              <span className="font-mono text-[11px] text-[var(--gs-text-secondary)]">
+                {row.entry_date}
+              </span>
               <span className="font-sans text-[10px] font-medium text-[var(--gs-text-secondary)]">
                 {expandToggle.childCount} pymt
               </span>
             </>
           ) : (
-            <span>{row.entry_date}</span>
+            <span className="font-mono text-[11px] text-[var(--gs-text-secondary)]">
+              {row.entry_date}
+            </span>
           )}
-          <span className="font-sans text-[11px] font-semibold capitalize text-[var(--gs-text)]">
+          <span className="font-sans text-[12px] font-semibold capitalize tracking-tight text-[var(--gs-text)]">
             {isChild ? "↳ payment" : row.entry_type}
           </span>
         </div>
-        <p className="mt-1 line-clamp-2 text-[12px] font-medium leading-snug text-[var(--gs-text)]">
-          {partyProductLine}
-        </p>
-        <div className="mt-1">
-          <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
-            Qty
-          </span>
-          <p className="font-mono text-[11px] tabular-nums text-[var(--gs-text)]">
-            {qtyLine}
-          </p>
+        <div className="flex shrink-0 items-start gap-8 text-right">
+          <div>
+            <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--gs-text-secondary)]">
+              Qty
+            </span>
+            <p className="mt-0.5 font-mono text-[12px] tabular-nums text-[var(--gs-text)]">
+              {qtyLine}
+            </p>
+          </div>
+          <div className="min-w-[4.25rem]">
+            <span
+              className="select-none text-[10px] font-medium uppercase tracking-[0.12em] text-transparent"
+              aria-hidden
+            >
+              ·
+            </span>
+            <p className="mt-0.5 text-[12px] font-medium text-[var(--gs-text)]">
+              {statusLabel}
+            </p>
+          </div>
         </div>
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
-        {isPayment ? (
-          <>
-            <div>
-              <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
-                Paid
-              </span>
-              <p className="font-mono tabular-nums text-[var(--gs-text)]">
-                {totalAmountStr}
-              </p>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
-                Balance Δ
-              </span>
-              <p
-                className={cn(
-                  "font-mono tabular-nums",
-                  row.balance_delta >= 0
-                    ? "text-[var(--gs-success)]"
-                    : "text-[var(--gs-text-secondary)]"
-                )}
-              >
-                {balanceLabel}
-              </p>
-            </div>
-          </>
-        ) : (
-          <>
-            <div>
-              <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
-                Balance Δ
-              </span>
-              <p
-                className={cn(
-                  "font-mono tabular-nums",
-                  showDashBalance
-                    ? "text-[var(--gs-text-secondary)]"
-                    : row.balance_delta >= 0
-                      ? "text-[var(--gs-success)]"
-                      : "text-[var(--gs-text-secondary)]"
-                )}
-                title={
-                  showDashBalance
-                    ? "No change to running balance (cash or paid on bill)."
-                    : undefined
-                }
-              >
-                {balanceLabel}
-              </p>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
-                Total
-              </span>
-              <p className="font-mono tabular-nums text-[var(--gs-text)]">
-                {totalAmountStr}
-              </p>
-            </div>
-          </>
-        )}
-      </div>
+
+      <p className="mt-1 line-clamp-2 text-[12px] font-medium leading-snug text-[var(--gs-text)]">
+        {detailLine}
+      </p>
+
       <div
-        className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-dashed border-[var(--gs-border)]/60 pt-1.5"
+        className="mt-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-t border-dashed border-[var(--gs-border)]/60 pt-2"
         onClick={(e) => e.stopPropagation()}
       >
-        {showPreviewButton ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {showPreviewButton ? (
+            <button
+              type="button"
+              disabled={ledgerRowBusyId === row.id}
+              className="text-xs font-medium text-[var(--gs-primary)] hover:underline disabled:opacity-40"
+              onClick={() => void onPreview(row)}
+            >
+              {ledgerRowBusyId === row.id ? "…" : "Preview"}
+            </button>
+          ) : null}
+          {showFollowUpEdit ? (
+            <button
+              type="button"
+              className="text-xs font-medium text-[var(--gs-primary)] hover:underline"
+              onClick={() => onAddFollowUp(row)}
+            >
+              Edit
+            </button>
+          ) : null}
           <button
             type="button"
-            disabled={ledgerRowBusyId === row.id}
-            className="text-xs font-medium text-[var(--gs-primary)] hover:underline disabled:opacity-40"
-            onClick={() => void onPreview(row)}
+            className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
+            onClick={() => void onDelete(row.id)}
           >
-            {ledgerRowBusyId === row.id ? "…" : "Preview"}
+            Remove
           </button>
-        ) : null}
-        {showFollowUpEdit ? (
-          <button
-            type="button"
-            className="text-xs font-medium text-[var(--gs-primary)] hover:underline"
-            onClick={() => onAddFollowUp(row)}
+        </div>
+        <div className="text-right">
+          <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--gs-text-secondary)]">
+            Total
+          </span>
+          <p
+            className={cn(
+              "mt-0.5 font-mono text-sm tabular-nums tracking-tight",
+              signedTotal.isNegative
+                ? "text-[var(--gs-text-secondary)]"
+                : "text-[var(--gs-text)]"
+            )}
           >
-            Edit
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
-          onClick={() => void onDelete(row.id)}
-        >
-          Remove
-        </button>
+            {signedTotal.text}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -1012,6 +1036,10 @@ export function LedgerBlock({
   const [purchaseLineSummaryById, setPurchaseLineSummaryById] = useState<
     Record<string, DocLineSummary>
   >({});
+  const [billTypeById, setBillTypeById] = useState<Record<string, BillType>>({});
+  const [purchasePaymentTypeById, setPurchasePaymentTypeById] = useState<
+    Record<string, PurchasePaymentType>
+  >({});
   const [parties, setParties] = useState<PartyRow[]>([]);
   const [paymentPartyId, setPaymentPartyId] = useState("");
   const [entryDate, setEntryDate] = useState(() => getLocalDateInputValue());
@@ -1061,6 +1089,12 @@ export function LedgerBlock({
     setPurchaseLineSummaryById(
       summarizePurchaseLinesByPurchaseId(purchaseItems, itemNameById)
     );
+    const bt: Record<string, BillType> = {};
+    for (const b of bills) bt[b.id] = b.bill_type;
+    setBillTypeById(bt);
+    const ppt: Record<string, PurchasePaymentType> = {};
+    for (const p of purchases) ppt[p.id] = p.payment_type;
+    setPurchasePaymentTypeById(ppt);
     setRows(ledgerEntries);
     setParties(partyRows);
     setPaymentPartyId((prev) => prev || partyRows[0]?.id || "");
@@ -1243,6 +1277,8 @@ export function LedgerBlock({
           purchaseTotalById={purchaseTotalById}
           billLineSummaryById={billLineSummaryById}
           purchaseLineSummaryById={purchaseLineSummaryById}
+          billTypeById={billTypeById}
+          purchasePaymentTypeById={purchasePaymentTypeById}
           showParty={showPartyOnNotebookLine}
         />
       );
@@ -1269,6 +1305,8 @@ export function LedgerBlock({
           purchaseTotalById={purchaseTotalById}
           billLineSummaryById={billLineSummaryById}
           purchaseLineSummaryById={purchaseLineSummaryById}
+          billTypeById={billTypeById}
+          purchasePaymentTypeById={purchasePaymentTypeById}
           showParty={showPartyOnNotebookLine}
         />
         {isParentExpanded(g.parent.id, g.payments.length)
@@ -1284,6 +1322,8 @@ export function LedgerBlock({
                 purchaseTotalById={purchaseTotalById}
                 billLineSummaryById={billLineSummaryById}
                 purchaseLineSummaryById={purchaseLineSummaryById}
+                billTypeById={billTypeById}
+                purchasePaymentTypeById={purchasePaymentTypeById}
                 showParty={showPartyOnNotebookLine}
               />
             ))
