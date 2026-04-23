@@ -89,6 +89,113 @@ function buildLedgerDisplayGroups(rows: LedgerEntryRow[]): LedgerDisplayGroup[] 
   return groups.slice().reverse();
 }
 
+function saleDisplayAmount(
+  row: LedgerEntryRow,
+  billTotalById: Record<string, number>
+): number {
+  if (row.entry_type !== "sale") return 0;
+  if (row.ref_bill_id != null && billTotalById[row.ref_bill_id] != null) {
+    return billTotalById[row.ref_bill_id];
+  }
+  return Math.round(Math.abs(row.balance_delta) * 100) / 100;
+}
+
+function purchaseDisplayAmount(
+  row: LedgerEntryRow,
+  purchaseTotalById: Record<string, number>
+): number {
+  if (row.entry_type !== "purchase") return 0;
+  if (
+    row.ref_purchase_id != null &&
+    purchaseTotalById[row.ref_purchase_id] != null
+  ) {
+    return purchaseTotalById[row.ref_purchase_id];
+  }
+  return Math.round(Math.abs(row.balance_delta) * 100) / 100;
+}
+
+function paymentDisplayAmount(row: LedgerEntryRow): number {
+  return Math.round(Math.abs(row.balance_delta) * 100) / 100;
+}
+
+/** Payment-only row: supplier khata vs customer receipt (no ref on row). */
+function classifyPaymentOnlySide(
+  payment: LedgerEntryRow,
+  contextRows: LedgerEntryRow[]
+): "expense" | "income" {
+  const others = contextRows.filter((r) => r.id !== payment.id);
+  const hasSale = others.some((r) => r.entry_type === "sale");
+  const hasPurchase = others.some((r) => r.entry_type === "purchase");
+  if (hasPurchase && !hasSale) return "expense";
+  if (hasSale && !hasPurchase) return "income";
+  const priorDoc = others
+    .filter(
+      (r) =>
+        (r.entry_type === "sale" || r.entry_type === "purchase") &&
+        (r.entry_date < payment.entry_date ||
+          (r.entry_date === payment.entry_date &&
+            r.created_at < payment.created_at))
+    )
+    .sort(compareLedgerAsc);
+  const last = priorDoc[priorDoc.length - 1];
+  if (last?.entry_type === "purchase") return "expense";
+  return "income";
+}
+
+function ledgerGroupsForNotebookView(
+  filteredRows: LedgerEntryRow[],
+  entryType: "" | "sale" | "purchase" | "payment"
+): LedgerDisplayGroup[] {
+  if (entryType === "payment") {
+    return [...filteredRows]
+      .sort(compareLedgerAsc)
+      .reverse()
+      .map((r) => ({ kind: "payment-only" as const, payment: r }));
+  }
+  return buildLedgerDisplayGroups(filteredRows);
+}
+
+function partitionNotebookGroups(
+  groups: LedgerDisplayGroup[],
+  contextRows: LedgerEntryRow[]
+): { expense: LedgerDisplayGroup[]; income: LedgerDisplayGroup[] } {
+  const expense: LedgerDisplayGroup[] = [];
+  const income: LedgerDisplayGroup[] = [];
+  for (const g of groups) {
+    if (g.kind === "payment-only") {
+      const side = classifyPaymentOnlySide(g.payment, contextRows);
+      if (side === "expense") expense.push(g);
+      else income.push(g);
+      continue;
+    }
+    if (g.parent.entry_type === "purchase") expense.push(g);
+    else income.push(g);
+  }
+  return { expense, income };
+}
+
+function sumNotebookGroups(
+  groups: LedgerDisplayGroup[],
+  billTotalById: Record<string, number>,
+  purchaseTotalById: Record<string, number>
+): number {
+  let sum = 0;
+  for (const g of groups) {
+    if (g.kind === "payment-only") {
+      sum += paymentDisplayAmount(g.payment);
+      continue;
+    }
+    if (g.parent.entry_type === "sale") {
+      sum += saleDisplayAmount(g.parent, billTotalById);
+      for (const p of g.payments) sum += paymentDisplayAmount(p);
+    } else {
+      sum += purchaseDisplayAmount(g.parent, purchaseTotalById);
+      for (const p of g.payments) sum += paymentDisplayAmount(p);
+    }
+  }
+  return sum;
+}
+
 type LedgerRowVisual = "parent" | "child" | "standalone";
 
 function LedgerEntryTr({
@@ -818,6 +925,10 @@ export function LedgerBlock({
   const [rows, setRows] = useState<LedgerEntryRow[]>([]);
   /** Bill totals keyed by id — used so cash sales count toward Total sales (ledger balance_delta is 0). */
   const [billTotalById, setBillTotalById] = useState<Record<string, number>>({});
+  /** Purchase totals for notebook / purchase lines (cash credit uses balance 0 on row). */
+  const [purchaseTotalById, setPurchaseTotalById] = useState<
+    Record<string, number>
+  >({});
   const [parties, setParties] = useState<PartyRow[]>([]);
   const [paymentPartyId, setPaymentPartyId] = useState("");
   const [entryDate, setEntryDate] = useState(() => getLocalDateInputValue());
@@ -833,10 +944,11 @@ export function LedgerBlock({
   const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
-    const [ledgerEntries, partyRows, bills] = await Promise.all([
+    const [ledgerEntries, partyRows, bills, purchases] = await Promise.all([
       db.ledger_entries.where("user_id").equals(userId).toArray(),
       db.parties.where("user_id").equals(userId).toArray(),
       db.bills.where("user_id").equals(userId).toArray(),
+      db.purchases.where("user_id").equals(userId).toArray(),
     ]);
     ledgerEntries.sort((a, b) =>
       a.entry_date < b.entry_date ? 1 : a.entry_date > b.entry_date ? -1 : 0
@@ -845,6 +957,9 @@ export function LedgerBlock({
     const totals: Record<string, number> = {};
     for (const b of bills) totals[b.id] = b.total;
     setBillTotalById(totals);
+    const pTotals: Record<string, number> = {};
+    for (const p of purchases) pTotals[p.id] = p.total;
+    setPurchaseTotalById(pTotals);
     setRows(ledgerEntries);
     setParties(partyRows);
     setPaymentPartyId((prev) => prev || partyRows[0]?.id || "");
@@ -856,6 +971,12 @@ export function LedgerBlock({
     }, 0);
     return () => window.clearTimeout(t);
   }, [load, refreshToken, lastSyncAt]);
+
+  useEffect(() => {
+    if (localFilters.partyId) {
+      setPaymentPartyId(localFilters.partyId);
+    }
+  }, [localFilters.partyId]);
 
   async function onDelete(id: string) {
     if (!window.confirm("Remove this ledger row?")) return;
@@ -977,6 +1098,96 @@ export function LedgerBlock({
     return { mode: "grouped" as const, groups: buildLedgerDisplayGroups(filteredRows) };
   }, [filteredRows, localFilters.entryType]);
 
+  const notebookMode = Boolean(localFilters.partyId);
+  const selectedPartyName =
+    parties.find((p) => p.id === localFilters.partyId)?.name ?? "Contact";
+
+  const notebookGroups = useMemo(() => {
+    if (!notebookMode) return null;
+    return ledgerGroupsForNotebookView(
+      filteredRows,
+      localFilters.entryType
+    );
+  }, [notebookMode, filteredRows, localFilters.entryType]);
+
+  const notebookPartition = useMemo(() => {
+    if (!notebookGroups) return null;
+    return partitionNotebookGroups(notebookGroups, filteredRows);
+  }, [notebookGroups, filteredRows]);
+
+  const notebookExpenseTotal = useMemo(() => {
+    if (!notebookPartition) return 0;
+    return sumNotebookGroups(
+      notebookPartition.expense,
+      billTotalById,
+      purchaseTotalById
+    );
+  }, [notebookPartition, billTotalById, purchaseTotalById]);
+
+  const notebookIncomeTotal = useMemo(() => {
+    if (!notebookPartition) return 0;
+    return sumNotebookGroups(
+      notebookPartition.income,
+      billTotalById,
+      purchaseTotalById
+    );
+  }, [notebookPartition, billTotalById, purchaseTotalById]);
+
+  const filterPeriodHint = useMemo(() => {
+    const { fromDate, toDate } = localFilters;
+    if (fromDate && toDate) return `${fromDate} → ${toDate}`;
+    if (fromDate) return `From ${fromDate}`;
+    if (toDate) return `Until ${toDate}`;
+    return "All dates in view";
+  }, [localFilters.fromDate, localFilters.toDate]);
+
+  function renderNotebookGroup(g: LedgerDisplayGroup) {
+    if (g.kind === "payment-only") {
+      return (
+        <LedgerEntryMobileCard
+          key={g.payment.id}
+          row={g.payment}
+          visual="standalone"
+          ledgerRowBusyId={ledgerRowBusyId}
+          onDelete={onDelete}
+          onPreview={openLedgerPreviewDoc}
+        />
+      );
+    }
+    return (
+      <Fragment key={g.parent.id}>
+        <LedgerEntryMobileCard
+          row={g.parent}
+          visual="parent"
+          expandToggle={
+            g.payments.length > 0
+              ? {
+                  expanded: isParentExpanded(g.parent.id, g.payments.length),
+                  onToggle: () => toggleParentExpand(g.parent.id),
+                  childCount: g.payments.length,
+                }
+              : undefined
+          }
+          ledgerRowBusyId={ledgerRowBusyId}
+          onDelete={onDelete}
+          onPreview={openLedgerPreviewDoc}
+        />
+        {isParentExpanded(g.parent.id, g.payments.length)
+          ? g.payments.map((p) => (
+              <LedgerEntryMobileCard
+                key={p.id}
+                row={p}
+                visual="child"
+                ledgerRowBusyId={ledgerRowBusyId}
+                onDelete={onDelete}
+                onPreview={openLedgerPreviewDoc}
+              />
+            ))
+          : null}
+      </Fragment>
+    );
+  }
+
   return (
     <section className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1084,7 +1295,136 @@ export function LedgerBlock({
           </p>
         ) : null}
       </form>
-      <div className="hidden overflow-x-auto rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] md:block">
+      {rows.length === 0 ? (
+        <p className="rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-4 py-8 text-center text-sm text-[var(--gs-text-secondary)]">
+          No ledger entries yet.
+        </p>
+      ) : notebookMode && notebookPartition ? (
+        <div className="overflow-hidden rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-panel)] shadow-[0_12px_36px_-20px_rgba(58,42,31,0.35)]">
+          <div className="border-b border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-4 py-4">
+            <p className="text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gs-primary)]">
+              Khata notebook
+            </p>
+            <h3 className="mt-1 text-center text-xl font-semibold tracking-tight text-[var(--gs-text)]">
+              {selectedPartyName}
+            </h3>
+            <p className="mt-1 text-center text-xs text-[var(--gs-text-secondary)]">
+              {filterPeriodHint}
+            </p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-center sm:gap-3">
+              <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:max-w-xs">
+                <label className="min-w-0 space-y-1">
+                  <span className="text-[10px] text-[var(--gs-text-secondary)]">
+                    From
+                  </span>
+                  <Input
+                    type="date"
+                    value={localFilters.fromDate}
+                    onChange={(e) =>
+                      onLocalFiltersChange({
+                        ...localFilters,
+                        fromDate: e.target.value,
+                      })
+                    }
+                    className="h-9 min-w-0 text-xs"
+                  />
+                </label>
+                <label className="min-w-0 space-y-1">
+                  <span className="text-[10px] text-[var(--gs-text-secondary)]">
+                    To
+                  </span>
+                  <Input
+                    type="date"
+                    value={localFilters.toDate}
+                    onChange={(e) =>
+                      onLocalFiltersChange({
+                        ...localFilters,
+                        toDate: e.target.value,
+                      })
+                    }
+                    className="h-9 min-w-0 text-xs"
+                  />
+                </label>
+              </div>
+              <label className="w-full min-w-0 space-y-1 sm:w-44">
+                <span className="text-[10px] text-[var(--gs-text-secondary)]">
+                  Entry type
+                </span>
+                <Select
+                  value={localFilters.entryType}
+                  onChange={(e) =>
+                    onLocalFiltersChange({
+                      ...localFilters,
+                      entryType: e.target.value as
+                        | ""
+                        | "sale"
+                        | "purchase"
+                        | "payment",
+                    })
+                  }
+                  className="h-9 text-xs"
+                >
+                  <option value="">All</option>
+                  <option value="sale">Sale</option>
+                  <option value="purchase">Purchase</option>
+                  <option value="payment">Payment</option>
+                </Select>
+              </label>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={() =>
+                  onLocalFiltersChange({
+                    ...localFilters,
+                    partyId: "",
+                  })
+                }
+              >
+                All contacts
+              </Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 divide-y divide-[var(--gs-border)] bg-[var(--gs-surface)] lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+            <div className="min-h-[12rem] bg-[var(--gs-surface-plain)]/80 p-3 lg:min-h-[16rem]">
+              <p className="mb-2 text-center text-[11px] font-bold uppercase tracking-wide text-[var(--gs-text-secondary)]">
+                Expense · buys & payments out
+              </p>
+              <div className="space-y-2">
+                {notebookPartition.expense.length === 0 ? (
+                  <p className="py-8 text-center text-xs text-[var(--gs-text-secondary)]">
+                    Nothing on this side for this filter.
+                  </p>
+                ) : (
+                  notebookPartition.expense.map((g) => renderNotebookGroup(g))
+                )}
+              </div>
+            </div>
+            <div className="min-h-[12rem] p-3 lg:min-h-[16rem]">
+              <p className="mb-2 text-center text-[11px] font-bold uppercase tracking-wide text-[var(--gs-success)]">
+                Income · sales & money in
+              </p>
+              <div className="space-y-2">
+                {notebookPartition.income.length === 0 ? (
+                  <p className="py-8 text-center text-xs text-[var(--gs-text-secondary)]">
+                    Nothing on this side for this filter.
+                  </p>
+                ) : (
+                  notebookPartition.income.map((g) => renderNotebookGroup(g))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <p className="text-[11px] leading-relaxed text-[var(--gs-text-secondary)]">
+            Choose a contact in the ledger filter (desktop table or mobile
+            filters) to open the two-page khata: expense on the left, income on
+            the right.
+          </p>
+          <div className="hidden overflow-x-auto rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] md:block">
         <table className="w-full min-w-[720px] text-left text-sm lg:min-w-[860px]">
           <thead>
             <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
@@ -1317,8 +1657,35 @@ export function LedgerBlock({
           </div>
         )}
       </div>
+        </>
+      )}
 
-      {filteredRows.length > 0 ? (
+      {rows.length > 0 && notebookMode && notebookPartition ? (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
+              Total expense
+            </p>
+            <p className="mt-0.5 text-[10px] text-[var(--gs-text-secondary)]">
+              {filterPeriodHint}
+            </p>
+            <p className="mt-1 font-mono text-sm text-[var(--gs-text)]">
+              {formatINR(notebookExpenseTotal)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
+              Total income
+            </p>
+            <p className="mt-0.5 text-[10px] text-[var(--gs-text-secondary)]">
+              {filterPeriodHint}
+            </p>
+            <p className="mt-1 font-mono text-sm text-[var(--gs-text)]">
+              {formatINR(notebookIncomeTotal)}
+            </p>
+          </div>
+        </div>
+      ) : !notebookMode && filteredRows.length > 0 ? (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <div className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2">
             <p className="text-[11px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
