@@ -4,7 +4,13 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUserId } from "@/hooks/use-user-id";
 import { useEntitlements } from "@/hooks/use-entitlements";
+import { normalizeIndiaMobileE164 } from "@/lib/auth/phone-e164";
+import {
+  fetchUserProfilePhone,
+  upsertUserProfilePhone,
+} from "@/lib/user-profile/user-profiles";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   performStarterCheckout,
   RazorpayCheckoutCanceledError,
@@ -15,6 +21,7 @@ import {
   paymentProviderLabel,
 } from "@/lib/billing/payment-provider";
 import { getPublicPlanById } from "@/lib/pricing/plans";
+import { createClient } from "@/utils/supabase/client";
 
 function AccountSkeleton() {
   return (
@@ -32,6 +39,11 @@ function AccountInner() {
   const { state, refresh } = useEntitlements(userId);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  const [phoneDraft, setPhoneDraft] = useState("");
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [phoneSaveBusy, setPhoneSaveBusy] = useState(false);
+  const [phoneMessage, setPhoneMessage] = useState<string | null>(null);
 
   const [billingBanner, setBillingBanner] = useState<"success" | "canceled" | null>(
     null
@@ -54,6 +66,56 @@ function AccountInner() {
     const t = window.setTimeout(() => void refresh(), 1600);
     return () => window.clearTimeout(t);
   }, [billingBanner, refresh]);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    setPhoneLoading(true);
+    setPhoneMessage(null);
+    void (async () => {
+      const supabase = createClient();
+      const p = await fetchUserProfilePhone(supabase, userId);
+      if (cancelled) return;
+      if (p?.startsWith("+91") && p.length === 13) {
+        setPhoneDraft(p.slice(3));
+      } else if (p) {
+        setPhoneDraft(p);
+      } else {
+        setPhoneDraft("");
+      }
+      setPhoneLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  async function onSavePhone() {
+    if (!userId) return;
+    setPhoneMessage(null);
+    const trimmed = phoneDraft.trim();
+    const normalized = trimmed ? normalizeIndiaMobileE164(trimmed) : null;
+    if (trimmed && !normalized) {
+      setPhoneMessage("Enter a valid India mobile (10 digits, starting 6–9).");
+      return;
+    }
+    setPhoneSaveBusy(true);
+    const supabase = createClient();
+    const { error } = await upsertUserProfilePhone(supabase, userId, normalized);
+    setPhoneSaveBusy(false);
+    if (error) {
+      const msg = error.message.toLowerCase().includes("duplicate")
+        ? "That number is already linked to another account."
+        : error.message;
+      setPhoneMessage(msg);
+      return;
+    }
+    setPhoneMessage(
+      normalized
+        ? "Saved. Razorpay checkout can pre-fill this mobile when you pay."
+        : "Cleared saved mobile."
+    );
+  }
 
   async function onSubscribe() {
     setCheckoutError(null);
@@ -210,6 +272,53 @@ function AccountInner() {
             after Edge deploy (see AGENTS.md).
           </p>
         ) : null}
+      </section>
+
+      <section className="rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-panel)] p-5 shadow-[0_18px_42px_-28px_rgba(58,42,31,0.34)]">
+        <h2 className="text-sm font-semibold text-[var(--gs-text)]">Mobile (India)</h2>
+        <p className="mt-1 text-xs leading-relaxed text-[var(--gs-text-secondary)]">
+          Optional. Used to pre-fill Razorpay so you do not have to type it each
+          time. Ten digits; we store +91 in the database.
+        </p>
+        {phoneLoading ? (
+          <p className="mt-3 text-sm text-[var(--gs-text-secondary)]">Loading…</p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
+                Mobile number
+              </span>
+              <div className="flex gap-2">
+                <span className="flex w-14 shrink-0 items-center justify-center rounded-md border border-[var(--gs-border)] bg-[var(--gs-surface)] text-xs text-[var(--gs-text-secondary)]">
+                  +91
+                </span>
+                <Input
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  placeholder="9876543210"
+                  value={phoneDraft}
+                  onChange={(e) => setPhoneDraft(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
+            </label>
+            {phoneMessage ? (
+              <p className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-2 text-xs text-[var(--gs-text)]">
+                {phoneMessage}
+              </p>
+            ) : null}
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={phoneSaveBusy}
+              className="w-full sm:w-auto"
+              onClick={() => void onSavePhone()}
+            >
+              {phoneSaveBusy ? "Saving…" : "Save mobile"}
+            </Button>
+          </div>
+        )}
       </section>
     </div>
   );

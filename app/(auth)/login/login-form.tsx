@@ -22,6 +22,7 @@ function isRateLimitedAuthError(err: { message?: string; status?: number; code?:
 }
 
 type EmailMode = "signin" | "signup";
+type SignupPhase = "request_otp" | "set_password";
 
 export function LoginForm() {
   const router = useRouter();
@@ -42,7 +43,9 @@ export function LoginForm() {
   }, [oauthError, oauthErrorDescription]);
 
   const [emailMode, setEmailMode] = useState<EmailMode>("signin");
+  const [signupPhase, setSignupPhase] = useState<SignupPhase>("request_otp");
   const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState<string | null>(initialError);
@@ -98,25 +101,21 @@ export function LoginForm() {
     router.refresh();
   }
 
-  async function signUpEmail(e: React.FormEvent) {
-    e.preventDefault();
+  async function sendSignupOtp() {
     if (isRateLimited) return;
     setError(null);
     setInfo(null);
-    if (password !== passwordConfirm) {
-      setError("Passwords do not match.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    const trimmed = email.trim();
+    if (!trimmed || !trimmed.includes("@")) {
+      setError("Enter a valid email.");
       return;
     }
     setBusy(true);
     const supabase = createClient();
-    const { data, error: err } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
+    const { error: err } = await supabase.auth.signInWithOtp({
+      email: trimmed,
       options: {
+        shouldCreateUser: true,
         emailRedirectTo: withBasePath(
           `/auth/callback?next=${encodeURIComponent(next)}`
         ),
@@ -133,10 +132,53 @@ export function LoginForm() {
       setError(err.message);
       return;
     }
-    if (data.user && !data.session) {
-      setInfo(
-        "Check your email and confirm your address, then return here to sign in."
-      );
+    setSignupPhase("set_password");
+    setInfo(
+      "We sent a verification code to your email. Enter it below, then choose a password."
+    );
+  }
+
+  async function completeSignupWithOtp(e: React.FormEvent) {
+    e.preventDefault();
+    if (isRateLimited) return;
+    setError(null);
+    setInfo(null);
+    const trimmedEmail = email.trim();
+    const code = otp.replace(/\s/g, "");
+    if (code.length < 6 || code.length > 12) {
+      setError("Enter the verification code from your email.");
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    setBusy(true);
+    const supabase = createClient();
+    const { error: err } = await supabase.auth.verifyOtp({
+      email: trimmedEmail,
+      token: code,
+      type: "email",
+    });
+    if (err) {
+      setBusy(false);
+      if (isRateLimitedAuthError(err)) {
+        setNow(Date.now());
+        setBlockedUntil(Date.now() + RATE_LIMIT_COOLDOWN_MS);
+        setError("Too many attempts. Please wait 30 seconds and try again.");
+        return;
+      }
+      setError(err.message);
+      return;
+    }
+    const { error: pwErr } = await supabase.auth.updateUser({ password });
+    setBusy(false);
+    if (pwErr) {
+      setError(pwErr.message);
       return;
     }
     router.replace(next);
@@ -206,8 +248,8 @@ export function LoginForm() {
             Sign in
           </h1>
           <p className="text-sm leading-relaxed text-[var(--gs-text-secondary)]">
-            Google or email. New email accounts use Create account below; Google
-            can provision on first sign-in.
+            Google or email. New accounts verify the inbox with an email code,
+            then you set a password. Google still provisions on first sign-in.
           </p>
           {selectedPlan ? (
             <p className="rounded-md border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-3 py-2 text-xs leading-relaxed text-[var(--gs-text-secondary)]">
@@ -272,6 +314,10 @@ export function LoginForm() {
               }`}
               onClick={() => {
                 setEmailMode("signup");
+                setSignupPhase("request_otp");
+                setOtp("");
+                setPassword("");
+                setPasswordConfirm("");
                 setError(null);
                 setInfo(null);
               }}
@@ -280,35 +326,146 @@ export function LoginForm() {
             </button>
           </div>
 
-          <form
-            onSubmit={emailMode === "signin" ? signInEmail : signUpEmail}
-            className="space-y-4"
-          >
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">Email</span>
-              <Input
-                type="email"
-                required
-                autoComplete="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </label>
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
-                Password
-              </span>
-              <Input
-                type="password"
-                required
-                autoComplete={emailMode === "signup" ? "new-password" : "current-password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </label>
-            {emailMode === "signup" ? (
+          {emailMode === "signin" ? (
+            <form onSubmit={signInEmail} className="space-y-4">
+              <label className="block space-y-1.5">
+                <span className="text-xs font-medium text-[var(--gs-text-secondary)]">Email</span>
+                <Input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
+                  Password
+                </span>
+                <Input
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </label>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="text-xs font-medium text-[var(--gs-primary)] underline-offset-2 hover:underline"
+                  disabled={disabled}
+                  onClick={() => void sendPasswordReset()}
+                >
+                  Forgot password?
+                </button>
+              </div>
+              {error ? (
+                <p className="rounded border border-[var(--gs-danger)]/30 bg-[var(--gs-danger-soft)] px-3 py-2 text-sm text-[var(--gs-danger)]">
+                  {error}
+                </p>
+              ) : null}
+              {info ? (
+                <p className="rounded border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2 text-sm text-[var(--gs-text)]">
+                  {info}
+                </p>
+              ) : null}
+              <Button type="submit" disabled={disabled} className="w-full" size="lg">
+                {busy
+                  ? "Signing in…"
+                  : isRateLimited
+                    ? `Try again in ${secondsLeft}s`
+                    : "Continue with email"}
+              </Button>
+            </form>
+          ) : signupPhase === "request_otp" ? (
+            <div className="space-y-4">
+              <label className="block space-y-1.5">
+                <span className="text-xs font-medium text-[var(--gs-text-secondary)]">Email</span>
+                <Input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </label>
+              <p className="text-xs leading-relaxed text-[var(--gs-text-secondary)]">
+                We email a short verification code. In Supabase, edit the auth
+                email template so it includes the token placeholder (see
+                .env.local.example comments).
+              </p>
+              {error ? (
+                <p className="rounded border border-[var(--gs-danger)]/30 bg-[var(--gs-danger-soft)] px-3 py-2 text-sm text-[var(--gs-danger)]">
+                  {error}
+                </p>
+              ) : null}
+              {info ? (
+                <p className="rounded border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2 text-sm text-[var(--gs-text)]">
+                  {info}
+                </p>
+              ) : null}
+              <Button
+                type="button"
+                disabled={disabled}
+                className="w-full"
+                size="lg"
+                onClick={() => void sendSignupOtp()}
+              >
+                {busy
+                  ? "Sending code…"
+                  : isRateLimited
+                    ? `Try again in ${secondsLeft}s`
+                    : "Send verification code"}
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={completeSignupWithOtp} className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2 text-sm">
+                <span className="truncate text-[var(--gs-text)]">{email.trim()}</span>
+                <button
+                  type="button"
+                  className="shrink-0 text-xs font-medium text-[var(--gs-primary)] underline-offset-2 hover:underline"
+                  disabled={disabled}
+                  onClick={() => {
+                    setSignupPhase("request_otp");
+                    setOtp("");
+                    setError(null);
+                    setInfo(null);
+                  }}
+                >
+                  Change email
+                </button>
+              </div>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
+                  Email verification code
+                </span>
+                <Input
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  required
+                  placeholder="6-digit code"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
+                  Password
+                </span>
+                <Input
+                  type="password"
+                  required
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </label>
               <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
                   Confirm password
@@ -322,46 +479,34 @@ export function LoginForm() {
                   onChange={(e) => setPasswordConfirm(e.target.value)}
                 />
               </label>
-            ) : null}
-            {emailMode === "signin" ? (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  className="text-xs font-medium text-[var(--gs-primary)] underline-offset-2 hover:underline"
-                  disabled={disabled}
-                  onClick={() => void sendPasswordReset()}
-                >
-                  Forgot password?
-                </button>
-              </div>
-            ) : null}
-            {error ? (
-              <p className="rounded border border-[var(--gs-danger)]/30 bg-[var(--gs-danger-soft)] px-3 py-2 text-sm text-[var(--gs-danger)]">
-                {error}
-              </p>
-            ) : null}
-            {info ? (
-              <p className="rounded border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2 text-sm text-[var(--gs-text)]">
-                {info}
-              </p>
-            ) : null}
-            <Button
-              type="submit"
-              disabled={disabled}
-              className="w-full"
-              size="lg"
-            >
-              {busy
-                ? emailMode === "signup"
+              {error ? (
+                <p className="rounded border border-[var(--gs-danger)]/30 bg-[var(--gs-danger-soft)] px-3 py-2 text-sm text-[var(--gs-danger)]">
+                  {error}
+                </p>
+              ) : null}
+              {info ? (
+                <p className="rounded border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2 text-sm text-[var(--gs-text)]">
+                  {info}
+                </p>
+              ) : null}
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={disabled}
+                className="w-full"
+                onClick={() => void sendSignupOtp()}
+              >
+                Resend code
+              </Button>
+              <Button type="submit" disabled={disabled} className="w-full" size="lg">
+                {busy
                   ? "Creating account…"
-                  : "Signing in…"
-                : isRateLimited
-                  ? `Try again in ${secondsLeft}s`
-                  : emailMode === "signup"
-                    ? "Create account"
-                    : "Continue with email"}
-            </Button>
-          </form>
+                  : isRateLimited
+                    ? `Try again in ${secondsLeft}s`
+                    : "Create account"}
+              </Button>
+            </form>
+          )}
         </div>
 
         <p className="text-center text-[11px] text-[var(--gs-text-secondary)]">

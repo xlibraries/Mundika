@@ -5,6 +5,7 @@ import {
   openRazorpayOrderCheckout,
   RazorpayCheckoutCanceledError,
 } from "@/lib/billing/open-razorpay-checkout";
+import { fetchUserProfilePhone } from "@/lib/user-profile/user-profiles";
 import { createClient } from "@/utils/supabase/client";
 
 export type StarterCheckoutOutcome = "stripe_redirect" | "razorpay_ok";
@@ -28,12 +29,15 @@ export async function performStarterCheckout(): Promise<StarterCheckoutOutcome> 
     throw new Error("Sign in required");
   }
 
+  const userPhone = await fetchUserProfilePhone(supabase, session.user.id);
+
   const rz = await openRazorpayOrderCheckout({
     keyId: result.keyId,
     orderId: result.orderId,
     amountPaise: result.amountPaise,
     currency: result.currency,
     userEmail: session.user.email ?? null,
+    userPhoneE164: userPhone,
   });
 
   const { data, error } = await supabase.functions.invoke(

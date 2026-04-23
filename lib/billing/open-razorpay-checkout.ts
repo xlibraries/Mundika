@@ -59,6 +59,8 @@ export async function openRazorpayOrderCheckout(opts: {
   amountPaise: number;
   currency: string;
   userEmail: string | null;
+  /** E.164 (+91…) when saved on Account — Razorpay prefill.contact */
+  userPhoneE164?: string | null;
 }): Promise<RazorpayHandlerResponse> {
   await loadRazorpayScript();
   const Ctor = window.Razorpay;
@@ -85,6 +87,7 @@ export async function openRazorpayOrderCheckout(opts: {
       description: "Starter — 1 month",
       prefill: {
         email: opts.userEmail ?? undefined,
+        contact: opts.userPhoneE164 ?? undefined,
       },
       handler(response: RazorpayHandlerResponse) {
         finish(() => resolve(response));
