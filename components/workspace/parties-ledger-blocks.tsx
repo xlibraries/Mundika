@@ -53,13 +53,16 @@ type LedgerDisplayGroup =
   | { kind: "payment-only"; payment: LedgerEntryRow };
 
 /**
- * Payments are shown under the most recent preceding sale or purchase for the
- * same contact (chronological). No explicit ref on payment rows yet — this is display-only.
+ * Document rows (sale/purchase) open groups. Payments with `ref_bill_id` /
+ * `ref_purchase_id` nest under the matching bill/purchase row; otherwise they
+ * attach to the latest preceding sale or purchase for the same contact.
  */
 function buildLedgerDisplayGroups(rows: LedgerEntryRow[]): LedgerDisplayGroup[] {
   const sorted = [...rows].sort(compareLedgerAsc);
   const groups: LedgerDisplayGroup[] = [];
   const lastDocGroupByParty = new Map<string, Extract<LedgerDisplayGroup, { kind: "document" }>>();
+  const billToGroup = new Map<string, Extract<LedgerDisplayGroup, { kind: "document" }>>();
+  const purchaseToGroup = new Map<string, Extract<LedgerDisplayGroup, { kind: "document" }>>();
 
   for (const r of sorted) {
     if (r.entry_type === "sale" || r.entry_type === "purchase") {
@@ -70,12 +73,34 @@ function buildLedgerDisplayGroups(rows: LedgerEntryRow[]): LedgerDisplayGroup[] 
       };
       groups.push(g);
       lastDocGroupByParty.set(r.party_id, g);
+      if (r.entry_type === "sale" && r.ref_bill_id) {
+        billToGroup.set(r.ref_bill_id, g);
+      }
+      if (r.entry_type === "purchase" && r.ref_purchase_id) {
+        purchaseToGroup.set(r.ref_purchase_id, g);
+      }
     } else if (r.entry_type === "payment") {
-      const doc = lastDocGroupByParty.get(r.party_id);
-      if (doc) {
-        doc.payments.push(r);
+      if (r.ref_bill_id) {
+        const g = billToGroup.get(r.ref_bill_id);
+        if (g && g.parent.party_id === r.party_id) {
+          g.payments.push(r);
+        } else {
+          groups.push({ kind: "payment-only", payment: r });
+        }
+      } else if (r.ref_purchase_id) {
+        const g = purchaseToGroup.get(r.ref_purchase_id);
+        if (g && g.parent.party_id === r.party_id) {
+          g.payments.push(r);
+        } else {
+          groups.push({ kind: "payment-only", payment: r });
+        }
       } else {
-        groups.push({ kind: "payment-only", payment: r });
+        const doc = lastDocGroupByParty.get(r.party_id);
+        if (doc) {
+          doc.payments.push(r);
+        } else {
+          groups.push({ kind: "payment-only", payment: r });
+        }
       }
     }
   }
@@ -205,6 +230,7 @@ function LedgerNotebookEntry({
   ledgerRowBusyId,
   onDelete,
   onPreview,
+  onAddFollowUp,
   expandToggle,
   billTotalById,
   purchaseTotalById,
@@ -215,6 +241,8 @@ function LedgerNotebookEntry({
   ledgerRowBusyId: string | null;
   onDelete: (id: string) => void;
   onPreview: (r: LedgerEntryRow) => void | Promise<void>;
+  /** Sale / purchase parent: open flow to record a linked payment in the same block. */
+  onAddFollowUp?: (r: LedgerEntryRow) => void;
   expandToggle?: { expanded: boolean; onToggle: () => void; childCount: number };
   billTotalById: Record<string, number>;
   purchaseTotalById: Record<string, number>;
@@ -222,6 +250,10 @@ function LedgerNotebookEntry({
   showParty?: boolean;
 }) {
   const isChild = visual === "child";
+  const showFollowUpEdit =
+    !isChild &&
+    onAddFollowUp &&
+    (row.entry_type === "sale" || row.entry_type === "purchase");
   const showPreviewButton =
     !isChild &&
     ((row.entry_type === "sale" && row.ref_bill_id) ||
@@ -366,7 +398,7 @@ function LedgerNotebookEntry({
         </div>
       </div>
       <div
-        className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-dashed border-[var(--gs-border)]/60 pt-1.5"
+        className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-dashed border-[var(--gs-border)]/60 pt-1.5"
         onClick={(e) => e.stopPropagation()}
       >
         {showPreviewButton ? (
@@ -377,6 +409,15 @@ function LedgerNotebookEntry({
             onClick={() => void onPreview(row)}
           >
             {ledgerRowBusyId === row.id ? "…" : "Preview"}
+          </button>
+        ) : null}
+        {showFollowUpEdit ? (
+          <button
+            type="button"
+            className="text-xs font-medium text-[var(--gs-primary)] hover:underline"
+            onClick={() => onAddFollowUp(row)}
+          >
+            Edit
           </button>
         ) : null}
         <button
@@ -407,6 +448,206 @@ function ledgerEmptyMessage(rowsLen: number, filteredLen: number): ReactNode {
     );
   }
   return null;
+}
+
+function LedgerFollowUpPaymentModal({
+  userId,
+  parent,
+  onClose,
+  onRecorded,
+}: {
+  userId: string;
+  parent: LedgerEntryRow;
+  onClose: () => void;
+  onRecorded: (parentLedgerId: string) => void | Promise<void>;
+}) {
+  const [amount, setAmount] = useState("");
+  const [entryDate, setEntryDate] = useState(() => getLocalDateInputValue());
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("cash");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setAmount("");
+    setEntryDate(getLocalDateInputValue());
+    setPaymentMode("cash");
+    setPaymentReference("");
+    setNote("");
+    setError(null);
+  }, [parent.id]);
+
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  const title =
+    parent.entry_type === "sale"
+      ? "Record payment on this bill"
+      : "Record payment on this purchase";
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const n = Number(amount);
+    if (!(n > 0) || Number.isNaN(n)) {
+      setError("Enter an amount greater than 0");
+      return;
+    }
+    setError(null);
+    setSaving(true);
+    try {
+      await createLedgerPayment(userId, {
+        party_id: parent.party_id,
+        party_name_snapshot: parent.party_name_snapshot ?? undefined,
+        entry_date: entryDate,
+        amount: n,
+        payment_mode: paymentMode,
+        payment_reference: paymentReference || null,
+        note: note || null,
+        ref_bill_id:
+          parent.entry_type === "sale" && parent.ref_bill_id
+            ? parent.ref_bill_id
+            : null,
+        ref_purchase_id:
+          parent.entry_type === "purchase" && parent.ref_purchase_id
+            ? parent.ref_purchase_id
+            : null,
+      });
+      await Promise.resolve(onRecorded(parent.id));
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not record payment"
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[90] flex items-end justify-center px-3 py-6 sm:items-center sm:px-5"
+      style={{ backgroundColor: "var(--gs-overlay)" }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ledger-follow-up-title"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-xl border border-[var(--gs-border)] bg-[var(--gs-surface)] p-4 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2
+          id="ledger-follow-up-title"
+          className="text-sm font-semibold text-[var(--gs-text)]"
+        >
+          {title}
+        </h2>
+        <p className="mt-1 text-[11px] text-[var(--gs-text-secondary)]">
+          {parent.party_name_snapshot ?? "Contact"} · {parent.entry_date} ·{" "}
+          {parent.entry_type === "sale" ? "Sale" : "Purchase"}
+        </p>
+        <form className="mt-4 space-y-3" onSubmit={(e) => void onSubmit(e)}>
+          <label className="block space-y-1">
+            <span className="text-[10px] text-[var(--gs-text-secondary)]">
+              Amount (₹)
+            </span>
+            <Input
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => {
+                setAmount(e.target.value);
+                if (error) setError(null);
+              }}
+              className="h-9 text-sm"
+              placeholder="0"
+              autoFocus
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[10px] text-[var(--gs-text-secondary)]">
+              Date
+            </span>
+            <Input
+              type="date"
+              value={entryDate}
+              onChange={(e) => setEntryDate(e.target.value)}
+              className="h-9 text-sm"
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[10px] text-[var(--gs-text-secondary)]">
+              Medium
+            </span>
+            <Select
+              value={paymentMode}
+              onChange={(e) =>
+                setPaymentMode(e.target.value as PaymentMode)
+              }
+              className="h-9 text-sm"
+            >
+              {PAYMENT_MODE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[10px] text-[var(--gs-text-secondary)]">
+              Transaction ID / ref (optional)
+            </span>
+            <Input
+              value={paymentReference}
+              onChange={(e) => setPaymentReference(e.target.value)}
+              className="h-9 text-sm"
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[10px] text-[var(--gs-text-secondary)]">
+              Note (optional)
+            </span>
+            <Input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="h-9 text-sm"
+            />
+          </label>
+          {error ? (
+            <p
+              role="alert"
+              className="rounded border border-[var(--gs-danger)]/30 bg-[var(--gs-danger-soft)] px-2 py-1.5 text-xs text-[var(--gs-danger)]"
+            >
+              {error}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={saving}
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? "Saving…" : "Save payment"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 export function PartiesBlock({
@@ -695,6 +936,8 @@ export function LedgerBlock({
   const [ledgerRowBusyId, setLedgerRowBusyId] = useState<string | null>(null);
   /** When true, nested payment rows under that parent id are visible. Default collapsed. */
   const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
+  /** Sale / purchase row: record a payment linked to this bill or purchase (same khata block). */
+  const [followUpParent, setFollowUpParent] = useState<LedgerEntryRow | null>(null);
 
   const load = useCallback(async () => {
     const [ledgerEntries, partyRows, bills, purchases] = await Promise.all([
@@ -730,6 +973,16 @@ export function LedgerBlock({
       setPaymentPartyId(localFilters.partyId);
     }
   }, [localFilters.partyId]);
+
+  const handleFollowUpRecorded = useCallback(
+    async (parentId: string) => {
+      setFollowUpParent(null);
+      setExpandedParents((prev) => ({ ...prev, [parentId]: true }));
+      await load();
+      onChanged?.();
+    },
+    [load, onChanged]
+  );
 
   async function onDelete(id: string) {
     if (!window.confirm("Remove this ledger row?")) return;
@@ -904,6 +1157,7 @@ export function LedgerBlock({
           ledgerRowBusyId={ledgerRowBusyId}
           onDelete={onDelete}
           onPreview={openLedgerPreviewDoc}
+          onAddFollowUp={setFollowUpParent}
           billTotalById={billTotalById}
           purchaseTotalById={purchaseTotalById}
           showParty={showPartyOnNotebookLine}
@@ -946,42 +1200,62 @@ export function LedgerBlock({
             <p className="mt-0.5 text-center text-[11px] text-[var(--gs-text-secondary)]">
               {filterPeriodHint}
             </p>
-            <div className="mt-2.5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-center sm:gap-2.5">
-              <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:max-w-xs">
-                <label className="min-w-0 space-y-1">
-                  <span className="text-[10px] text-[var(--gs-text-secondary)]">
-                    From
-                  </span>
-                  <Input
-                    type="date"
-                    value={localFilters.fromDate}
-                    onChange={(e) =>
-                      onLocalFiltersChange({
-                        ...localFilters,
-                        fromDate: e.target.value,
-                      })
-                    }
-                    className="h-9 min-w-0 text-xs"
-                  />
-                </label>
-                <label className="min-w-0 space-y-1">
-                  <span className="text-[10px] text-[var(--gs-text-secondary)]">
-                    To
-                  </span>
-                  <Input
-                    type="date"
-                    value={localFilters.toDate}
-                    onChange={(e) =>
-                      onLocalFiltersChange({
-                        ...localFilters,
-                        toDate: e.target.value,
-                      })
-                    }
-                    className="h-9 min-w-0 text-xs"
-                  />
-                </label>
-              </div>
-              <label className="w-full min-w-0 space-y-1 sm:w-44">
+            <div className="mx-auto mt-3 flex w-full max-w-5xl flex-col gap-2 md:flex-row md:flex-nowrap md:items-end md:justify-center md:gap-3">
+              <label className="min-w-0 flex-1 space-y-1 md:min-w-[10.5rem]">
+                <span className="text-[10px] text-[var(--gs-text-secondary)]">
+                  Contacts
+                </span>
+                <Select
+                  value={localFilters.partyId}
+                  onChange={(e) =>
+                    onLocalFiltersChange({
+                      ...localFilters,
+                      partyId: e.target.value,
+                    })
+                  }
+                  className="h-9 w-full text-xs"
+                >
+                  <option value="">Select contact</option>
+                  {parties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="min-w-0 flex-1 space-y-1 md:max-w-[11rem]">
+                <span className="text-[10px] text-[var(--gs-text-secondary)]">
+                  From
+                </span>
+                <Input
+                  type="date"
+                  value={localFilters.fromDate}
+                  onChange={(e) =>
+                    onLocalFiltersChange({
+                      ...localFilters,
+                      fromDate: e.target.value,
+                    })
+                  }
+                  className="h-9 w-full min-w-0 text-xs"
+                />
+              </label>
+              <label className="min-w-0 flex-1 space-y-1 md:max-w-[11rem]">
+                <span className="text-[10px] text-[var(--gs-text-secondary)]">
+                  To
+                </span>
+                <Input
+                  type="date"
+                  value={localFilters.toDate}
+                  onChange={(e) =>
+                    onLocalFiltersChange({
+                      ...localFilters,
+                      toDate: e.target.value,
+                    })
+                  }
+                  className="h-9 w-full min-w-0 text-xs"
+                />
+              </label>
+              <label className="min-w-0 flex-1 space-y-1 md:max-w-[10rem]">
                 <span className="text-[10px] text-[var(--gs-text-secondary)]">
                   Entry type
                 </span>
@@ -997,34 +1271,12 @@ export function LedgerBlock({
                         | "payment",
                     })
                   }
-                  className="h-9 text-xs"
+                  className="h-9 w-full text-xs"
                 >
                   <option value="">All</option>
                   <option value="sale">Sale</option>
                   <option value="purchase">Purchase</option>
                   <option value="payment">Payment</option>
-                </Select>
-              </label>
-              <label className="w-full min-w-0 space-y-1 sm:min-w-[12rem]">
-                <span className="text-[10px] text-[var(--gs-text-secondary)]">
-                  Contact
-                </span>
-                <Select
-                  value={localFilters.partyId}
-                  onChange={(e) =>
-                    onLocalFiltersChange({
-                      ...localFilters,
-                      partyId: e.target.value,
-                    })
-                  }
-                  className="h-9 text-xs"
-                >
-                  <option value="">All contacts</option>
-                  {parties.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
                 </Select>
               </label>
               {localFilters.fromDate ||
@@ -1035,7 +1287,7 @@ export function LedgerBlock({
                   type="button"
                   variant="secondary"
                   size="sm"
-                  className="w-full sm:w-auto"
+                  className="h-9 w-full shrink-0 md:w-auto md:self-end"
                   onClick={() =>
                     onLocalFiltersChange({
                       fromDate: "",
@@ -1114,6 +1366,15 @@ export function LedgerBlock({
             </p>
           </div>
         </div>
+      ) : null}
+
+      {followUpParent ? (
+        <LedgerFollowUpPaymentModal
+          userId={userId}
+          parent={followUpParent}
+          onClose={() => setFollowUpParent(null)}
+          onRecorded={handleFollowUpRecorded}
+        />
       ) : null}
 
       <PrintableDocModal
