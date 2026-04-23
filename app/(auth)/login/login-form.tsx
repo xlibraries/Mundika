@@ -8,6 +8,7 @@ import { safeNextPath } from "@/lib/auth/safe-next-path";
 import { getPublicPlanById } from "@/lib/pricing/plans";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useUserId } from "@/hooks/use-user-id";
 
 const RATE_LIMIT_COOLDOWN_MS = 30_000;
 
@@ -57,6 +58,13 @@ export function LoginForm() {
     }, 1000);
     return () => window.clearInterval(id);
   }, [blockedUntil]);
+
+  const { userId, loading } = useUserId();
+  useEffect(() => {
+    if (!loading && userId) {
+      router.replace(next);
+    }
+  }, [userId, loading, router, next]);
 
   const isRateLimited = blockedUntil !== null && blockedUntil > now;
   const secondsLeft = isRateLimited

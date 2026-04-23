@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { SyncProvider } from "@/components/providers/sync-provider";
+import { AuthGuard } from "@/components/providers/auth-guard";
 
 export default function AppLayout({
   children,
@@ -7,8 +8,10 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SyncProvider>
-      <AppShell>{children}</AppShell>
-    </SyncProvider>
+    <AuthGuard>
+      <SyncProvider>
+        <AppShell>{children}</AppShell>
+      </SyncProvider>
+    </AuthGuard>
   );
 }
