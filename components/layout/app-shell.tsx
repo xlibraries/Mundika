@@ -107,7 +107,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     await createClient().auth.signOut();
-    window.location.href = withBasePath("/login");
+    window.location.href = withBasePath("/");
   }
 
   return (
