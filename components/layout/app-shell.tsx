@@ -11,8 +11,8 @@ import { DashboardRailSummary } from "@/components/layout/dashboard-rail-summary
 import { usePrimaryShopName } from "@/hooks/use-primary-shop-name";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Inventory", icon: icons.dashboard },
-  { href: "/analytics", label: "Analytics", icon: icons.analytics },
+  { href: "/dashboard", label: "Dashboard", icon: icons.dashboard },
+  { href: "/analytics", label: "Inventory", icon: icons.analytics },
   { href: "/account", label: "Account", icon: icons.account },
 ] as const;
 

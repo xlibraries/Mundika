@@ -61,7 +61,7 @@ function TabBar({
     <div
       role="tablist"
       className="flex flex-wrap gap-2 border-b border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2"
-      aria-label="Analytics sections"
+      aria-label="Inventory sections"
     >
       {TABS.map((t, idx) => (
         <button
@@ -209,10 +209,10 @@ export default function AnalyticsPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--gs-primary)]">
-              MUNDIKA ANALYTICS DESK
+              MUNDIKA INVENTORY DESK
             </p>
             <h1 className="mt-2 text-xl font-semibold text-[var(--gs-text)] md:text-2xl">
-              Stock, ledger, and performance insights
+              Stock, ledger, and performance at a glance
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-[var(--gs-text-secondary)]">
               Use tabs to monitor today&apos;s performance and inspect operational

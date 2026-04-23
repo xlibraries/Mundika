@@ -129,9 +129,9 @@ export function InventorySheet({
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--gs-border)] pb-2">
         <div>
-          <h2 className="text-sm font-medium text-[var(--gs-text)]">Inventory</h2>
+          <h2 className="text-sm font-medium text-[var(--gs-text)]">Stock levels</h2>
           <p className="text-[11px] text-[var(--gs-text-secondary)]">
-            Read-only view with local header filters. Use Inventory → Transactions
+            Read-only view with local header filters. Use Dashboard → Transactions
             (Purchase) to add stock.
           </p>
         </div>
@@ -408,7 +408,7 @@ export function InventorySheet({
         </table>
         {items.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-[var(--gs-text-secondary)]">
-            No items yet. Add stock via Inventory → Transactions (Purchase).
+            No items yet. Add stock via Dashboard → Transactions (Purchase).
           </p>
         ) : filteredItems.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-[var(--gs-text-secondary)]">
