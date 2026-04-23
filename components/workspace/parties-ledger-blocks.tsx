@@ -638,6 +638,191 @@ function LedgerEntryMobileCard({
   );
 }
 
+/** Ruled-row khata line: more fields than mobile cards, less box chrome. */
+function LedgerNotebookEntry({
+  row,
+  visual,
+  ledgerRowBusyId,
+  onDelete,
+  onPreview,
+  expandToggle,
+  billTotalById,
+  purchaseTotalById,
+}: {
+  row: LedgerEntryRow;
+  visual: LedgerRowVisual;
+  ledgerRowBusyId: string | null;
+  onDelete: (id: string) => void;
+  onPreview: (r: LedgerEntryRow) => void | Promise<void>;
+  expandToggle?: { expanded: boolean; onToggle: () => void; childCount: number };
+  billTotalById: Record<string, number>;
+  purchaseTotalById: Record<string, number>;
+}) {
+  const isChild = visual === "child";
+  const showPreviewButton =
+    !isChild &&
+    ((row.entry_type === "sale" && row.ref_bill_id) ||
+      (row.entry_type === "purchase" && row.ref_purchase_id) ||
+      row.entry_type === "payment");
+  const rowExpandable = Boolean(expandToggle && expandToggle.childCount > 0);
+  const isSaleOrPurchase =
+    row.entry_type === "sale" || row.entry_type === "purchase";
+  const showDashBalance = isSaleOrPurchase && row.balance_delta === 0;
+
+  let docLabel = "Document";
+  let docAmount: string = "—";
+  if (row.entry_type === "sale") {
+    docLabel = "Bill total";
+    const v = saleDisplayAmount(row, billTotalById);
+    docAmount = formatINR(v);
+  } else if (row.entry_type === "purchase") {
+    docLabel = "Purchase total";
+    const v = purchaseDisplayAmount(row, purchaseTotalById);
+    docAmount = formatINR(v);
+  } else if (row.entry_type === "payment") {
+    docLabel = "Paid";
+    docAmount = formatINR(paymentDisplayAmount(row));
+  }
+
+  const balanceLabel =
+    showDashBalance
+      ? "—"
+      : `${row.balance_delta >= 0 ? "+" : "-"}${formatINR(Math.abs(row.balance_delta))}`;
+
+  return (
+    <div
+      className={cn(
+        "py-2.5 text-sm",
+        isChild && "border-l-2 border-[var(--gs-primary)]/25 pl-2.5",
+        rowExpandable && "cursor-pointer hover:bg-[var(--gs-surface-plain)]/80"
+      )}
+      tabIndex={rowExpandable ? 0 : undefined}
+      aria-expanded={rowExpandable ? expandToggle!.expanded : undefined}
+      onClick={
+        rowExpandable
+          ? () => {
+              expandToggle!.onToggle();
+            }
+          : undefined
+      }
+      onKeyDown={
+        rowExpandable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                expandToggle!.onToggle();
+              }
+            }
+          : undefined
+      }
+    >
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px] text-[var(--gs-text-secondary)]">
+            {expandToggle && expandToggle.childCount > 0 ? (
+              <>
+                <span aria-hidden className="select-none text-[10px]">
+                  {expandToggle.expanded ? "▼" : "▶"}
+                </span>
+                <span>{row.entry_date}</span>
+                <span className="font-sans text-[10px] font-medium text-[var(--gs-text-secondary)]">
+                  {expandToggle.childCount} pymt
+                </span>
+              </>
+            ) : (
+              <span>{row.entry_date}</span>
+            )}
+            <span className="font-sans text-[11px] font-semibold capitalize text-[var(--gs-text)]">
+              {isChild ? "↳ payment" : row.entry_type}
+            </span>
+          </div>
+          {row.note ? (
+            <p className="mt-0.5 line-clamp-2 text-[11px] text-[var(--gs-text-secondary)]">
+              {row.note}
+            </p>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-0.5 text-right">
+          <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
+            Balance Δ
+          </span>
+          <span
+            className={cn(
+              "font-mono text-xs tabular-nums",
+              showDashBalance
+                ? "text-[var(--gs-text-secondary)]"
+                : row.balance_delta >= 0
+                  ? "text-[var(--gs-success)]"
+                  : "text-[var(--gs-text-secondary)]"
+            )}
+            title={
+              showDashBalance
+                ? "No change to running balance (cash or paid on bill)."
+                : undefined
+            }
+          >
+            {balanceLabel}
+          </span>
+        </div>
+      </div>
+      <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] sm:grid-cols-4">
+        <div>
+          <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
+            {docLabel}
+          </span>
+          <p className="font-mono text-[var(--gs-text)]">{docAmount}</p>
+        </div>
+        <div>
+          <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
+            Medium
+          </span>
+          <p className="truncate font-medium text-[var(--gs-text)]">
+            {row.entry_type === "payment"
+              ? paymentModeLabel(row.payment_mode)
+              : "—"}
+          </p>
+        </div>
+        <div className="min-w-0 sm:col-span-2">
+          <span className="text-[10px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
+            Txn ID / ref
+          </span>
+          <p className="truncate font-mono text-[var(--gs-text)]">
+            {row.entry_type === "payment"
+              ? row.payment_reference ?? "—"
+              : row.entry_type === "sale" && row.ref_bill_id
+                ? `Bill · ${row.ref_bill_id.slice(0, 8)}…`
+                : row.entry_type === "purchase" && row.ref_purchase_id
+                  ? `PO · ${row.ref_purchase_id.slice(0, 8)}…`
+                  : "—"}
+          </p>
+        </div>
+      </div>
+      <div
+        className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-dashed border-[var(--gs-border)]/60 pt-1.5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {showPreviewButton ? (
+          <button
+            type="button"
+            disabled={ledgerRowBusyId === row.id}
+            className="text-xs font-medium text-[var(--gs-primary)] hover:underline disabled:opacity-40"
+            onClick={() => void onPreview(row)}
+          >
+            {ledgerRowBusyId === row.id ? "…" : "Preview"}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
+          onClick={() => void onDelete(row.id)}
+        >
+          Remove
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ledgerEmptyMessage(rowsLen: number, filteredLen: number): ReactNode {
   if (rowsLen === 0) {
     return (
@@ -1158,19 +1343,21 @@ export function LedgerBlock({
   function renderNotebookGroup(g: LedgerDisplayGroup) {
     if (g.kind === "payment-only") {
       return (
-        <LedgerEntryMobileCard
+        <LedgerNotebookEntry
           key={g.payment.id}
           row={g.payment}
           visual="standalone"
           ledgerRowBusyId={ledgerRowBusyId}
           onDelete={onDelete}
           onPreview={openLedgerPreviewDoc}
+          billTotalById={billTotalById}
+          purchaseTotalById={purchaseTotalById}
         />
       );
     }
     return (
       <Fragment key={g.parent.id}>
-        <LedgerEntryMobileCard
+        <LedgerNotebookEntry
           row={g.parent}
           visual="parent"
           expandToggle={
@@ -1185,16 +1372,20 @@ export function LedgerBlock({
           ledgerRowBusyId={ledgerRowBusyId}
           onDelete={onDelete}
           onPreview={openLedgerPreviewDoc}
+          billTotalById={billTotalById}
+          purchaseTotalById={purchaseTotalById}
         />
         {isParentExpanded(g.parent.id, g.payments.length)
           ? g.payments.map((p) => (
-              <LedgerEntryMobileCard
+              <LedgerNotebookEntry
                 key={p.id}
                 row={p}
                 visual="child"
                 ledgerRowBusyId={ledgerRowBusyId}
                 onDelete={onDelete}
                 onPreview={openLedgerPreviewDoc}
+                billTotalById={billTotalById}
+                purchaseTotalById={purchaseTotalById}
               />
             ))
           : null}
@@ -1314,18 +1505,18 @@ export function LedgerBlock({
           No ledger entries yet.
         </p>
       ) : notebookMode && notebookPartition ? (
-        <div className="overflow-hidden rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-panel)] shadow-[0_12px_36px_-20px_rgba(58,42,31,0.35)]">
-          <div className="border-b border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-4 py-4">
-            <p className="text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gs-primary)]">
-              Khata notebook
+        <div className="overflow-hidden rounded-xl border border-[var(--gs-border)]/90 bg-[var(--gs-surface)]">
+          <div className="border-b border-[var(--gs-border)]/70 bg-[var(--gs-surface-plain)]/50 px-3 py-3 sm:px-4">
+            <p className="text-center text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--gs-text-secondary)]">
+              Khata
             </p>
-            <h3 className="mt-1 text-center text-xl font-semibold tracking-tight text-[var(--gs-text)]">
+            <h3 className="mt-0.5 text-center text-lg font-semibold tracking-tight text-[var(--gs-text)]">
               {selectedPartyName}
             </h3>
-            <p className="mt-1 text-center text-xs text-[var(--gs-text-secondary)]">
+            <p className="mt-0.5 text-center text-[11px] text-[var(--gs-text-secondary)]">
               {filterPeriodHint}
             </p>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-center sm:gap-3">
+            <div className="mt-2.5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-center sm:gap-2.5">
               <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:max-w-xs">
                 <label className="min-w-0 space-y-1">
                   <span className="text-[10px] text-[var(--gs-text-secondary)]">
@@ -1401,14 +1592,14 @@ export function LedgerBlock({
               </Button>
             </div>
           </div>
-          <div className="grid grid-cols-1 divide-y divide-[var(--gs-border)] bg-[var(--gs-surface)] lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-            <div className="min-h-[12rem] bg-[var(--gs-surface-plain)]/80 p-3 lg:min-h-[16rem]">
-              <p className="mb-2 text-center text-[11px] font-bold uppercase tracking-wide text-[var(--gs-text-secondary)]">
-                Expense · buys & payments out
+          <div className="grid grid-cols-1 bg-[var(--gs-surface)] lg:grid-cols-2 lg:divide-x lg:divide-[var(--gs-border)]/60">
+            <div className="min-h-[10rem] px-2 py-2 lg:min-h-[14rem] lg:px-3 lg:py-2.5">
+              <p className="mb-1.5 border-b border-[var(--gs-border)]/50 pb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gs-text-secondary)]">
+                Expense · buys & pay-out
               </p>
-              <div className="space-y-2">
+              <div className="divide-y divide-[var(--gs-border)]/45">
                 {notebookPartition.expense.length === 0 ? (
-                  <p className="py-8 text-center text-xs text-[var(--gs-text-secondary)]">
+                  <p className="py-6 text-center text-[11px] text-[var(--gs-text-secondary)]">
                     Nothing on this side for this filter.
                   </p>
                 ) : (
@@ -1416,13 +1607,13 @@ export function LedgerBlock({
                 )}
               </div>
             </div>
-            <div className="min-h-[12rem] p-3 lg:min-h-[16rem]">
-              <p className="mb-2 text-center text-[11px] font-bold uppercase tracking-wide text-[var(--gs-success)]">
-                Income · sales & money in
+            <div className="min-h-[10rem] border-t border-[var(--gs-border)]/50 px-2 py-2 lg:border-t-0 lg:min-h-[14rem] lg:px-3 lg:py-2.5">
+              <p className="mb-1.5 border-b border-[var(--gs-border)]/50 pb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gs-success)]">
+                Income · sales & receipts
               </p>
-              <div className="space-y-2">
+              <div className="divide-y divide-[var(--gs-border)]/45">
                 {notebookPartition.income.length === 0 ? (
-                  <p className="py-8 text-center text-xs text-[var(--gs-text-secondary)]">
+                  <p className="py-6 text-center text-[11px] text-[var(--gs-text-secondary)]">
                     Nothing on this side for this filter.
                   </p>
                 ) : (
@@ -1678,26 +1869,26 @@ export function LedgerBlock({
       )}
 
       {rows.length > 0 && notebookMode && notebookPartition ? (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
-              Total expense
+        <div className="grid grid-cols-1 divide-y divide-[var(--gs-border)]/60 rounded-lg border border-[var(--gs-border)]/70 bg-[var(--gs-surface-plain)]/40 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+          <div className="px-3 py-2.5 sm:px-4">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
+              Total expense · filter
             </p>
-            <p className="mt-0.5 text-[10px] text-[var(--gs-text-secondary)]">
+            <p className="text-[10px] text-[var(--gs-text-secondary)]">
               {filterPeriodHint}
             </p>
-            <p className="mt-1 font-mono text-sm text-[var(--gs-text)]">
+            <p className="mt-0.5 font-mono text-base tabular-nums text-[var(--gs-text)]">
               {formatINR(notebookExpenseTotal)}
             </p>
           </div>
-          <div className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
-              Total income
+          <div className="px-3 py-2.5 sm:px-4">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
+              Total income · filter
             </p>
-            <p className="mt-0.5 text-[10px] text-[var(--gs-text-secondary)]">
+            <p className="text-[10px] text-[var(--gs-text-secondary)]">
               {filterPeriodHint}
             </p>
-            <p className="mt-1 font-mono text-sm text-[var(--gs-text)]">
+            <p className="mt-0.5 font-mono text-base tabular-nums text-[var(--gs-text)]">
               {formatINR(notebookIncomeTotal)}
             </p>
           </div>
