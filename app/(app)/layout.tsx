@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { OnboardingGate } from "@/components/layout/onboarding-gate";
 import { SyncProvider } from "@/components/providers/sync-provider";
 import { AuthGuard } from "@/components/providers/auth-guard";
 
@@ -10,7 +11,9 @@ export default function AppLayout({
   return (
     <AuthGuard>
       <SyncProvider>
-        <AppShell>{children}</AppShell>
+        <AppShell>
+          <OnboardingGate>{children}</OnboardingGate>
+        </AppShell>
       </SyncProvider>
     </AuthGuard>
   );
