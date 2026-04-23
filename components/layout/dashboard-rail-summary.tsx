@@ -6,6 +6,7 @@ import { getLocalDateInputValue } from "@/lib/date/local-date";
 import { formatINR } from "@/lib/format/inr";
 import { useUserId } from "@/hooks/use-user-id";
 import { useAppStore } from "@/store/app-store";
+import { workspacePurchaseFlowEnabled } from "@/lib/features/workspace";
 
 export function DashboardRailSummary({ pathname }: { pathname: string }) {
   const isDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
@@ -28,7 +29,12 @@ export function DashboardRailSummary({ pathname }: { pathname: string }) {
         <Metric label="Sales" value={stats ? formatINR(stats.salesTotal) : "—"} />
         <Metric label="Cash" value={stats ? formatINR(stats.cashTotal) : "—"} />
         <Metric label="Credit" value={stats ? formatINR(stats.creditTotal) : "—"} />
-        <Metric label="Purchases" value={stats ? formatINR(stats.purchasesTotal) : "—"} />
+        {workspacePurchaseFlowEnabled ? (
+          <Metric
+            label="Purchases"
+            value={stats ? formatINR(stats.purchasesTotal) : "—"}
+          />
+        ) : null}
       {lastSyncAt ? (
         <p className="col-span-2 text-[10px] text-[var(--gs-text-secondary)]">
           Last sync: <span className="font-mono">{lastSyncAt.slice(11, 19)}</span>

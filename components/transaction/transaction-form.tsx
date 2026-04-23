@@ -43,6 +43,7 @@ import {
 } from "@/lib/billing/doc-preview";
 import { PrintableDocModal } from "@/components/billing/printable-doc-modal";
 import { useAppStore } from "@/store/app-store";
+import { workspacePurchaseFlowEnabled } from "@/lib/features/workspace";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,7 +96,11 @@ export function TransactionForm({
 }: TransactionFormProps) {
   const lastSyncAt = useAppStore((s) => s.lastSyncAt);
   // ---- mode ----------------------------------------------------------------
-  const [mode, setMode] = useState<"billing" | "purchase">(defaultMode);
+  const [mode, setMode] = useState<"billing" | "purchase">(() =>
+    workspacePurchaseFlowEnabled && defaultMode === "purchase"
+      ? "purchase"
+      : "billing"
+  );
 
   // ---- data ----------------------------------------------------------------
   const [parties, setParties] = useState<PartyRow[]>([]);
@@ -308,7 +313,7 @@ export function TransactionForm({
         setInv(n);
       });
       void loadBills();
-      void loadPurchases();
+      if (workspacePurchaseFlowEnabled) void loadPurchases();
     }, 0);
     return () => window.clearTimeout(t);
   }, [userId, lastSyncAt, loadBills, loadPurchases]);
@@ -346,6 +351,7 @@ export function TransactionForm({
 
   // ---- mode switch ---------------------------------------------------------
   function switchMode(next: "billing" | "purchase") {
+    if (!workspacePurchaseFlowEnabled && next === "purchase") return;
     if (next === mode) return;
     setMode(next);
     setPartyId("");
@@ -779,7 +785,7 @@ export function TransactionForm({
   const qtyPlaceholder = (unit?: string | null) =>
     unit ? `Qty (${unit})` : "Qty";
 
-  const modeTablist = (
+  const modeTablist = workspacePurchaseFlowEnabled ? (
     <div
       className={cn(
         "flex w-full overflow-hidden rounded-2xl border border-[var(--gs-border)] bg-[var(--gs-surface)] p-1 shadow-[inset_0_1px_0_rgba(255,248,238,0.72),0_10px_22px_-18px_rgba(58,42,31,0.55)]",
@@ -817,7 +823,7 @@ export function TransactionForm({
         Billing
       </button>
     </div>
-  );
+  ) : null;
 
   const modeHint = (
     <p className="text-right text-xs text-[var(--gs-text-secondary)]">
@@ -845,7 +851,9 @@ export function TransactionForm({
     >
       {embedded ? (
         <div className="shrink-0 border-b border-[var(--gs-grid)] bg-[var(--gs-surface)]">
-          <div className="w-full py-1.5">{modeTablist}</div>
+          {modeTablist ? (
+            <div className="w-full py-1.5">{modeTablist}</div>
+          ) : null}
           <div className="px-4 pb-2 pt-0.5 md:px-6">{modeHint}</div>
         </div>
       ) : null}

@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { InventorySheet } from "@/components/workspace/inventory-sheet";
 import { LedgerBlock, PartiesBlock } from "@/components/workspace/parties-ledger-blocks";
+import { workspacePurchaseFlowEnabled } from "@/lib/features/workspace";
 
 type TabId = "overview" | "stock" | "contacts" | "ledger";
 
@@ -336,10 +337,12 @@ export default function AnalyticsPage() {
                 ) : (
                   <div className="grid overflow-hidden rounded-2xl border border-[var(--gs-grid)] bg-[var(--gs-surface)] sm:grid-cols-2 lg:grid-cols-3">
                     <Stat label="Sales" value={formatINR(summary.totals.sales)} />
-                    <Stat
-                      label="Purchases"
-                      value={formatINR(summary.totals.purchases)}
-                    />
+                    {workspacePurchaseFlowEnabled ? (
+                      <Stat
+                        label="Purchases"
+                        value={formatINR(summary.totals.purchases)}
+                      />
+                    ) : null}
                     <Stat
                       label="Payments logged"
                       value={formatINR(summary.totals.paymentsLogged)}
@@ -352,17 +355,22 @@ export default function AnalyticsPage() {
                       label="Credit sales"
                       value={formatINR(summary.totals.creditSales)}
                     />
-                    <Stat
-                      label="Credit purchases"
-                      value={formatINR(summary.totals.creditPurchases)}
-                    />
+                    {workspacePurchaseFlowEnabled ? (
+                      <Stat
+                        label="Credit purchases"
+                        value={formatINR(summary.totals.creditPurchases)}
+                      />
+                    ) : null}
                   </div>
                 )}
 
                 {summary ? (
                   <p className="text-sm text-[var(--gs-text-secondary)]">
-                    {summary.totals.billsCount} bills, {summary.totals.purchasesCount} purchases
-                    , and {summary.totals.paymentsCount} settlement entries in the selected
+                    {summary.totals.billsCount} bills
+                    {workspacePurchaseFlowEnabled
+                      ? `, ${summary.totals.purchasesCount} purchases`
+                      : ""}{" "}
+                    and {summary.totals.paymentsCount} settlement entries in the selected
                     range.
                   </p>
                 ) : null}
@@ -407,7 +415,10 @@ export default function AnalyticsPage() {
                                 {row.partyName}
                               </p>
                               <p className="whitespace-nowrap font-mono text-xs text-[var(--gs-text-secondary)]">
-                                {formatINR(row.sales)} sale · {formatINR(row.purchases)} buy
+                                {formatINR(row.sales)} sale
+                                {workspacePurchaseFlowEnabled
+                                  ? ` · ${formatINR(row.purchases)} buy`
+                                  : ""}
                               </p>
                             </div>
                           ))}

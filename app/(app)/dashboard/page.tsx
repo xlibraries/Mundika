@@ -4,6 +4,7 @@ import { Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUserId } from "@/hooks/use-user-id";
 import { withBasePath } from "@/lib/auth/site-url";
+import { workspacePurchaseFlowEnabled } from "@/lib/features/workspace";
 import { TransactionForm } from "@/components/transaction/transaction-form";
 
 function DashboardSkeleton() {
@@ -21,7 +22,9 @@ function InventoryDashboardInner() {
 
   const searchParams = useSearchParams();
   const [txBootMode] = useState<"billing" | "purchase">(() =>
-    searchParams.get("tx") === "purchase" ? "purchase" : "billing"
+    workspacePurchaseFlowEnabled && searchParams.get("tx") === "purchase"
+      ? "purchase"
+      : "billing"
   );
 
   useEffect(() => {
@@ -53,7 +56,9 @@ function InventoryDashboardInner() {
       <section className="flex min-h-[min(70vh,740px)] flex-1 flex-col overflow-hidden rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-panel)] shadow-[0_18px_42px_-28px_rgba(58,42,31,0.34)]">
         <div className="border-b border-[var(--gs-border)] px-4 py-3 md:px-5">
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--gs-text-secondary)]">
-            Billing and purchase workspace
+            {workspacePurchaseFlowEnabled
+              ? "Billing and purchase workspace"
+              : "Billing workspace"}
           </p>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--gs-surface)] p-3 md:p-4">

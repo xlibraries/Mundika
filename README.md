@@ -1,6 +1,6 @@
 # Mundika
 
-Local-first inventory, billing, purchases, and ledger workflow built with Next.js
+Local-first inventory, billing, and ledger workflow built with Next.js
 and Supabase auth/sync.
 
 ## Getting started
