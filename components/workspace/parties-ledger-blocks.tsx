@@ -198,446 +198,6 @@ function sumNotebookGroups(
 
 type LedgerRowVisual = "parent" | "child" | "standalone";
 
-function LedgerEntryTr({
-  row,
-  visual,
-  ledgerRowBusyId,
-  onDelete,
-  onPreview,
-  expandToggle,
-}: {
-  row: LedgerEntryRow;
-  visual: LedgerRowVisual;
-  ledgerRowBusyId: string | null;
-  onDelete: (id: string) => void;
-  onPreview: (r: LedgerEntryRow) => void | Promise<void>;
-  expandToggle?: { expanded: boolean; onToggle: () => void; childCount: number };
-}) {
-  const isChild = visual === "child";
-  const showPreviewButton =
-    !isChild &&
-    ((row.entry_type === "sale" && row.ref_bill_id) ||
-      (row.entry_type === "purchase" && row.ref_purchase_id) ||
-      row.entry_type === "payment");
-  const rowExpandable = Boolean(expandToggle && expandToggle.childCount > 0);
-  const isSaleOrPurchase =
-    row.entry_type === "sale" || row.entry_type === "purchase";
-  const showDashBalance = isSaleOrPurchase && row.balance_delta === 0;
-
-  return (
-    <tr
-      className={
-        isChild
-          ? "hover:bg-[var(--gs-surface)] bg-[var(--gs-surface-plain)]/60"
-          : rowExpandable
-            ? "cursor-pointer hover:bg-[var(--gs-surface)]"
-            : "hover:bg-[var(--gs-surface)]"
-      }
-      tabIndex={rowExpandable ? 0 : undefined}
-      aria-expanded={rowExpandable ? expandToggle!.expanded : undefined}
-      onClick={
-        rowExpandable
-          ? () => {
-              expandToggle!.onToggle();
-            }
-          : undefined
-      }
-      onKeyDown={
-        rowExpandable
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                expandToggle!.onToggle();
-              }
-            }
-          : undefined
-      }
-    >
-      <td
-        className={`px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)] ${isChild ? "border-l-2 border-l-[var(--gs-primary)]/25 pl-5" : ""}`}
-      >
-        {isChild ? (
-          row.entry_date
-        ) : expandToggle && expandToggle.childCount > 0 ? (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-[10px] font-semibold text-[var(--gs-text-secondary)]" aria-hidden>
-              {expandToggle.expanded ? "▼" : "▶"}
-            </span>
-            <span>{row.entry_date}</span>
-            <span className="font-sans text-[10px] font-semibold text-[var(--gs-text-secondary)]">
-              ↳{expandToggle.childCount}
-            </span>
-          </div>
-        ) : (
-          row.entry_date
-        )}
-      </td>
-      <td
-        className={`px-3 py-2 text-[var(--gs-text)] ${isChild ? "text-[var(--gs-text-secondary)]" : "capitalize"}`}
-      >
-        {isChild ? "↳ Payment" : row.entry_type}
-      </td>
-      <td className={`px-3 py-2 text-[var(--gs-text)] ${isChild ? "text-[var(--gs-text-secondary)]" : ""}`}>
-        {row.party_name_snapshot ?? "—"}
-      </td>
-      <td className="px-3 py-2 text-[var(--gs-text-secondary)]">
-        {row.entry_type === "payment" ? paymentModeLabel(row.payment_mode) : "—"}
-      </td>
-      <td className="px-3 py-2 font-mono text-xs text-[var(--gs-text-secondary)]">
-        {row.entry_type === "payment" ? row.payment_reference ?? "—" : "—"}
-      </td>
-      <td
-        className={`px-3 py-2 text-right font-mono tabular-nums ${
-          showDashBalance
-            ? "text-[var(--gs-text-secondary)]"
-            : row.balance_delta >= 0
-              ? "text-[var(--gs-success)]"
-              : "text-[var(--gs-text-secondary)]"
-        }`}
-        title={
-          showDashBalance
-            ? "No change to running balance (cash or paid on bill)."
-            : undefined
-        }
-      >
-        {showDashBalance ? (
-          "—"
-        ) : (
-          <>
-            {row.balance_delta >= 0 ? "+" : "-"}
-            {formatINR(Math.abs(row.balance_delta))}
-          </>
-        )}
-      </td>
-      <td
-        className="px-2 py-2 text-center"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
-          {showPreviewButton ? (
-            <>
-              <button
-                type="button"
-                aria-label={
-                  row.entry_type === "payment"
-                    ? `Preview payment receipt for ${row.entry_date}`
-                    : row.entry_type === "sale"
-                      ? `Preview bill for ledger entry on ${row.entry_date}`
-                      : `Preview purchase for ledger entry on ${row.entry_date}`
-                }
-                disabled={ledgerRowBusyId === row.id}
-                className="text-xs font-medium text-[var(--gs-primary)] hover:underline disabled:opacity-40"
-                onClick={() => void onPreview(row)}
-              >
-                {ledgerRowBusyId === row.id ? "…" : "Preview"}
-              </button>
-              <span className="select-none text-[var(--gs-border)]" aria-hidden>
-                ·
-              </span>
-            </>
-          ) : null}
-          <button
-            type="button"
-            aria-label={`Remove ledger entry for ${row.party_name_snapshot ?? "contact"} on ${row.entry_date}`}
-            className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
-            onClick={() => void onDelete(row.id)}
-          >
-            Remove
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-function LedgerFiltersMobile({
-  localFilters,
-  onLocalFiltersChange,
-  parties,
-}: {
-  localFilters: {
-    fromDate: string;
-    toDate: string;
-    partyId: string;
-    entryType: "" | "sale" | "purchase" | "payment";
-  };
-  onLocalFiltersChange: (next: {
-    fromDate: string;
-    toDate: string;
-    partyId: string;
-    entryType: "" | "sale" | "purchase" | "payment";
-  }) => void;
-  parties: PartyRow[];
-}) {
-  const hasActiveFilters = Boolean(
-    localFilters.fromDate ||
-      localFilters.toDate ||
-      localFilters.partyId ||
-      localFilters.entryType
-  );
-
-  return (
-    <div className="space-y-2.5 rounded-xl border border-[var(--gs-border)] bg-[var(--gs-surface)] p-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--gs-text-secondary)]">
-        Filters
-      </p>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="min-w-0 space-y-1">
-          <span className="text-[10px] text-[var(--gs-text-secondary)]">From</span>
-          <Input
-            type="date"
-            value={localFilters.fromDate}
-            onChange={(e) =>
-              onLocalFiltersChange({
-                ...localFilters,
-                fromDate: e.target.value,
-              })
-            }
-            className="h-9 min-w-0 text-xs"
-          />
-        </label>
-        <label className="min-w-0 space-y-1">
-          <span className="text-[10px] text-[var(--gs-text-secondary)]">To</span>
-          <Input
-            type="date"
-            value={localFilters.toDate}
-            onChange={(e) =>
-              onLocalFiltersChange({
-                ...localFilters,
-                toDate: e.target.value,
-              })
-            }
-            className="h-9 min-w-0 text-xs"
-          />
-        </label>
-      </div>
-      <label className="block space-y-1">
-        <span className="text-[10px] text-[var(--gs-text-secondary)]">Entry type</span>
-        <Select
-          value={localFilters.entryType}
-          onChange={(e) =>
-            onLocalFiltersChange({
-              ...localFilters,
-              entryType: e.target.value as "" | "sale" | "purchase" | "payment",
-            })
-          }
-          className="h-9 text-xs"
-        >
-          <option value="">All</option>
-          <option value="sale">Sale</option>
-          <option value="purchase">Purchase</option>
-          <option value="payment">Payment</option>
-        </Select>
-      </label>
-      <label className="block space-y-1">
-        <span className="text-[10px] text-[var(--gs-text-secondary)]">Contact</span>
-        <Select
-          value={localFilters.partyId}
-          onChange={(e) =>
-            onLocalFiltersChange({
-              ...localFilters,
-              partyId: e.target.value,
-            })
-          }
-          className="h-9 text-xs"
-        >
-          <option value="">All contacts</option>
-          {parties.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </Select>
-      </label>
-      {hasActiveFilters ? (
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="w-full"
-          onClick={() =>
-            onLocalFiltersChange({
-              fromDate: "",
-              toDate: "",
-              partyId: "",
-              entryType: "",
-            })
-          }
-        >
-          Clear filters
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-function LedgerEntryMobileCard({
-  row,
-  visual,
-  ledgerRowBusyId,
-  onDelete,
-  onPreview,
-  expandToggle,
-}: {
-  row: LedgerEntryRow;
-  visual: LedgerRowVisual;
-  ledgerRowBusyId: string | null;
-  onDelete: (id: string) => void;
-  onPreview: (r: LedgerEntryRow) => void | Promise<void>;
-  expandToggle?: { expanded: boolean; onToggle: () => void; childCount: number };
-}) {
-  const isChild = visual === "child";
-  const showPreviewButton =
-    !isChild &&
-    ((row.entry_type === "sale" && row.ref_bill_id) ||
-      (row.entry_type === "purchase" && row.ref_purchase_id) ||
-      row.entry_type === "payment");
-  const rowExpandable = Boolean(expandToggle && expandToggle.childCount > 0);
-  const isSaleOrPurchase =
-    row.entry_type === "sale" || row.entry_type === "purchase";
-  const showDashBalance = isSaleOrPurchase && row.balance_delta === 0;
-
-  return (
-    <article
-      className={cn(
-        "rounded-xl border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] p-3 shadow-sm",
-        isChild && "ml-1.5 border-l-[3px] border-l-[var(--gs-primary)]/35 pl-3",
-        rowExpandable && "cursor-pointer transition-colors hover:bg-[var(--gs-surface)]"
-      )}
-      tabIndex={rowExpandable ? 0 : undefined}
-      aria-expanded={rowExpandable ? expandToggle!.expanded : undefined}
-      onClick={
-        rowExpandable
-          ? () => {
-              expandToggle!.onToggle();
-            }
-          : undefined
-      }
-      onKeyDown={
-        rowExpandable
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                expandToggle!.onToggle();
-              }
-            }
-          : undefined
-      }
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {isChild ? (
-            <p className="font-mono text-xs text-[var(--gs-text-secondary)]">
-              {row.entry_date}
-            </p>
-          ) : expandToggle && expandToggle.childCount > 0 ? (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span
-                className="text-[10px] font-semibold text-[var(--gs-text-secondary)]"
-                aria-hidden
-              >
-                {expandToggle.expanded ? "▼" : "▶"}
-              </span>
-              <span className="font-mono text-xs text-[var(--gs-text-secondary)]">
-                {row.entry_date}
-              </span>
-              <span className="font-sans text-[10px] font-semibold text-[var(--gs-text-secondary)]">
-                ↳{expandToggle.childCount} payment
-                {expandToggle.childCount === 1 ? "" : "s"}
-              </span>
-            </div>
-          ) : (
-            <p className="font-mono text-xs text-[var(--gs-text-secondary)]">
-              {row.entry_date}
-            </p>
-          )}
-          <p
-            className={cn(
-              "mt-1 text-sm font-medium capitalize",
-              isChild ? "text-[var(--gs-text-secondary)]" : "text-[var(--gs-text)]"
-            )}
-          >
-            {isChild ? "↳ Payment" : row.entry_type}
-          </p>
-        </div>
-        <div
-          className={cn(
-            "shrink-0 text-right font-mono text-sm tabular-nums",
-            showDashBalance
-              ? "text-[var(--gs-text-secondary)]"
-              : row.balance_delta >= 0
-                ? "text-[var(--gs-success)]"
-                : "text-[var(--gs-text-secondary)]"
-          )}
-          title={
-            showDashBalance
-              ? "No change to running balance (cash or paid on bill)."
-              : undefined
-          }
-        >
-          {showDashBalance ? (
-            "—"
-          ) : (
-            <>
-              {row.balance_delta >= 0 ? "+" : "-"}
-              {formatINR(Math.abs(row.balance_delta))}
-            </>
-          )}
-        </div>
-      </div>
-      <p className="mt-2 truncate text-sm text-[var(--gs-text)]">
-        {row.party_name_snapshot ?? "—"}
-      </p>
-      {row.entry_type === "payment" ? (
-        <dl className="mt-2 grid grid-cols-2 gap-2 text-xs">
-          <div>
-            <dt className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
-              Medium
-            </dt>
-            <dd className="mt-0.5 font-medium text-[var(--gs-text)]">
-              {paymentModeLabel(row.payment_mode)}
-            </dd>
-          </div>
-          <div className="min-w-0">
-            <dt className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
-              Txn ID
-            </dt>
-            <dd className="mt-0.5 truncate font-mono text-[var(--gs-text)]">
-              {row.payment_reference ?? "—"}
-            </dd>
-          </div>
-        </dl>
-      ) : null}
-      <div
-        className="mt-3 flex flex-wrap gap-2 border-t border-[var(--gs-border)]/70 pt-3"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {showPreviewButton ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            disabled={ledgerRowBusyId === row.id}
-            className="min-h-9 flex-1 sm:flex-none"
-            onClick={() => void onPreview(row)}
-          >
-            {ledgerRowBusyId === row.id ? "…" : "Preview"}
-          </Button>
-        ) : null}
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          className="min-h-9 flex-1 border-[var(--gs-border)] text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)] sm:flex-none"
-          onClick={() => void onDelete(row.id)}
-        >
-          Remove
-        </Button>
-      </div>
-    </article>
-  );
-}
-
 /** Ruled-row khata line: more fields than mobile cards, less box chrome. */
 function LedgerNotebookEntry({
   row,
@@ -648,6 +208,7 @@ function LedgerNotebookEntry({
   expandToggle,
   billTotalById,
   purchaseTotalById,
+  showParty,
 }: {
   row: LedgerEntryRow;
   visual: LedgerRowVisual;
@@ -657,6 +218,8 @@ function LedgerNotebookEntry({
   expandToggle?: { expanded: boolean; onToggle: () => void; childCount: number };
   billTotalById: Record<string, number>;
   purchaseTotalById: Record<string, number>;
+  /** When true, show contact name (all-contacts khata). */
+  showParty?: boolean;
 }) {
   const isChild = visual === "child";
   const showPreviewButton =
@@ -736,6 +299,11 @@ function LedgerNotebookEntry({
               {isChild ? "↳ payment" : row.entry_type}
             </span>
           </div>
+          {showParty && !isChild && row.party_name_snapshot ? (
+            <p className="mt-0.5 truncate text-[11px] font-medium text-[var(--gs-text)]">
+              {row.party_name_snapshot}
+            </p>
+          ) : null}
           {row.note ? (
             <p className="mt-0.5 line-clamp-2 text-[11px] text-[var(--gs-text-secondary)]">
               {row.note}
@@ -1251,71 +819,33 @@ export function LedgerBlock({
     }
   }
 
-  const filteredRows = rows.filter((r) => {
-    if (localFilters.fromDate && r.entry_date < localFilters.fromDate) return false;
-    if (localFilters.toDate && r.entry_date > localFilters.toDate) return false;
-    if (localFilters.partyId && r.party_id !== localFilters.partyId) return false;
-    if (localFilters.entryType && r.entry_type !== localFilters.entryType) return false;
-    return true;
-  });
-
-  /** Table filter wins; else Record payment contact — drives khata notebook. */
-  const notebookPartyId = localFilters.partyId || paymentPartyId;
-  const notebookMode = Boolean(notebookPartyId);
-
-  const notebookFilteredRows = useMemo(() => {
-    if (!notebookMode) return [];
+  /** Ledger rows after date / contact / entry-type filters (empty party = all contacts). */
+  const filteredRows = useMemo(() => {
     return rows.filter((r) => {
       if (localFilters.fromDate && r.entry_date < localFilters.fromDate) return false;
       if (localFilters.toDate && r.entry_date > localFilters.toDate) return false;
-      if (notebookPartyId && r.party_id !== notebookPartyId) return false;
+      if (localFilters.partyId && r.party_id !== localFilters.partyId) return false;
       if (localFilters.entryType && r.entry_type !== localFilters.entryType) return false;
       return true;
     });
-  }, [rows, notebookMode, notebookPartyId, localFilters]);
+  }, [rows, localFilters]);
 
-  const selectionSummary = useMemo(() => {
-    return filteredRows.reduce(
-      (acc, row) => {
-        const amountAbs = Math.abs(row.balance_delta);
-        if (row.entry_type === "sale") {
-          const inv =
-            row.ref_bill_id != null ? billTotalById[row.ref_bill_id] : undefined;
-          acc.totalSales += inv != null ? inv : amountAbs;
-        }
-        if (row.balance_delta > 0) acc.totalCredit += row.balance_delta;
-        if (row.entry_type === "payment") acc.totalPayments += amountAbs;
-        return acc;
-      },
-      { totalSales: 0, totalCredit: 0, totalPayments: 0 }
-    );
-  }, [filteredRows, billTotalById]);
+  const selectedPartyName = localFilters.partyId
+    ? (parties.find((p) => p.id === localFilters.partyId)?.name ?? "Contact")
+    : "All contacts";
 
-  const ledgerTableRows = useMemo(() => {
-    if (localFilters.entryType === "payment") {
-      return { mode: "flat" as const, rows: filteredRows };
-    }
-    return { mode: "grouped" as const, groups: buildLedgerDisplayGroups(filteredRows) };
-  }, [filteredRows, localFilters.entryType]);
+  const notebookGroups = useMemo(
+    () =>
+      ledgerGroupsForNotebookView(filteredRows, localFilters.entryType),
+    [filteredRows, localFilters.entryType]
+  );
 
-  const selectedPartyName =
-    parties.find((p) => p.id === notebookPartyId)?.name ?? "Contact";
-
-  const notebookGroups = useMemo(() => {
-    if (!notebookMode) return null;
-    return ledgerGroupsForNotebookView(
-      notebookFilteredRows,
-      localFilters.entryType
-    );
-  }, [notebookMode, notebookFilteredRows, localFilters.entryType]);
-
-  const notebookPartition = useMemo(() => {
-    if (!notebookGroups) return null;
-    return partitionNotebookGroups(notebookGroups, notebookFilteredRows);
-  }, [notebookGroups, notebookFilteredRows]);
+  const notebookPartition = useMemo(
+    () => partitionNotebookGroups(notebookGroups, filteredRows),
+    [notebookGroups, filteredRows]
+  );
 
   const notebookExpenseTotal = useMemo(() => {
-    if (!notebookPartition) return 0;
     return sumNotebookGroups(
       notebookPartition.expense,
       billTotalById,
@@ -1324,7 +854,6 @@ export function LedgerBlock({
   }, [notebookPartition, billTotalById, purchaseTotalById]);
 
   const notebookIncomeTotal = useMemo(() => {
-    if (!notebookPartition) return 0;
     return sumNotebookGroups(
       notebookPartition.income,
       billTotalById,
@@ -1340,6 +869,8 @@ export function LedgerBlock({
     return "All dates in view";
   }, [localFilters.fromDate, localFilters.toDate]);
 
+  const showPartyOnNotebookLine = !localFilters.partyId;
+
   function renderNotebookGroup(g: LedgerDisplayGroup) {
     if (g.kind === "payment-only") {
       return (
@@ -1352,6 +883,7 @@ export function LedgerBlock({
           onPreview={openLedgerPreviewDoc}
           billTotalById={billTotalById}
           purchaseTotalById={purchaseTotalById}
+          showParty={showPartyOnNotebookLine}
         />
       );
     }
@@ -1374,6 +906,7 @@ export function LedgerBlock({
           onPreview={openLedgerPreviewDoc}
           billTotalById={billTotalById}
           purchaseTotalById={purchaseTotalById}
+          showParty={showPartyOnNotebookLine}
         />
         {isParentExpanded(g.parent.id, g.payments.length)
           ? g.payments.map((p) => (
@@ -1386,6 +919,7 @@ export function LedgerBlock({
                 onPreview={openLedgerPreviewDoc}
                 billTotalById={billTotalById}
                 purchaseTotalById={purchaseTotalById}
+                showParty={showPartyOnNotebookLine}
               />
             ))
           : null}
@@ -1504,7 +1038,7 @@ export function LedgerBlock({
         <p className="rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-4 py-8 text-center text-sm text-[var(--gs-text-secondary)]">
           No ledger entries yet.
         </p>
-      ) : notebookMode && notebookPartition ? (
+      ) : (
         <div className="overflow-hidden rounded-xl border border-[var(--gs-border)]/90 bg-[var(--gs-surface)]">
           <div className="border-b border-[var(--gs-border)]/70 bg-[var(--gs-surface-plain)]/50 px-3 py-3 sm:px-4">
             <p className="text-center text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--gs-text-secondary)]">
@@ -1575,122 +1109,10 @@ export function LedgerBlock({
                   <option value="payment">Payment</option>
                 </Select>
               </label>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="w-full sm:w-auto"
-                onClick={() => {
-                  onLocalFiltersChange({
-                    ...localFilters,
-                    partyId: "",
-                  });
-                  setPaymentPartyId("");
-                }}
-              >
-                All contacts
-              </Button>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 bg-[var(--gs-surface)] lg:grid-cols-2 lg:divide-x lg:divide-[var(--gs-border)]/60">
-            <div className="min-h-[10rem] px-2 py-2 lg:min-h-[14rem] lg:px-3 lg:py-2.5">
-              <p className="mb-1.5 border-b border-[var(--gs-border)]/50 pb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gs-text-secondary)]">
-                Expense · buys & pay-out
-              </p>
-              <div className="divide-y divide-[var(--gs-border)]/45">
-                {notebookPartition.expense.length === 0 ? (
-                  <p className="py-6 text-center text-[11px] text-[var(--gs-text-secondary)]">
-                    Nothing on this side for this filter.
-                  </p>
-                ) : (
-                  notebookPartition.expense.map((g) => renderNotebookGroup(g))
-                )}
-              </div>
-            </div>
-            <div className="min-h-[10rem] border-t border-[var(--gs-border)]/50 px-2 py-2 lg:border-t-0 lg:min-h-[14rem] lg:px-3 lg:py-2.5">
-              <p className="mb-1.5 border-b border-[var(--gs-border)]/50 pb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gs-success)]">
-                Income · sales & receipts
-              </p>
-              <div className="divide-y divide-[var(--gs-border)]/45">
-                {notebookPartition.income.length === 0 ? (
-                  <p className="py-6 text-center text-[11px] text-[var(--gs-text-secondary)]">
-                    Nothing on this side for this filter.
-                  </p>
-                ) : (
-                  notebookPartition.income.map((g) => renderNotebookGroup(g))
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <p className="text-[11px] leading-relaxed text-[var(--gs-text-secondary)]">
-            Pick a contact under <span className="font-medium">Record payment</span>{" "}
-            or set <span className="font-medium">Contact</span> in the filters
-            below to open the split khata. Use{" "}
-            <span className="font-medium">All contacts</span> in the notebook to
-            come back here.
-          </p>
-          <div className="hidden overflow-x-auto rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] md:block">
-            <table className="w-full min-w-[720px] text-left text-sm lg:min-w-[860px]">
-          <thead>
-            <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
-              <th className="px-3 py-2">Date</th>
-              <th className="px-3 py-2">Type</th>
-              <th className="px-3 py-2">Contact</th>
-              <th className="px-3 py-2">Medium</th>
-              <th className="px-3 py-2">Transaction ID</th>
-              <th className="px-3 py-2 text-right" title="Amount added to or removed from the party's outstanding balance">Balance change (₹)</th>
-              <th className="min-w-[148px] px-2 py-2 text-center text-[11px] font-medium uppercase tracking-wide">
-                Actions
-              </th>
-            </tr>
-            <tr className="border-b border-[var(--gs-grid)] bg-[var(--gs-surface)]/70 text-[11px] text-[var(--gs-text-secondary)]">
-              <th className="px-3 py-1.5">
-                <div className="grid grid-cols-2 gap-1">
-                  <Input
-                    type="date"
-                    value={localFilters.fromDate}
-                    onChange={(e) =>
-                      onLocalFiltersChange({
-                        ...localFilters,
-                        fromDate: e.target.value,
-                      })
-                    }
-                    className="h-7 text-xs"
-                  />
-                  <Input
-                    type="date"
-                    value={localFilters.toDate}
-                    onChange={(e) =>
-                      onLocalFiltersChange({
-                        ...localFilters,
-                        toDate: e.target.value,
-                      })
-                    }
-                    className="h-7 text-xs"
-                  />
-                </div>
-              </th>
-              <th className="px-3 py-1.5">
-                <Select
-                  value={localFilters.entryType}
-                  onChange={(e) =>
-                    onLocalFiltersChange({
-                      ...localFilters,
-                      entryType: e.target.value as "" | "sale" | "purchase" | "payment",
-                    })
-                  }
-                  className="h-7 text-xs"
-                >
-                  <option value="">All</option>
-                  <option value="sale">Sale</option>
-                  <option value="purchase">Purchase</option>
-                  <option value="payment">Payment</option>
-                </Select>
-              </th>
-              <th className="px-3 py-1.5">
+              <label className="w-full min-w-0 space-y-1 sm:min-w-[12rem]">
+                <span className="text-[10px] text-[var(--gs-text-secondary)]">
+                  Contact
+                </span>
                 <Select
                   value={localFilters.partyId}
                   onChange={(e) =>
@@ -1699,7 +1121,7 @@ export function LedgerBlock({
                       partyId: e.target.value,
                     })
                   }
-                  className="h-7 text-xs"
+                  className="h-9 text-xs"
                 >
                   <option value="">All contacts</option>
                   {parties.map((p) => (
@@ -1708,167 +1130,70 @@ export function LedgerBlock({
                     </option>
                   ))}
                 </Select>
-              </th>
-              <th className="px-3 py-1.5" />
-              <th className="px-3 py-1.5" />
-              <th className="px-3 py-1.5 text-right" />
-              <th className="px-3 py-1.5 text-center">
-                {localFilters.fromDate ||
-                localFilters.toDate ||
-                localFilters.partyId ||
-                localFilters.entryType ? (
-                  <button
-                    type="button"
-                    className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-text)]"
-                    onClick={() =>
-                      onLocalFiltersChange({
-                        fromDate: "",
-                        toDate: "",
-                        partyId: "",
-                        entryType: "",
-                      })
-                    }
-                  >
-                    Clear
-                  </button>
-                ) : null}
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--gs-grid)]">
-            {ledgerTableRows.mode === "flat"
-              ? ledgerTableRows.rows.map((r) => (
-                  <LedgerEntryTr
-                    key={r.id}
-                    row={r}
-                    visual="standalone"
-                    ledgerRowBusyId={ledgerRowBusyId}
-                    onDelete={onDelete}
-                    onPreview={openLedgerPreviewDoc}
-                  />
-                ))
-              : ledgerTableRows.groups.map((g) =>
-                  g.kind === "payment-only" ? (
-                    <LedgerEntryTr
-                      key={g.payment.id}
-                      row={g.payment}
-                      visual="standalone"
-                      ledgerRowBusyId={ledgerRowBusyId}
-                      onDelete={onDelete}
-                      onPreview={openLedgerPreviewDoc}
-                    />
-                  ) : (
-                    <Fragment key={g.parent.id}>
-                      <LedgerEntryTr
-                        row={g.parent}
-                        visual="parent"
-                        expandToggle={
-                          g.payments.length > 0
-                            ? {
-                                expanded: isParentExpanded(g.parent.id, g.payments.length),
-                                onToggle: () => toggleParentExpand(g.parent.id),
-                                childCount: g.payments.length,
-                              }
-                            : undefined
-                        }
-                        ledgerRowBusyId={ledgerRowBusyId}
-                        onDelete={onDelete}
-                        onPreview={openLedgerPreviewDoc}
-                      />
-                      {isParentExpanded(g.parent.id, g.payments.length)
-                        ? g.payments.map((p) => (
-                            <LedgerEntryTr
-                              key={p.id}
-                              row={p}
-                              visual="child"
-                              ledgerRowBusyId={ledgerRowBusyId}
-                              onDelete={onDelete}
-                              onPreview={openLedgerPreviewDoc}
-                            />
-                          ))
-                        : null}
-                    </Fragment>
-                  )
-                )}
-          </tbody>
-        </table>
-        {ledgerEmptyMessage(rows.length, filteredRows.length)}
-      </div>
-
-      <div className="space-y-2 rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] p-2 md:hidden">
-        <LedgerFiltersMobile
-          localFilters={localFilters}
-          onLocalFiltersChange={onLocalFiltersChange}
-          parties={parties}
-        />
-        {rows.length === 0 || filteredRows.length === 0 ? (
-          ledgerEmptyMessage(rows.length, filteredRows.length)
-        ) : (
-          <div className="space-y-2">
-            {ledgerTableRows.mode === "flat"
-              ? ledgerTableRows.rows.map((r) => (
-                  <LedgerEntryMobileCard
-                    key={r.id}
-                    row={r}
-                    visual="standalone"
-                    ledgerRowBusyId={ledgerRowBusyId}
-                    onDelete={onDelete}
-                    onPreview={openLedgerPreviewDoc}
-                  />
-                ))
-              : ledgerTableRows.groups.map((g) =>
-                  g.kind === "payment-only" ? (
-                    <LedgerEntryMobileCard
-                      key={g.payment.id}
-                      row={g.payment}
-                      visual="standalone"
-                      ledgerRowBusyId={ledgerRowBusyId}
-                      onDelete={onDelete}
-                      onPreview={openLedgerPreviewDoc}
-                    />
-                  ) : (
-                    <Fragment key={g.parent.id}>
-                      <LedgerEntryMobileCard
-                        row={g.parent}
-                        visual="parent"
-                        expandToggle={
-                          g.payments.length > 0
-                            ? {
-                                expanded: isParentExpanded(
-                                  g.parent.id,
-                                  g.payments.length
-                                ),
-                                onToggle: () => toggleParentExpand(g.parent.id),
-                                childCount: g.payments.length,
-                              }
-                            : undefined
-                        }
-                        ledgerRowBusyId={ledgerRowBusyId}
-                        onDelete={onDelete}
-                        onPreview={openLedgerPreviewDoc}
-                      />
-                      {isParentExpanded(g.parent.id, g.payments.length)
-                        ? g.payments.map((p) => (
-                            <LedgerEntryMobileCard
-                              key={p.id}
-                              row={p}
-                              visual="child"
-                              ledgerRowBusyId={ledgerRowBusyId}
-                              onDelete={onDelete}
-                              onPreview={openLedgerPreviewDoc}
-                            />
-                          ))
-                        : null}
-                    </Fragment>
-                  )
-                )}
+              </label>
+              {localFilters.fromDate ||
+              localFilters.toDate ||
+              localFilters.partyId ||
+              localFilters.entryType ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  onClick={() =>
+                    onLocalFiltersChange({
+                      fromDate: "",
+                      toDate: "",
+                      partyId: "",
+                      entryType: "",
+                    })
+                  }
+                >
+                  Clear filters
+                </Button>
+              ) : null}
+            </div>
           </div>
-        )}
-      </div>
+          {filteredRows.length === 0 ? (
+            <div className="bg-[var(--gs-surface)] px-3 py-6 sm:px-4">
+              {ledgerEmptyMessage(rows.length, filteredRows.length)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 bg-[var(--gs-surface)] lg:grid-cols-2 lg:divide-x lg:divide-[var(--gs-border)]/60">
+              <div className="min-h-[10rem] px-2 py-2 lg:min-h-[14rem] lg:px-3 lg:py-2.5">
+                <p className="mb-1.5 border-b border-[var(--gs-border)]/50 pb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gs-text-secondary)]">
+                  Expense · buys & pay-out
+                </p>
+                <div className="divide-y divide-[var(--gs-border)]/45">
+                  {notebookPartition.expense.length === 0 ? (
+                    <p className="py-6 text-center text-[11px] text-[var(--gs-text-secondary)]">
+                      Nothing on this side for this filter.
+                    </p>
+                  ) : (
+                    notebookPartition.expense.map((g) => renderNotebookGroup(g))
+                  )}
+                </div>
+              </div>
+              <div className="min-h-[10rem] border-t border-[var(--gs-border)]/50 px-2 py-2 lg:border-t-0 lg:min-h-[14rem] lg:px-3 lg:py-2.5">
+                <p className="mb-1.5 border-b border-[var(--gs-border)]/50 pb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gs-success)]">
+                  Income · sales & receipts
+                </p>
+                <div className="divide-y divide-[var(--gs-border)]/45">
+                  {notebookPartition.income.length === 0 ? (
+                    <p className="py-6 text-center text-[11px] text-[var(--gs-text-secondary)]">
+                      Nothing on this side for this filter.
+                    </p>
+                  ) : (
+                    notebookPartition.income.map((g) => renderNotebookGroup(g))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {rows.length > 0 && notebookMode && notebookPartition ? (
+      {rows.length > 0 ? (
         <div className="grid grid-cols-1 divide-y divide-[var(--gs-border)]/60 rounded-lg border border-[var(--gs-border)]/70 bg-[var(--gs-surface-plain)]/40 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
           <div className="px-3 py-2.5 sm:px-4">
             <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
@@ -1890,33 +1215,6 @@ export function LedgerBlock({
             </p>
             <p className="mt-0.5 font-mono text-base tabular-nums text-[var(--gs-text)]">
               {formatINR(notebookIncomeTotal)}
-            </p>
-          </div>
-        </div>
-      ) : !notebookMode && filteredRows.length > 0 ? (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <div className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
-              Total sales
-            </p>
-            <p className="mt-1 font-mono text-sm text-[var(--gs-text)]">
-              {formatINR(selectionSummary.totalSales)}
-            </p>
-          </div>
-          <div className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
-              Total credit
-            </p>
-            <p className="mt-1 font-mono text-sm text-[var(--gs-text)]">
-              {formatINR(selectionSummary.totalCredit)}
-            </p>
-          </div>
-          <div className="rounded-lg border border-[var(--gs-border)] bg-[var(--gs-surface)] px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-[var(--gs-text-secondary)]">
-              Total payment
-            </p>
-            <p className="mt-1 font-mono text-sm text-[var(--gs-text)]">
-              {formatINR(selectionSummary.totalPayments)}
             </p>
           </div>
         </div>
