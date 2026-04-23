@@ -169,23 +169,74 @@ function ledgerSignedTotalMeta(
   return { text: formatINR(value), isNegative: value < 0 };
 }
 
+/** Outstanding on a bill: bill total minus payments that carry `ref_bill_id`. */
+function computePendingByBillId(
+  ledgerRows: LedgerEntryRow[],
+  billTotalById: Record<string, number>
+): Record<string, number> {
+  const paidByBill = new Map<string, number>();
+  for (const r of ledgerRows) {
+    if (r.entry_type === "payment" && r.ref_bill_id) {
+      const id = r.ref_bill_id;
+      paidByBill.set(id, (paidByBill.get(id) ?? 0) + paymentDisplayAmount(r));
+    }
+  }
+  const out: Record<string, number> = {};
+  for (const id of Object.keys(billTotalById)) {
+    const total = billTotalById[id] ?? 0;
+    const paid = paidByBill.get(id) ?? 0;
+    out[id] = Math.max(0, Math.round((total - paid) * 100) / 100);
+  }
+  return out;
+}
+
+function computePendingByPurchaseId(
+  ledgerRows: LedgerEntryRow[],
+  purchaseTotalById: Record<string, number>
+): Record<string, number> {
+  const paidByPurchase = new Map<string, number>();
+  for (const r of ledgerRows) {
+    if (r.entry_type === "payment" && r.ref_purchase_id) {
+      const id = r.ref_purchase_id;
+      paidByPurchase.set(
+        id,
+        (paidByPurchase.get(id) ?? 0) + paymentDisplayAmount(r)
+      );
+    }
+  }
+  const out: Record<string, number> = {};
+  for (const id of Object.keys(purchaseTotalById)) {
+    const total = purchaseTotalById[id] ?? 0;
+    const paid = paidByPurchase.get(id) ?? 0;
+    out[id] = Math.max(0, Math.round((total - paid) * 100) / 100);
+  }
+  return out;
+}
+
 function ledgerEntryStatusLabel(
   row: LedgerEntryRow,
   billTypeById: Record<string, BillType>,
-  purchasePaymentTypeById: Record<string, PurchasePaymentType>
+  purchasePaymentTypeById: Record<string, PurchasePaymentType>,
+  pendingByBillId: Record<string, number>,
+  pendingByPurchaseId: Record<string, number>
 ): string {
   if (row.entry_type === "payment") {
     return "Paid";
   }
   if (row.entry_type === "sale" && row.ref_bill_id) {
     const t = billTypeById[row.ref_bill_id];
-    return t === "credit" ? "Pending" : "Paid";
+    if (t !== "credit") return "Paid";
+    const pending = pendingByBillId[row.ref_bill_id] ?? 0;
+    return pending > 0 ? `Pending amt · ${formatINR(pending)}` : "Paid";
   }
   if (row.entry_type === "purchase" && row.ref_purchase_id) {
     const t = purchasePaymentTypeById[row.ref_purchase_id];
-    return t === "credit" ? "Pending" : "Paid";
+    if (t !== "credit") return "Paid";
+    const pending = pendingByPurchaseId[row.ref_purchase_id] ?? 0;
+    return pending > 0 ? `Pending amt · ${formatINR(pending)}` : "Paid";
   }
-  return row.balance_delta === 0 ? "Paid" : "Pending";
+  if (row.balance_delta === 0) return "Paid";
+  return `Pending amt · ${formatINR(Math.abs(row.balance_delta))}`;
 }
 
 type DocLineSummary = { productLabel: string; totalQty: number };
@@ -333,6 +384,8 @@ function LedgerNotebookEntry({
   purchaseLineSummaryById,
   billTypeById,
   purchasePaymentTypeById,
+  pendingByBillId,
+  pendingByPurchaseId,
   showParty,
 }: {
   row: LedgerEntryRow;
@@ -349,6 +402,8 @@ function LedgerNotebookEntry({
   purchaseLineSummaryById: Record<string, DocLineSummary>;
   billTypeById: Record<string, BillType>;
   purchasePaymentTypeById: Record<string, PurchasePaymentType>;
+  pendingByBillId: Record<string, number>;
+  pendingByPurchaseId: Record<string, number>;
   /** When true, show contact name (all-contacts khata). */
   showParty?: boolean;
 }) {
@@ -373,7 +428,9 @@ function LedgerNotebookEntry({
   const statusLabel = ledgerEntryStatusLabel(
     row,
     billTypeById,
-    purchasePaymentTypeById
+    purchasePaymentTypeById,
+    pendingByBillId,
+    pendingByPurchaseId
   );
 
   const docSummary =
@@ -469,14 +526,14 @@ function LedgerNotebookEntry({
               {qtyLine}
             </p>
           </div>
-          <div className="min-w-[4.25rem]">
+          <div className="min-w-0 max-w-[11rem] shrink-0 text-right">
             <span
               className="select-none text-[10px] font-medium uppercase tracking-[0.12em] text-transparent"
               aria-hidden
             >
               ·
             </span>
-            <p className="mt-0.5 text-[12px] font-medium text-[var(--gs-text)]">
+            <p className="mt-0.5 text-[11px] font-medium leading-snug text-[var(--gs-text)]">
               {statusLabel}
             </p>
           </div>
@@ -1222,6 +1279,15 @@ export function LedgerBlock({
     });
   }, [rows, localFilters]);
 
+  const pendingByBillId = useMemo(
+    () => computePendingByBillId(rows, billTotalById),
+    [rows, billTotalById]
+  );
+  const pendingByPurchaseId = useMemo(
+    () => computePendingByPurchaseId(rows, purchaseTotalById),
+    [rows, purchaseTotalById]
+  );
+
   const selectedPartyName = localFilters.partyId
     ? (parties.find((p) => p.id === localFilters.partyId)?.name ?? "Contact")
     : "All contacts";
@@ -1279,6 +1345,8 @@ export function LedgerBlock({
           purchaseLineSummaryById={purchaseLineSummaryById}
           billTypeById={billTypeById}
           purchasePaymentTypeById={purchasePaymentTypeById}
+          pendingByBillId={pendingByBillId}
+          pendingByPurchaseId={pendingByPurchaseId}
           showParty={showPartyOnNotebookLine}
         />
       );
@@ -1307,6 +1375,8 @@ export function LedgerBlock({
           purchaseLineSummaryById={purchaseLineSummaryById}
           billTypeById={billTypeById}
           purchasePaymentTypeById={purchasePaymentTypeById}
+          pendingByBillId={pendingByBillId}
+          pendingByPurchaseId={pendingByPurchaseId}
           showParty={showPartyOnNotebookLine}
         />
         {isParentExpanded(g.parent.id, g.payments.length)
@@ -1324,6 +1394,8 @@ export function LedgerBlock({
                 purchaseLineSummaryById={purchaseLineSummaryById}
                 billTypeById={billTypeById}
                 purchasePaymentTypeById={purchasePaymentTypeById}
+                pendingByBillId={pendingByBillId}
+                pendingByPurchaseId={pendingByPurchaseId}
                 showParty={showPartyOnNotebookLine}
               />
             ))
