@@ -29,6 +29,12 @@ import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { useAppStore } from "@/store/app-store";
+import {
+  WORKSPACE_INSET_EXPANDED,
+  WORKSPACE_PANEL,
+  WORKSPACE_PANEL_HEADER,
+  workspaceEntryShell,
+} from "@/components/workspace/workspace-shell";
 
 const PAYMENT_MODE_OPTIONS: Array<{ value: PaymentMode; label: string }> = [
   { value: "cash", label: "Cash" },
@@ -836,6 +842,16 @@ export function PartiesBlock({
   const [editPhone, setEditPhone] = useState("");
   const [nameFilter, setNameFilter] = useState("");
 
+  const filteredParties = useMemo(
+    () =>
+      rows.filter((p) =>
+        nameFilter.trim()
+          ? p.name.toLowerCase().includes(nameFilter.trim().toLowerCase())
+          : true
+      ),
+    [rows, nameFilter]
+  );
+
   const load = useCallback(async () => {
     const list = await db.parties.where("user_id").equals(userId).toArray();
     list.sort((a, b) => a.name.localeCompare(b.name));
@@ -901,152 +917,173 @@ export function PartiesBlock({
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-[var(--gs-text)]">Contacts</h2>
-      <form
-        onSubmit={onAdd}
-        className="flex flex-col gap-2 rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface)] p-3 sm:flex-row sm:items-end"
-      >
-        <label className="min-w-0 flex-1 space-y-1">
-          <span className="text-[11px] text-[var(--gs-text-secondary)]">Name</span>
-          <Input
-            value={name}
-            onChange={(e) => { setName(e.target.value); if (addError) setAddError(null); }}
-            placeholder="Contact name"
-          />
-        </label>
-        <label className="min-w-0 flex-1 space-y-1 sm:max-w-[200px]">
-          <span className="text-[11px] text-[var(--gs-text-secondary)]">Phone</span>
-          <Input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Optional"
-          />
-        </label>
-        <Button type="submit" size="sm" disabled={isAdding}>
-          {isAdding ? "Adding…" : "Add Contact"}
-        </Button>
-      </form>
-      {addError ? (
-        <p role="alert" aria-live="polite" className="rounded border border-[var(--gs-danger)]/30 bg-[var(--gs-danger-soft)] px-3 py-2 text-sm text-[var(--gs-danger)]">
-          {addError}
-        </p>
-      ) : null}
-      <div className="overflow-hidden rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)]">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-[var(--gs-border)] bg-[var(--gs-surface)] text-[11px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
-              <th className="px-3 py-2">Name</th>
-              <th className="px-3 py-2 text-right">Phone</th>
-              <th className="w-36 px-3 py-2 text-center"> </th>
-            </tr>
-            <tr className="border-b border-[var(--gs-grid)] bg-[var(--gs-surface)]/70">
-              <th className="px-3 py-1.5">
-                <Input
-                  value={nameFilter}
-                  onChange={(e) => setNameFilter(e.target.value)}
-                  placeholder="Filter by name"
-                  className="h-7 text-xs"
-                />
-              </th>
-              <th className="px-3 py-1.5" />
-              <th className="px-3 py-1.5 text-center">
-                {nameFilter ? (
-                  <button
-                    type="button"
-                    className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-text)]"
-                    onClick={() => setNameFilter("")}
-                  >
-                    Clear
-                  </button>
-                ) : null}
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--gs-grid)]">
-            {rows
-              .filter((p) =>
-                nameFilter.trim()
-                  ? p.name.toLowerCase().includes(nameFilter.trim().toLowerCase())
-                  : true
-              )
-              .map((p) =>
-              editingId === p.id ? (
-                <tr key={p.id} className="bg-[var(--gs-selection)]">
-                  <td className="px-2 py-1.5">
-                    <Input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      className="h-7 text-sm"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") void saveEdit(p.id);
-                        if (e.key === "Escape") setEditingId(null);
-                      }}
-                    />
-                  </td>
-                  <td className="px-2 py-1.5">
-                    <Input
-                      value={editPhone}
-                      onChange={(e) => setEditPhone(e.target.value)}
-                      placeholder="Phone"
-                      className="h-7 text-sm"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") void saveEdit(p.id);
-                        if (e.key === "Escape") setEditingId(null);
-                      }}
-                    />
-                  </td>
-                  <td className="px-2 py-1.5 text-center">
-                    <div className="flex justify-center gap-2">
-                      <button type="button" onClick={() => void saveEdit(p.id)} className="text-xs font-medium text-[var(--gs-primary)] hover:underline">Save</button>
-                      <button type="button" onClick={() => setEditingId(null)} className="text-xs text-[var(--gs-text-secondary)] hover:underline">Cancel</button>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                <tr key={p.id} className="hover:bg-[var(--gs-surface)]">
-                  <td className="px-3 py-2 font-medium text-[var(--gs-text)]">{p.name}</td>
-                  <td className="px-3 py-2 text-right text-[var(--gs-text-secondary)]">
-                    {p.phone ?? "—"}
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    <div className="flex justify-center gap-3">
-                      <button
-                        type="button"
-                        aria-label={`Edit contact ${p.name}`}
-                        className="text-xs text-[var(--gs-primary)] hover:underline"
-                        onClick={() => startEdit(p)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={`Remove contact ${p.name}`}
-                        className="text-xs text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
-                        onClick={() => void onDelete(p.id)}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )
-            )}
-          </tbody>
-        </table>
-        {rows.length === 0 ? (
-          <p className="px-3 py-6 text-center text-sm text-[var(--gs-text-secondary)]">
-            No contacts yet.
+      <div className={WORKSPACE_PANEL}>
+        <div className={WORKSPACE_PANEL_HEADER}>
+          <p className="text-center text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--gs-text-secondary)]">
+            Directory
           </p>
-        ) : rows.filter((p) =>
-            nameFilter.trim()
-              ? p.name.toLowerCase().includes(nameFilter.trim().toLowerCase())
-              : true
-          ).length === 0 ? (
-          <p className="px-3 py-6 text-center text-sm text-[var(--gs-text-secondary)]">
-            No contacts match this header filter.
+          <h3 className="mt-0.5 text-center text-lg font-semibold tracking-tight text-[var(--gs-text)]">
+            Contacts
+          </h3>
+          <p className="mt-0.5 text-center text-[11px] text-[var(--gs-text-secondary)]">
+            Add names and phone numbers for bills and ledger.
           </p>
-        ) : null}
+          <form
+            onSubmit={onAdd}
+            className="mx-auto mt-3 flex w-full max-w-3xl flex-col gap-2 sm:flex-row sm:items-end sm:justify-center sm:gap-3"
+          >
+            <label className="min-w-0 flex-1 space-y-1">
+              <span className="text-[10px] text-[var(--gs-text-secondary)]">Name</span>
+              <Input
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (addError) setAddError(null);
+                }}
+                placeholder="Contact name"
+                className="h-9 text-xs"
+              />
+            </label>
+            <label className="min-w-0 flex-1 space-y-1 sm:max-w-[220px]">
+              <span className="text-[10px] text-[var(--gs-text-secondary)]">Phone</span>
+              <Input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Optional"
+                className="h-9 text-xs"
+              />
+            </label>
+            <Button type="submit" size="sm" className="h-9 shrink-0" disabled={isAdding}>
+              {isAdding ? "Adding…" : "Add contact"}
+            </Button>
+          </form>
+          {addError ? (
+            <p
+              role="alert"
+              aria-live="polite"
+              className="mx-auto mt-3 max-w-3xl rounded border border-[var(--gs-danger)]/30 bg-[var(--gs-danger-soft)] px-3 py-2 text-[13px] text-[var(--gs-danger)]"
+            >
+              {addError}
+            </p>
+          ) : null}
+          <div className="mx-auto mt-3 flex w-full max-w-3xl flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+            <label className="min-w-0 flex-1 space-y-1">
+              <span className="text-[10px] text-[var(--gs-text-secondary)]">
+                Filter by name
+              </span>
+              <Input
+                value={nameFilter}
+                onChange={(e) => setNameFilter(e.target.value)}
+                placeholder="Type to narrow the list"
+                className="h-9 text-xs"
+              />
+            </label>
+            {nameFilter ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="h-9 shrink-0 sm:self-end"
+                onClick={() => setNameFilter("")}
+              >
+                Clear filter
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="space-y-2.5 bg-[var(--gs-surface)] px-2 py-2 sm:px-3 sm:py-2.5">
+          {rows.length === 0 ? (
+            <p className="px-2 py-8 text-center text-[13px] text-[var(--gs-text-secondary)]">
+              No contacts yet.
+            </p>
+          ) : filteredParties.length === 0 ? (
+            <p className="px-2 py-8 text-center text-[13px] text-[var(--gs-text-secondary)]">
+              No contacts match this filter.
+            </p>
+          ) : (
+            filteredParties.map((p) => (
+              <div key={p.id} className={workspaceEntryShell("neutral")}>
+                {editingId === p.id ? (
+                  <div className="space-y-3 bg-[var(--gs-selection)]/40 px-2.5 py-2.5 sm:px-3 sm:py-3">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <label className="space-y-1">
+                        <span className="text-[10px] text-[var(--gs-text-secondary)]">Name</span>
+                        <Input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="h-9 text-xs"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void saveEdit(p.id);
+                            if (e.key === "Escape") setEditingId(null);
+                          }}
+                        />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-[10px] text-[var(--gs-text-secondary)]">Phone</span>
+                        <Input
+                          value={editPhone}
+                          onChange={(e) => setEditPhone(e.target.value)}
+                          placeholder="Phone"
+                          className="h-9 text-xs"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void saveEdit(p.id);
+                            if (e.key === "Escape") setEditingId(null);
+                          }}
+                        />
+                      </label>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" size="sm" onClick={() => void saveEdit(p.id)}>
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setEditingId(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="px-2.5 py-2 sm:px-3 sm:py-2.5">
+                    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-semibold leading-snug text-[var(--gs-text)]">
+                          {p.name}
+                        </p>
+                        <p className="mt-1 font-mono text-[13px] tabular-nums text-[var(--gs-text-secondary)]">
+                          {p.phone ?? "—"}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1">
+                        <button
+                          type="button"
+                          aria-label={`Edit contact ${p.name}`}
+                          className="text-[13px] font-medium text-[var(--gs-primary)] hover:underline"
+                          onClick={() => startEdit(p)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Remove contact ${p.name}`}
+                          className="text-[13px] text-[var(--gs-text-secondary)] hover:text-[var(--gs-danger)]"
+                          onClick={() => void onDelete(p.id)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </section>
   );
@@ -1290,10 +1327,6 @@ export function LedgerBlock({
     [rows, purchaseTotalById]
   );
 
-  const selectedPartyName = localFilters.partyId
-    ? (parties.find((p) => p.id === localFilters.partyId)?.name ?? "Contact")
-    : "All contacts";
-
   const notebookGroups = useMemo(
     () =>
       ledgerGroupsForNotebookView(filteredRows, localFilters.entryType),
@@ -1326,24 +1359,7 @@ export function LedgerBlock({
     );
   }, [notebookPartition, billTotalById, purchaseTotalById]);
 
-  const filterPeriodHint = useMemo(() => {
-    const { fromDate, toDate } = localFilters;
-    if (fromDate && toDate) return `${fromDate} → ${toDate}`;
-    if (fromDate) return `From ${fromDate}`;
-    if (toDate) return `Until ${toDate}`;
-    return "All dates in view";
-  }, [localFilters.fromDate, localFilters.toDate]);
-
   const showPartyOnNotebookLine = !localFilters.partyId;
-
-  function notebookGroupShellClass(tone: "expense" | "income") {
-    return cn(
-      "relative isolate z-0 overflow-hidden rounded-xl border border-[var(--gs-border)]/85 bg-[var(--gs-surface-plain)]/95 shadow-sm ring-1 ring-inset ring-black/[0.04]",
-      tone === "expense"
-        ? "border-l-[3px] border-l-[var(--gs-text-secondary)]"
-        : "border-l-[3px] border-l-[var(--gs-success)]"
-    );
-  }
 
   function renderNotebookGroup(
     g: LedgerDisplayGroup,
@@ -1351,7 +1367,7 @@ export function LedgerBlock({
   ) {
     if (g.kind === "payment-only") {
       return (
-        <div key={g.payment.id} className={notebookGroupShellClass(tone)}>
+        <div key={g.payment.id} className={workspaceEntryShell(tone)}>
           <div className="relative z-[2] px-2.5 py-1">
             <LedgerNotebookEntry
               row={g.payment}
@@ -1375,7 +1391,7 @@ export function LedgerBlock({
     }
     const expanded = isParentExpanded(g.parent.id, g.payments.length);
     return (
-      <div key={g.parent.id} className={notebookGroupShellClass(tone)}>
+      <div key={g.parent.id} className={workspaceEntryShell(tone)}>
         <div className="relative z-[2] px-2.5 pt-2 pb-1">
           <LedgerNotebookEntry
             row={g.parent}
@@ -1405,7 +1421,7 @@ export function LedgerBlock({
           />
         </div>
         {expanded && g.payments.length > 0 ? (
-          <div className="relative z-[1] space-y-2 border-t border-dashed border-[var(--gs-border)]/55 bg-[var(--gs-surface)]/20 px-2.5 py-2.5">
+          <div className={WORKSPACE_INSET_EXPANDED}>
             {g.payments.map((p) => (
               <LedgerNotebookEntry
                 key={p.id}
@@ -1433,24 +1449,45 @@ export function LedgerBlock({
 
   return (
     <section className="space-y-3">
+      {rows.length > 0 ? (
+        <div
+          className={cn(
+            "grid grid-cols-1 rounded-lg border border-[var(--gs-border)]/70 bg-[var(--gs-surface-plain)]/40",
+            notebookShowSplitKhata &&
+              "divide-y divide-[var(--gs-border)]/60 sm:grid-cols-2 sm:divide-x sm:divide-y-0 sm:divide-[var(--gs-border)]/60"
+          )}
+        >
+          {notebookShowExpenseColumn ? (
+            <div className="px-3 py-2.5 sm:px-4">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
+                Total expense · filter
+              </p>
+              <p className="mt-0.5 font-mono text-base tabular-nums text-[var(--gs-text)]">
+                {formatINR(notebookExpenseTotal)}
+              </p>
+            </div>
+          ) : null}
+          {notebookShowIncomeColumn ? (
+            <div className="px-3 py-2.5 sm:px-4">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
+                Total income · filter
+              </p>
+              <p className="mt-0.5 font-mono text-base tabular-nums text-[var(--gs-text)]">
+                {formatINR(notebookIncomeTotal)}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {rows.length === 0 ? (
         <p className="rounded-sm border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-4 py-8 text-center text-sm text-[var(--gs-text-secondary)]">
           No ledger entries yet.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[var(--gs-border)]/90 bg-[var(--gs-surface)]">
-          <div className="border-b border-[var(--gs-border)]/70 bg-[var(--gs-surface-plain)]/50 px-3 py-3 sm:px-4">
-            <p className="text-center text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--gs-text-secondary)]">
-              Khata
-            </p>
-            <h3 className="mt-0.5 text-center text-lg font-semibold tracking-tight text-[var(--gs-text)]">
-              {selectedPartyName}
-            </h3>
-            <p className="mt-0.5 text-center text-[11px] text-[var(--gs-text-secondary)]">
-              {filterPeriodHint}
-            </p>
-            <div className="mx-auto mt-3 flex w-full max-w-5xl flex-col gap-2 md:flex-row md:flex-nowrap md:items-end md:justify-center md:gap-3">
+        <div className={WORKSPACE_PANEL}>
+          <div className={WORKSPACE_PANEL_HEADER}>
+            <div className="mx-auto flex w-full max-w-5xl flex-col gap-2 md:flex-row md:flex-nowrap md:items-end md:justify-center md:gap-3">
               <label className="min-w-0 flex-1 space-y-1 md:min-w-[10.5rem]">
                 <span className="text-[10px] text-[var(--gs-text-secondary)]">
                   Contacts
@@ -1465,7 +1502,7 @@ export function LedgerBlock({
                   }
                   className="h-9 w-full text-xs"
                 >
-                  <option value="">Select contact</option>
+                  <option value="">All contacts</option>
                   {parties.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -1598,43 +1635,6 @@ export function LedgerBlock({
           )}
         </div>
       )}
-
-      {rows.length > 0 ? (
-        <div
-          className={cn(
-            "grid grid-cols-1 rounded-lg border border-[var(--gs-border)]/70 bg-[var(--gs-surface-plain)]/40",
-            notebookShowSplitKhata &&
-              "divide-y divide-[var(--gs-border)]/60 sm:grid-cols-2 sm:divide-x sm:divide-y-0 sm:divide-[var(--gs-border)]/60"
-          )}
-        >
-          {notebookShowExpenseColumn ? (
-            <div className="px-3 py-2.5 sm:px-4">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
-                Total expense · filter
-              </p>
-              <p className="text-[10px] text-[var(--gs-text-secondary)]">
-                {filterPeriodHint}
-              </p>
-              <p className="mt-0.5 font-mono text-base tabular-nums text-[var(--gs-text)]">
-                {formatINR(notebookExpenseTotal)}
-              </p>
-            </div>
-          ) : null}
-          {notebookShowIncomeColumn ? (
-            <div className="px-3 py-2.5 sm:px-4">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--gs-text-secondary)]">
-                Total income · filter
-              </p>
-              <p className="text-[10px] text-[var(--gs-text-secondary)]">
-                {filterPeriodHint}
-              </p>
-              <p className="mt-0.5 font-mono text-base tabular-nums text-[var(--gs-text)]">
-                {formatINR(notebookIncomeTotal)}
-              </p>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
 
       {followUpParent ? (
         <LedgerFollowUpPaymentModal

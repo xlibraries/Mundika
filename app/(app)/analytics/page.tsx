@@ -11,6 +11,11 @@ import {
   getAnalyticsSummary,
   type AnalyticsSummaryFilters,
 } from "@/lib/analytics/summary";
+import { db } from "@/lib/db";
+import {
+  ledgerFilterPeriodHint,
+  ledgerKhataContactTitle,
+} from "@/lib/ledger/khata-header";
 import { getLocalDateInputValue } from "@/lib/date/local-date";
 import { formatINR } from "@/lib/format/inr";
 import { useUserId } from "@/hooks/use-user-id";
@@ -20,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { InventorySheet } from "@/components/workspace/inventory-sheet";
 import { LedgerBlock, PartiesBlock } from "@/components/workspace/parties-ledger-blocks";
+import type { PartyRow } from "@/lib/types/domain";
 import { workspacePurchaseFlowEnabled } from "@/lib/features/workspace";
 import { TransactionSeedPanel } from "@/components/dev/transaction-seed-panel";
 import { isTransactionDemoSeedEnabled } from "@/lib/dev/transaction-demo-seed";
@@ -142,6 +148,7 @@ export default function AnalyticsPage() {
     ReturnType<typeof getAnalyticsSummary>
   > | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [ledgerParties, setLedgerParties] = useState<PartyRow[]>([]);
 
   const bump = useCallback(() => setRefreshToken((n) => n + 1), []);
 
@@ -149,6 +156,18 @@ export default function AnalyticsPage() {
     if (!userId) return;
     void getAnalyticsSummary(userId, globalOverviewFilters).then(setSummary);
   }, [userId, globalOverviewFilters, refreshToken, lastSyncAt]);
+
+  useEffect(() => {
+    if (!userId) return;
+    void db.parties
+      .where("user_id")
+      .equals(userId)
+      .toArray()
+      .then((list) => {
+        list.sort((a, b) => a.name.localeCompare(b.name));
+        setLedgerParties(list);
+      });
+  }, [userId, refreshToken, lastSyncAt]);
 
   function resetGlobalFilters() {
     setGlobalOverviewFilters({
@@ -212,16 +231,39 @@ export default function AnalyticsPage() {
       <section className="flex shrink-0 flex-col rounded-3xl border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] px-5 py-5 shadow-[0_14px_34px_-26px_rgba(58,42,31,0.3)] md:px-7">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--gs-primary)]">
-              MUNDIKA INVENTORY DESK
-            </p>
-            <h1 className="mt-2 text-xl font-semibold text-[var(--gs-text)] md:text-2xl">
-              Stock, ledger, and performance at a glance
-            </h1>
-            <p className="mt-1 max-w-2xl text-sm text-[var(--gs-text-secondary)]">
-              Use tabs to monitor today&apos;s performance and inspect operational
-              details for <span className="font-mono text-[var(--gs-primary)]">{today}</span>.
-            </p>
+            {activeTab === "ledger" ? (
+              <>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--gs-primary)]">
+                  Khata
+                </p>
+                <h1 className="mt-2 text-xl font-semibold tracking-tight text-[var(--gs-text)] md:text-2xl">
+                  {ledgerKhataContactTitle(
+                    ledgerLocalFilters.partyId,
+                    ledgerParties
+                  )}
+                </h1>
+                <p className="mt-1 max-w-2xl text-sm text-[var(--gs-text-secondary)]">
+                  {ledgerFilterPeriodHint({
+                    fromDate: ledgerLocalFilters.fromDate,
+                    toDate: ledgerLocalFilters.toDate,
+                  })}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--gs-primary)]">
+                  MUNDIKA INVENTORY DESK
+                </p>
+                <h1 className="mt-2 text-xl font-semibold text-[var(--gs-text)] md:text-2xl">
+                  Stock, ledger, and performance at a glance
+                </h1>
+                <p className="mt-1 max-w-2xl text-sm text-[var(--gs-text-secondary)]">
+                  Use tabs to monitor today&apos;s performance and inspect operational
+                  details for{" "}
+                  <span className="font-mono text-[var(--gs-primary)]">{today}</span>.
+                </p>
+              </>
+            )}
           </div>
           <Badge
             variant="muted"
