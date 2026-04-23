@@ -10,7 +10,10 @@ import {
   ensureDefaultShopForUser,
   updateShopProfile,
 } from "@/lib/shops/queries";
-import { upsertUserProfileOnboardingComplete } from "@/lib/user-profile/user-profiles";
+import {
+  fetchUserOnboardingStatus,
+  upsertUserProfileOnboardingComplete,
+} from "@/lib/user-profile/user-profiles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -70,6 +73,11 @@ function OnboardingInner() {
     if (authLoading || !userId) return;
     void (async () => {
       const supabase = createClient();
+      const alreadyDone = await fetchUserOnboardingStatus(supabase, userId);
+      if (alreadyDone) {
+        router.replace(next);
+        return;
+      }
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -82,7 +90,7 @@ function OnboardingInner() {
       }
       setSessionReady(true);
     })();
-  }, [authLoading, userId]);
+  }, [authLoading, userId, next, router]);
 
   useEffect(() => {
     if (authLoading || userId) return;
@@ -224,17 +232,17 @@ function OnboardingInner() {
   const showSmsPanel = !hasEmail && !phoneMatchesSession;
 
   return (
-    <div className="mx-auto w-full max-w-lg space-y-6 py-6">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--gs-text-secondary)]">
-          Welcome
+    <div className="mx-auto w-full max-w-lg flex-1 space-y-6 py-6 md:py-10">
+      <div className="space-y-2">
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--gs-primary)]">
+          Step 1 of 1
         </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--gs-text)]">
-          Set up your shop
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--gs-text)]">
+          Tell us about your dukan
         </h1>
-        <p className="mt-2 text-sm text-[var(--gs-text-secondary)]">
-          One quick step before the dashboard. Mobile is required for everyone;
-          SMS verification only applies when your account has no email.
+        <p className="text-sm leading-relaxed text-[var(--gs-text-secondary)]">
+          After this you will see inventory, shop settings, and billing. Mobile
+          is required; SMS verification only if this account has no email.
         </p>
       </div>
 
@@ -255,36 +263,44 @@ function OnboardingInner() {
           />
         </label>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block space-y-1.5 sm:col-span-2">
-            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
-              Address line 1 (optional)
+        <details className="group rounded-xl border border-[var(--gs-border)] bg-[var(--gs-surface-plain)] p-1">
+          <summary className="cursor-pointer list-none rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--gs-text)] marker:content-none [&::-webkit-details-marker]:hidden">
+            <span className="text-[var(--gs-text-secondary)]">Shop address</span>
+            <span className="ml-2 text-xs font-normal text-[var(--gs-text-secondary)]">
+              (optional — skip if you prefer)
             </span>
-            <Input
-              autoComplete="street-address"
-              value={addressLine1}
-              onChange={(e) => setAddressLine1(e.target.value)}
-            />
-          </label>
-          <label className="block space-y-1.5 sm:col-span-2">
-            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
-              Address line 2 (optional)
-            </span>
-            <Input value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">City</span>
-            <Input autoComplete="address-level2" value={city} onChange={(e) => setCity(e.target.value)} />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">State</span>
-            <Input value={stateRegion} onChange={(e) => setStateRegion(e.target.value)} />
-          </label>
-          <label className="block space-y-1.5 sm:col-span-2">
-            <span className="text-xs font-medium text-[var(--gs-text-secondary)]">PIN code</span>
-            <Input inputMode="numeric" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
-          </label>
-        </div>
+          </summary>
+          <div className="grid gap-3 border-t border-[var(--gs-border)] p-3 pt-3 sm:grid-cols-2">
+            <label className="block space-y-1.5 sm:col-span-2">
+              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
+                Address line 1
+              </span>
+              <Input
+                autoComplete="street-address"
+                value={addressLine1}
+                onChange={(e) => setAddressLine1(e.target.value)}
+              />
+            </label>
+            <label className="block space-y-1.5 sm:col-span-2">
+              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
+                Address line 2
+              </span>
+              <Input value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">City</span>
+              <Input autoComplete="address-level2" value={city} onChange={(e) => setCity(e.target.value)} />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">State</span>
+              <Input value={stateRegion} onChange={(e) => setStateRegion(e.target.value)} />
+            </label>
+            <label className="block space-y-1.5 sm:col-span-2">
+              <span className="text-xs font-medium text-[var(--gs-text-secondary)]">PIN code</span>
+              <Input inputMode="numeric" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
+            </label>
+          </div>
+        </details>
 
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-[var(--gs-text-secondary)]">
@@ -386,7 +402,7 @@ function OnboardingInner() {
         ) : null}
 
         <Button type="submit" className="w-full" size="lg" disabled={busy}>
-          {busy ? "Saving…" : "Continue to dashboard"}
+          {busy ? "Saving…" : "Finish setup"}
         </Button>
       </form>
     </div>
