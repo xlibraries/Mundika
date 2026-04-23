@@ -2,8 +2,8 @@
 # Repository → Settings → Secrets: add NEXT_PUBLIC_SUPABASE_URL and
 # NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY so the client bundle can embed them.
 # Supabase → Authentication → URL configuration:
-# – Site URL = app root only, e.g. https://<user>.github.io/<Repo> (NOT /auth/callback).
-# – Redirect URLs = allow https://<user>.github.io/<Repo>/auth/callback and local callback.
+# — Site URL = app root only, e.g. https://<user>.github.io/<Repo> (NOT /auth/callback).
+# — Redirect URLs = allow https://<user>.github.io/<Repo>/auth/callback and local callback.
 # Google Cloud → OAuth client: JavaScript origins = origins only (e.g. https://xlibraries.github.io).
 # Google redirect URI for Supabase = https://<project-ref>.supabase.co/auth/v1/callback only.
 name: Deploy Next.js site to Pages
@@ -61,6 +61,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
           NEXT_PUBLIC_PAYMENT_PROVIDER: ${{ secrets.NEXT_PUBLIC_PAYMENT_PROVIDER }}
           NEXT_PUBLIC_RAZORPAY_CHECKOUT_ENABLED: ${{ secrets.NEXT_PUBLIC_RAZORPAY_CHECKOUT_ENABLED }}
+          NEXT_PUBLIC_RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
         run: npm run build
 
       - name: Upload artifact
@@ -69,11 +70,11 @@ jobs:
           path: ./out
 
   deploy:
-    runs-on: ubuntu-latest
-    needs: build
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
