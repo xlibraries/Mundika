@@ -3,17 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 0.0.0.0",
+    "dev:webpack": "next dev --hostname 0.0.0.0 --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "node scripts/playwright-install.cjs",
+    "test:watch": "vitest",
     "ruflo:check": "npx -y ruflo@latest init check"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.101.1",
     "dexie": "^4.4.2",
-    "next": "16.2.2",
+    "next": "16.2.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zustand": "^5.0.12"
@@ -24,8 +29,10 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.2",
+    "eslint-config-next": "16.2.3",
+    "@playwright/test": "^1.57.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.4"
   }
 }

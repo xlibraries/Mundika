@@ -1,44 +1,5 @@
 import Link from "next/link";
-
-const pricingPlans = [
-  {
-    name: "Free",
-    blurb: "Limited use for getting started.",
-    price: "INR 0",
-    cadence: "no monthly charge",
-    cta: "Use free plan",
-    features: [
-      "Limited daily entries",
-      "Basic stock and billing records",
-      "Single account access",
-    ],
-  },
-  {
-    name: "Starter",
-    blurb: "For small teams that need shared access.",
-    price: "INR 399",
-    cadence: "per month",
-    cta: "Choose starter",
-    features: [
-      "3 account access included",
-      "Daily stock and billing workflow",
-      "Core reporting and party ledger",
-    ],
-    featured: true,
-  },
-  {
-    name: "Business",
-    blurb: "For larger operations with custom needs.",
-    price: "Custom",
-    cadence: "contact us",
-    cta: "Contact us",
-    features: [
-      "Custom account and workflow setup",
-      "Priority onboarding and support",
-      "Flexible service terms",
-    ],
-  },
-];
+import { loginUrlForPlan, PUBLIC_PRICING_PLANS } from "@/lib/pricing/plans";
 
 export default function Home() {
   return (
@@ -50,7 +11,8 @@ export default function Home() {
               MUNDIKA
             </p>
             <p className="text-xs text-[var(--mw-muted)]">
-              Vyapar ke daily operations ke liye digital bahi-khata.
+              Chhoti dukan ke liye seedha khatta — udhaar, stock, bill. GST /
+              pakka khaata abhi scope mein nahi.
             </p>
           </div>
           <Link
@@ -68,14 +30,14 @@ export default function Home() {
           <div className="marwadi-fade-up mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[1fr_0.85fr] lg:items-end">
             <div className="space-y-6">
               <p className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--mw-muted)]">
-                Services for daily vyapar
+                Tier-2 / tier-3 vyapar
               </p>
               <h1 className="max-w-2xl text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">
-                Stock, billing, udhaar-jama aur reports - sab ek system mein.
+                Party ka udhaar-jama, roz ka stock, seedha bill — phone par.
               </h1>
               <p className="max-w-xl text-base text-[var(--mw-muted)] sm:text-lg">
-                Is page par aapko clear dikhega ki Mundika kya services deta
-                hai aur kis plan mein kya include hai.
+                Form kam, kaam zyada: jo dukaandar roz use karte hain, wahi
+                pehle. Neeche plans aur services dekh sakte ho.
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Link
@@ -101,19 +63,19 @@ export default function Home() {
                 <div className="grid grid-cols-[auto_1fr] items-center gap-3 border-b border-[var(--mw-border)] pb-4">
                   <span className="h-2 w-2 rounded-full bg-[var(--mw-brand)]" />
                   <p className="text-sm text-[var(--mw-muted)]">
-                    Real-time stock movement tracking
+                    Stock in / out — seedha entry
                   </p>
                 </div>
                 <div className="grid grid-cols-[auto_1fr] items-center gap-3 border-b border-[var(--mw-border)] pb-4">
                   <span className="h-2 w-2 rounded-full bg-[var(--mw-brand)]" />
                   <p className="text-sm text-[var(--mw-muted)]">
-                    Billing and party ledger in one place
+                    Bill / chit aur party khata ek jagah
                   </p>
                 </div>
                 <div className="grid grid-cols-[auto_1fr] items-center gap-3">
                   <span className="h-2 w-2 rounded-full bg-[var(--mw-brand)]" />
                   <p className="text-sm text-[var(--mw-muted)]">
-                    Weekly reports for practical decisions
+                    Hafta bhar ka hisaab — seedha samajh
                   </p>
                 </div>
               </div>
@@ -128,12 +90,12 @@ export default function Home() {
                 What you get
               </p>
               <h2 className="mt-4 text-2xl font-semibold sm:text-3xl">
-                Setup simple rahe, daily workflow organized rahe.
+                Jaldi entry, seedha jawab — bina heavy accounting ke.
               </h2>
             </div>
             <p className="max-w-xl text-[var(--mw-muted)]">
-              Fast entries, live status, structured records, aur clear reports.
-              Focus operational clarity par hai, marketing noise par nahi.
+              GST return ya double-entry books yahan nahi; sirf roz ke vyapar
+              ke liye khatta, stock aur bill.
             </p>
           </div>
         </section>
@@ -180,9 +142,9 @@ export default function Home() {
           </div>
 
           <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {pricingPlans.map((plan) => (
+            {PUBLIC_PRICING_PLANS.map((plan) => (
               <article
-                key={plan.name}
+                key={plan.id}
                 className={`marwadi-plan rounded-3xl border p-6 ${
                   plan.featured
                     ? "border-[var(--mw-border-strong)] bg-[var(--mw-surface-soft)]"
@@ -194,9 +156,9 @@ export default function Home() {
                 </p>
                 <p className="mt-2 text-sm text-[var(--mw-muted)]">{plan.blurb}</p>
                 <p className="mt-6 text-3xl font-semibold tracking-tight">
-                  {plan.price}
+                  {plan.priceLabel}
                 </p>
-                <p className="mt-1 text-sm text-[var(--mw-muted)]">{plan.cadence}</p>
+                <p className="mt-1 text-sm text-[var(--mw-muted)]">{plan.cadenceLabel}</p>
                 <ul className="mt-6 space-y-3 text-sm text-[var(--mw-muted)]">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-2">
@@ -206,14 +168,14 @@ export default function Home() {
                   ))}
                 </ul>
                 <Link
-                  href="/login"
+                  href={loginUrlForPlan(plan.id)}
                   className={`mt-7 inline-flex rounded-full px-4 py-2 text-sm font-medium transition ${
                     plan.featured
                       ? "bg-[var(--mw-brand)] text-[var(--mw-brand-contrast)] hover:bg-[var(--mw-brand-strong)]"
                       : "border border-[var(--mw-border-strong)] hover:bg-[var(--mw-surface-soft)]"
                   }`}
                 >
-                  {plan.cta}
+                  {plan.ctaLabel}
                 </Link>
               </article>
             ))}

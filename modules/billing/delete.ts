@@ -53,21 +53,41 @@ export async function deleteBill(userId: string, billId: string): Promise<void> 
         const godown = rows.find((r) => r.location === "godown");
         const now = new Date().toISOString();
 
-        if (shop && qty_from_shop > 0) {
-          const next = {
-            ...shop,
-            qty: shop.qty + qty_from_shop,
-            updated_at: now,
-          };
+        if (qty_from_shop > 0) {
+          const next = shop
+            ? {
+                ...shop,
+                qty: shop.qty + qty_from_shop,
+                updated_at: now,
+              }
+            : {
+                id: crypto.randomUUID(),
+                user_id: userId,
+                item_id: line.item_id,
+                location: "shop" as const,
+                qty: qty_from_shop,
+                created_at: now,
+                updated_at: now,
+              };
           await db.inventory.put(next);
           await enqueueSync("inventory", "upsert", next.id, { ...next });
         }
-        if (godown && qty_from_godown > 0) {
-          const next = {
-            ...godown,
-            qty: godown.qty + qty_from_godown,
-            updated_at: now,
-          };
+        if (qty_from_godown > 0) {
+          const next = godown
+            ? {
+                ...godown,
+                qty: godown.qty + qty_from_godown,
+                updated_at: now,
+              }
+            : {
+                id: crypto.randomUUID(),
+                user_id: userId,
+                item_id: line.item_id,
+                location: "godown" as const,
+                qty: qty_from_godown,
+                created_at: now,
+                updated_at: now,
+              };
           await db.inventory.put(next);
           await enqueueSync("inventory", "upsert", next.id, { ...next });
         }

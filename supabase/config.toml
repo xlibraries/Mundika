@@ -1,0 +1,8 @@
+# Supabase CLI: https://supabase.com/docs/guides/cli/config
+# Webhook must accept unsigned Stripe posts (JWT verification disabled).
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.razorpay-webhook]
+verify_jwt = false

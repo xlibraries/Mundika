@@ -15,6 +15,7 @@ import { getLocalDateInputValue } from "@/lib/date/local-date";
 import { formatINR } from "@/lib/format/inr";
 import { useUserId } from "@/hooks/use-user-id";
 import { useAppStore } from "@/store/app-store";
+import { withBasePath } from "@/lib/auth/site-url";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { InventorySheet } from "@/components/workspace/inventory-sheet";
@@ -171,7 +172,7 @@ export default function AnalyticsPage() {
 
   function handleTabChange(id: TabId) {
     setActiveTab(id);
-    history.replaceState(null, "", `/analytics#${id}`);
+    history.replaceState(null, "", withBasePath(`/analytics#${id}`));
   }
 
   useEffect(() => {
@@ -191,6 +192,11 @@ export default function AnalyticsPage() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
+
+  useEffect(() => {
+    if (loading || userId) return;
+    window.location.href = withBasePath("/login?next=%2Fanalytics");
+  }, [loading, userId]);
 
   if (loading || !userId) {
     return <AnalyticsSkeleton />;

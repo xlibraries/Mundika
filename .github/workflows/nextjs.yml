@@ -50,6 +50,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Unit tests
+        run: npm test
+
       - name: Build static export
         env:
           NEXT_TELEMETRY_DISABLED: "1"

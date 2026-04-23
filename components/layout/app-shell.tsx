@@ -12,6 +12,8 @@ import { DashboardRailSummary } from "@/components/layout/dashboard-rail-summary
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Inventory", icon: icons.dashboard },
   { href: "/analytics", label: "Analytics", icon: icons.analytics },
+  { href: "/settings/shop", label: "Shop", icon: icons.shopSettings },
+  { href: "/account", label: "Account", icon: icons.account },
 ] as const;
 
 function navItemActive(href: string, pathname: string) {
@@ -73,7 +75,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/dashboard" ||
     pathname.startsWith("/dashboard/") ||
     pathname === "/analytics" ||
-    pathname.startsWith("/analytics/");
+    pathname.startsWith("/analytics/") ||
+    pathname === "/account" ||
+    pathname.startsWith("/account/") ||
+    pathname === "/settings/shop" ||
+    pathname.startsWith("/settings/");
 
   useEffect(() => {
     if (!mobileOpen) return;

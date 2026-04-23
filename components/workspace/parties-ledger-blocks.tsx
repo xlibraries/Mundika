@@ -187,7 +187,7 @@ function LedgerEntryTr({
         }`}
         title={
           showDashBalance
-            ? "No change to running balance (cash or paid at invoice)."
+            ? "No change to running balance (cash or paid on bill)."
             : undefined
         }
       >

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Legacy URL: billing and purchases live under Workspace → Transactions. */
+/** Legacy URL: operational billing lives under Workspace; SaaS plan under Account. */
 export default function BillingRedirectPage() {
-  redirect("/dashboard?tx=billing");
+  redirect("/account");
 }

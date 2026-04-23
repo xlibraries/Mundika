@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { planBillDeductions } from "@/modules/inventory/deduct";
 import { enqueueSync } from "@/lib/sync/queue";
+import { validateBillLines, type BillLineInput } from "@/modules/billing/validate-lines";
 import type {
   BillItemRow,
   BillRow,
@@ -8,12 +9,6 @@ import type {
   LedgerEntryRow,
   PaymentMode,
 } from "@/lib/types/domain";
-
-export type BillLineInput = {
-  item_id: string;
-  qty: number;
-  rate: number;
-};
 
 export async function createBill(
   userId: string,
@@ -38,6 +33,8 @@ export async function createBill(
   if (input.lines.length === 0) {
     throw new Error("Add at least one line");
   }
+
+  validateBillLines(input.lines);
 
   const lines = input.lines.map((l) => {
     const qty = Number(l.qty);

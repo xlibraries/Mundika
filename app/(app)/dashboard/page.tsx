@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUserId } from "@/hooks/use-user-id";
+import { withBasePath } from "@/lib/auth/site-url";
 import { TransactionForm } from "@/components/transaction/transaction-form";
 
 function DashboardSkeleton() {
@@ -34,9 +35,14 @@ function InventoryDashboardInner() {
   useLayoutEffect(() => {
     const tx = searchParams.get("tx");
     if (tx === "billing" || tx === "purchase") {
-      window.history.replaceState(null, "", "/dashboard");
+      window.history.replaceState(null, "", withBasePath("/dashboard"));
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (loading || userId) return;
+    router.replace("/login?next=%2Fdashboard");
+  }, [loading, userId, router]);
 
   if (loading || !userId) {
     return <DashboardSkeleton />;

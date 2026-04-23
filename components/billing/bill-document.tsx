@@ -33,7 +33,7 @@ export function BillDocumentView({ bill, lines }: BillDocumentViewProps) {
     >
       <header className="border-b border-[var(--gs-border)] pb-4 text-center print:border-black">
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gs-text-secondary)] print:text-neutral-600">
-          Bill / Invoice
+          Bill
         </p>
         <h1 className="mt-1 font-semibold tracking-tight text-[var(--gs-text)] print:text-xl print:text-black">
           {num}

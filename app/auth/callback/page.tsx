@@ -3,10 +3,16 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { safeNextPath } from "@/lib/auth/safe-next-path";
+import { getPublicPlanById } from "@/lib/pricing/plans";
 
-function safeNextPath(raw: string | null): string {
-  if (raw?.startsWith("/") && !raw.startsWith("//")) return raw;
-  return "/dashboard";
+function persistSelectedPlan(planId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem("mundika.selectedPlanId", planId);
+  } catch {
+    /* ignore quota / private mode */
+  }
 }
 
 function oauthErrorQuery(searchParams: URLSearchParams): string {
@@ -51,6 +57,8 @@ function AuthCallbackInner() {
       }
 
       if (session) {
+        const plan = getPublicPlanById(searchParams.get("plan"));
+        if (plan) persistSelectedPlan(plan.id);
         router.replace(safeNextPath(searchParams.get("next")));
         return;
       }
@@ -66,6 +74,8 @@ function AuthCallbackInner() {
         if (cancelled) return;
         const retry = await supabase.auth.getSession();
         if (retry.data.session) {
+          const plan = getPublicPlanById(searchParams.get("plan"));
+          if (plan) persistSelectedPlan(plan.id);
           router.replace(safeNextPath(searchParams.get("next")));
           return;
         }

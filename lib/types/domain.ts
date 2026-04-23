@@ -169,3 +169,17 @@ export interface SyncQueueRow {
   created_at: string;
   attempts: number;
 }
+
+/** Supabase `public.user_entitlements` (Stripe-backed plan). */
+export interface UserEntitlementsRow {
+  user_id: string;
+  plan_id: "free" | "starter" | "business";
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  /** Present after `20260423100000_user_entitlements_razorpay` migration. */
+  razorpay_order_id?: string | null;
+  razorpay_payment_id?: string | null;
+  subscription_status: string | null;
+  current_period_end: string | null;
+  updated_at: string;
+}

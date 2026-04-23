@@ -93,6 +93,26 @@ export const icons = {
       />
     </svg>
   ),
+  account: (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className="size-[18px]">
+      <path
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        d="M20 21a8 8 0 0 0-16 0M12 13a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"
+      />
+    </svg>
+  ),
+  shopSettings: (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className="size-[18px]">
+      <path
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        d="M4 10V20h16V10M2 7l2-4h16l2 4H2Zm8 13v-6h4v6"
+      />
+    </svg>
+  ),
   logout: (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden className="size-[18px]">
       <path
